@@ -242,3 +242,49 @@ main { padding: 28px 0 56px; }
   .video-card video { height: calc(100vh - 58px - 76px); min-height: 0; border-radius: 0; }
   .video-overlay { border-radius: 0; }
 }
+
+/* Instagram-style personal profile */
+.profile-panel { overflow: visible; background: #fff; }
+.profile-panel .profile-content { padding: 0 24px 32px; }
+.profile-topbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 0 28px; font-size: 20px; }
+.profile-top-actions { display: flex; gap: 18px; color: #171717; }
+.profile-top-actions .icon { width: auto; height: auto; font-size: 27px; }
+.profile-panel .profile-header { display: grid; grid-template-columns: 160px 1fr; gap: 36px; align-items: center; margin-top: 0; }
+.profile-photo-wrap { display: grid; justify-items: center; gap: 12px; }
+.profile-photo-wrap img { width: 150px; height: 150px; object-fit: cover; border: 1px solid #dbdbdb; border-radius: 50%; box-shadow: none; }
+.profile-photo-wrap button { border: 0; background: transparent; color: #0095f6; font-weight: 800; cursor: pointer; }
+.profile-summary { display: grid; gap: 20px; }
+.profile-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.profile-identity h2 { margin: 0 12px 0 0; font-size: 22px; font-weight: 400; }
+.profile-identity button, .profile-identity .settings-button { border: 0; border-radius: 8px; background: #efefef; color: #171717; padding: 8px 16px; font-weight: 800; text-decoration: none; }
+.profile-panel .profile-metrics { display: flex; gap: 34px; margin-top: 0; }
+.profile-panel .profile-metrics span { padding: 0; border: 0; background: transparent; color: #171717; text-align: left; font-size: 16px; }
+.profile-panel .profile-metrics b { display: inline; margin-right: 5px; font-size: 16px; }
+.profile-name { font-size: 16px; }
+.profile-insights { margin: 24px 0 0; color: #171717; }
+.profile-insights a { color: #00376b; font-weight: 800; text-decoration: none; }
+.profile-share-empty { display: grid; justify-items: center; gap: 8px; margin-top: 42px; padding: 56px 20px 32px; border-top: 1px solid #dbdbdb; text-align: center; }
+.profile-share-empty .icon { width: 62px; height: 62px; border: 2px solid #171717; border-radius: 50%; font-size: 34px; }
+.profile-share-empty h3 { margin: 8px 0 0; font-size: 30px; }
+.profile-share-empty p { margin: 0; color: #626262; }
+
+:root[data-theme="dark"] .profile-panel .profile-identity button,
+:root[data-theme="dark"] .profile-panel .profile-identity .settings-button { color: #f6f3ff; background: #26233a; }
+:root[data-theme="dark"] .profile-panel .profile-metrics span,
+:root[data-theme="dark"] .profile-insights,
+:root[data-theme="dark"] .profile-top-actions { color: #f6f3ff; }
+:root[data-theme="dark"] .profile-share-empty { border-color: #29253a; }
+:root[data-theme="dark"] .profile-share-empty .icon { border-color: #f6f3ff; }
+
+@media (max-width: 760px) {
+  .profile-panel .profile-content { padding: 0 16px 28px; }
+  .profile-panel .profile-header { grid-template-columns: 92px 1fr; gap: 18px; }
+  .profile-photo-wrap img { width: 86px; height: 86px; }
+  .profile-photo-wrap button { font-size: 12px; }
+  .profile-summary { gap: 14px; }
+  .profile-identity h2 { flex-basis: 100%; }
+  .profile-panel .profile-metrics { justify-content: space-around; gap: 8px; order: 3; grid-column: 1 / -1; padding-top: 16px; border-top: 1px solid #dbdbdb; }
+  .profile-panel .profile-metrics span { display: grid; justify-items: center; font-size: 13px; }
+  .profile-panel .profile-metrics b { display: block; margin: 0; }
+  .profile-share-empty h3 { font-size: 24px; }
+}
