@@ -25,9 +25,19 @@ const products = [
 const icon = (name) => `<span class="icon" aria-hidden="true">${name}</span>`;
 const currencyValue = (price) => Number(price.replace('$', ''));
 
+const navItems = [['⌂', 'Home'], ['⌕', 'Search'], ['◈', 'Explore'], ['▣', 'Reels'], ['✉', 'Messages'], ['♡', 'Notifications'], ['＋', 'Create'], ['◒', 'Shop'], ['◎', 'Profile']];
+const bottomNavItems = navItems.filter(([, label]) => ['Home', 'Search', 'Create', 'Shop', 'Profile'].includes(label));
+
+function navLink([symbol, label]) {
+  return `<a class="${label === 'Shop' ? 'active' : ''}" href="#${label.toLowerCase()}">${icon(symbol)}<span>${label}</span></a>`;
+}
+
 function sidebar() {
-  const items = [['⌂', 'Home'], ['⌕', 'Search'], ['◈', 'Explore'], ['▣', 'Reels'], ['✉', 'Messages'], ['♡', 'Notifications'], ['＋', 'Create'], ['◒', 'Shop'], ['◎', 'Profile']];
-  return `<aside class="sidebar"><a class="brand" href="#home">${icon('ϟ')}GlitchIt</a><nav>${items.map(([symbol, label]) => `<a class="${label === 'Shop' ? 'active' : ''}" href="#${label.toLowerCase()}">${icon(symbol)}<span>${label}</span></a>`).join('')}</nav><button class="post-button">Post</button></aside>`;
+  return `<aside class="sidebar"><a class="brand" href="#home">${icon('ϟ')}GlitchIt</a><nav>${navItems.map(navLink).join('')}</nav><button class="post-button">Post</button></aside>`;
+}
+
+function bottomBar() {
+  return `<nav class="bottom-bar" aria-label="Primary mobile navigation">${bottomNavItems.map(navLink).join('')}</nav>`;
 }
 
 function storiesMarkup() {
@@ -68,5 +78,5 @@ function attachShopFilters() {
   category.addEventListener('change', filter);
 }
 
-document.getElementById('app').innerHTML = `${sidebar()}<main id="home"><div class="mobile-top"><a class="brand" href="#home">${icon('ϟ')}GlitchIt</a>${icon('◒')}</div>${storiesMarkup()}${feed.map(post).join('')}${shop()}</main>${rightRail()}`;
+document.getElementById('app').innerHTML = `${sidebar()}<main id="home"><div class="mobile-top"><a class="brand" href="#home">${icon('ϟ')}GlitchIt</a>${icon('◒')}</div>${storiesMarkup()}${feed.map(post).join('')}${shop()}</main>${rightRail()}${bottomBar()}`;
 attachShopFilters();
