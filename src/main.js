@@ -25,8 +25,25 @@ const products = [
 const icon = (name) => `<span class="icon" aria-hidden="true">${name}</span>`;
 const currencyValue = (price) => Number(price.replace('$', ''));
 
-const navItems = [['⌂', 'Home'], ['⌕', 'Search'], ['◈', 'Explore'], ['▣', 'Reels'], ['✉', 'Messages'], ['♡', 'Notifications'], ['＋', 'Create'], ['◒', 'Shop'], ['◎', 'Profile']];
+const navItems = [['⌂', 'Home'], ['⌕', 'Search'], ['◈', 'Explore'], ['▣', 'Reels'], ['✉', 'Messages'], ['♡', 'Notifications'], ['＋', 'Create'], ['◒', 'Shop'], ['◎', 'Profile'], ['⚙', 'Settings']];
 const bottomNavItems = navItems.filter(([, label]) => ['Home', 'Search', 'Create', 'Shop', 'Profile'].includes(label));
+
+const profile = {
+  username: 'glitch_founder',
+  name: 'GlitchIt Studio',
+  avatar: stories[2][1],
+  cover: 'https://images.unsplash.com/photo-1558655146-9f40138edfeb?auto=format&fit=crop&w=1000&q=80',
+  bio: 'Creator tools, limited drops, and social shopping experiments from the GlitchIt team.',
+  website: 'glitchit.shop/studio',
+  metrics: [['128', 'posts'], ['12.8k', 'followers'], ['46', 'drops']],
+  highlights: ['Drops', 'Fits', 'Studio', 'Reviews'],
+};
+
+const accountSettings = [
+  { group: 'Privacy', title: 'Private profile', description: 'Approve followers before they can see posts and Shop drops.', enabled: false },
+  { group: 'Shop', title: 'Seller mode', description: 'Show products, promos, and order stats on your profile.', enabled: true },
+  { group: 'Notifications', title: 'Drop alerts', description: 'Notify followers when a new product or post goes live.', enabled: true },
+];
 
 function navLink([symbol, label]) {
   return `<a class="${label === 'Shop' ? 'active' : ''}" href="#${label.toLowerCase()}">${icon(symbol)}<span>${label}</span></a>`;
@@ -57,8 +74,16 @@ function productCards(items) {
   return items.map(([title, seller, price, category, image]) => `<article class="product" data-title="${title.toLowerCase()}" data-seller="${seller.toLowerCase()}" data-category="${category}"><img src="${image}" alt="${title}"><div><span>${category}</span><h3>${title}</h3><p>${seller}</p><strong>${price}</strong><button>Promote</button></div></article>`).join('');
 }
 
+function profilePanel() {
+  return `<section class="profile-panel" id="profile" style="--profile-cover: url('${profile.cover}')"><div class="profile-cover"></div><div class="profile-content"><div class="profile-header"><img src="${profile.avatar}" alt="${profile.username} profile"><div><span class="eyebrow">Creator profile</span><h2>${profile.username}</h2><strong>${profile.name}</strong><p>${profile.bio}</p><a href="https://${profile.website}">${profile.website}</a></div><button type="button">Edit profile</button></div><div class="profile-metrics">${profile.metrics.map(([value, label]) => `<span><b>${value}</b>${label}</span>`).join('')}</div><div class="highlight-row" aria-label="Profile highlights">${profile.highlights.map((highlight) => `<span>${highlight}</span>`).join('')}</div></div></section>`;
+}
+
+function settingsPanel() {
+  return `<section class="settings-panel" id="settings"><div class="settings-heading"><span class="eyebrow">Account settings</span><h2>Creator controls</h2><p>Tune profile visibility, storefront behavior, and launch notifications from one dashboard.</p></div><div class="settings-list">${accountSettings.map(({ group, title, description, enabled }) => `<label class="setting-item"><span><small>${group}</small><strong>${title}</strong><em>${description}</em></span><input type="checkbox" ${enabled ? 'checked' : ''} aria-label="${title}"><i aria-hidden="true"></i></label>`).join('')}</div></section>`;
+}
+
 function rightRail() {
-  return `<aside class="right-rail"><div class="me"><img src="${stories[2][1]}" alt="Your profile"><div><strong>glitch_founder</strong><span>Build your vibe</span></div></div><div class="stats"><span><b>12.8k</b> followers</span><span><b>46</b> drops</span></div><h3>Suggested sellers</h3>${products.slice(0, 4).map(([, seller,, category]) => `<div class="seller"><div><strong>${seller}</strong><span>${category}</span></div><button>Follow</button></div>`).join('')}</aside>`;
+  return `<aside class="right-rail"><div class="me"><img src="${profile.avatar}" alt="Your profile"><div><strong>${profile.username}</strong><span>Build your vibe</span></div></div><div class="stats"><span><b>12.8k</b> followers</span><span><b>46</b> drops</span></div><h3>Suggested sellers</h3>${products.slice(0, 4).map(([, seller,, category]) => `<div class="seller"><div><strong>${seller}</strong><span>${category}</span></div><button>Follow</button></div>`).join('')}</aside>`;
 }
 
 function attachShopFilters() {
@@ -78,5 +103,5 @@ function attachShopFilters() {
   category.addEventListener('change', filter);
 }
 
-document.getElementById('app').innerHTML = `${sidebar()}<main id="home"><div class="mobile-top"><a class="brand" href="#home">${icon('ϟ')}GlitchIt</a>${icon('◒')}</div>${storiesMarkup()}${feed.map(post).join('')}${shop()}</main>${rightRail()}${bottomBar()}`;
+document.getElementById('app').innerHTML = `${sidebar()}<main id="home"><div class="mobile-top"><a class="brand" href="#home">${icon('ϟ')}GlitchIt</a>${icon('◒')}</div>${storiesMarkup()}${feed.map(post).join('')}${profilePanel()}${settingsPanel()}${shop()}</main>${rightRail()}${bottomBar()}`;
 attachShopFilters();
