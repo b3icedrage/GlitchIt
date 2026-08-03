@@ -242,3 +242,49 @@ main { padding: 28px 0 56px; }
   .video-card video { height: calc(100vh - 58px - 76px); min-height: 0; border-radius: 0; }
   .video-overlay { border-radius: 0; }
 }
+
+/* GlitchIt personal profile inspired by familiar social profile layouts */
+.profile-panel { overflow: hidden; background: radial-gradient(circle at top left, #fff4fa, #fff 44%); }
+.profile-panel .profile-cover { min-height: 118px; background: linear-gradient(135deg, rgba(214,41,118,.88), rgba(79,91,213,.82)), var(--profile-cover) center/cover; }
+.profile-panel .profile-content { padding: 0 24px 32px; }
+.profile-panel .profile-header { display: grid; grid-template-columns: 150px 1fr; gap: 28px; align-items: end; margin-top: -58px; }
+.profile-photo-wrap { display: grid; justify-items: center; gap: 10px; }
+.profile-photo-wrap img { width: 128px; height: 128px; object-fit: cover; border: 5px solid #fff; border-radius: 50%; box-shadow: 0 18px 42px rgba(79,91,213,.18); }
+.profile-photo-wrap button { border: 0; border-radius: 999px; color: #fff; background: linear-gradient(135deg, #d62976, #4f5bd5); padding: 8px 13px; font-weight: 800; cursor: pointer; }
+.profile-summary { display: grid; gap: 13px; padding: 18px; border: 1px solid #f0d5e4; border-radius: 22px; background: rgba(255,255,255,.9); box-shadow: 0 16px 40px rgba(0,0,0,.06); }
+.profile-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.profile-identity .eyebrow { flex-basis: 100%; }
+.profile-identity h2 { margin: 0 auto 0 0; font-size: 30px; letter-spacing: -.03em; }
+.profile-identity button, .profile-identity .settings-button { border: 1px solid #dbdbdb; border-radius: 999px; background: #fff; color: #171717; padding: 9px 15px; font-weight: 800; text-decoration: none; }
+.profile-identity .settings-button { border: 0; color: #fff; background: linear-gradient(135deg, #d62976, #4f5bd5); }
+.profile-panel .profile-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 0; }
+.profile-panel .profile-metrics span { padding: 12px; border: 1px solid #f0d5e4; border-radius: 16px; background: #fff9fc; color: #737373; text-align: center; font-size: 13px; }
+.profile-panel .profile-metrics b { display: block; margin: 0; color: #171717; font-size: 22px; }
+.profile-name { font-size: 17px; }
+.profile-summary p, .profile-insights { margin: 0; color: #626262; }
+.profile-insights { margin-top: 18px; }
+.profile-insights a { color: #4f5bd5; font-weight: 800; text-decoration: none; }
+.profile-share-empty { display: grid; justify-items: center; gap: 10px; margin-top: 22px; padding: 42px 20px; border: 1px dashed #d62976; border-radius: 22px; background: rgba(255,255,255,.72); text-align: center; }
+.profile-share-empty .icon { width: 62px; height: 62px; border-radius: 20px; color: #fff; background: linear-gradient(135deg, #d62976, #4f5bd5); font-size: 36px; }
+.profile-share-empty h3 { margin: 8px 0 0; font-size: 28px; }
+.profile-share-empty p { margin: 0; color: #626262; }
+.profile-share-empty .primary-action { margin-top: 6px; }
+
+:root[data-theme="dark"] .profile-panel { background: radial-gradient(circle at top left, #28204a, #141321 56%); }
+:root[data-theme="dark"] .profile-summary,
+:root[data-theme="dark"] .profile-share-empty { border-color: #29253a; background: rgba(20,19,33,.9); }
+:root[data-theme="dark"] .profile-identity button { border-color: #322d45; color: #f6f3ff; background: #1b1929; }
+:root[data-theme="dark"] .profile-panel .profile-metrics span { border-color: #322d45; color: #b9b3ce; background: #1b1929; }
+:root[data-theme="dark"] .profile-panel .profile-metrics b { color: #fff; }
+
+@media (max-width: 760px) {
+  .profile-panel .profile-content { padding: 0 16px 28px; }
+  .profile-panel .profile-header { grid-template-columns: 1fr; gap: 14px; margin-top: -44px; }
+  .profile-photo-wrap { justify-items: start; }
+  .profile-photo-wrap img { width: 96px; height: 96px; }
+  .profile-summary { padding: 16px; }
+  .profile-identity h2 { flex-basis: 100%; font-size: 25px; }
+  .profile-panel .profile-metrics { gap: 8px; }
+  .profile-panel .profile-metrics span { padding: 10px 6px; }
+  .profile-share-empty h3 { font-size: 24px; }
+}
