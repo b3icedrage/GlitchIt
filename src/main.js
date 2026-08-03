@@ -59,7 +59,7 @@ function bottomBar() {
 }
 
 function storiesMarkup() {
-  return `<section class="stories" aria-label="Stories">${stories.map(([name, image, live]) => `<button class="story"><span class="story-ring ${live ? 'live' : ''}"><img src="${image}" alt="${name} avatar"></span><span>${name}</span></button>`).join('')}</section>`;
+  return `<section class="stories" aria-label="Stories">${stories.map(([name, image, live], index) => `<a class="story" href="#story-${index}" data-story-index="${index}" aria-label="Open ${name}'s story"><span class="story-ring ${live ? 'live' : ''}"><img src="${image}" alt="${name} avatar"></span><span>${name}</span></a>`).join('')}</section>`;
 }
 
 function post([user, avatar, location, image, likes, caption, comments, tags]) {
@@ -84,15 +84,35 @@ function productCards(items) {
 }
 
 function profileSettingsPanel() {
-  return `<section class="settings-panel profile-settings" aria-labelledby="settings-title"><div class="settings-heading"><span class="eyebrow">Account settings</span><h2 id="settings-title">Creator controls</h2><p>Tune profile visibility, storefront behavior, and launch notifications from your profile.</p></div><div class="settings-list">${accountSettings.map(({ group, title, description, enabled }) => `<label class="setting-item"><span><small>${group}</small><strong>${title}</strong><em>${description}</em></span><input type="checkbox" ${enabled ? 'checked' : ''} aria-label="${title}"><i aria-hidden="true"></i></label>`).join('')}</div></section>`;
+  const settings = [...accountSettings, { group: 'Theme', title: 'Dark theme', description: 'Switch GlitchIt into a darker high-contrast interface.', enabled: false, theme: true }];
+  return `<section class="settings-panel profile-settings" id="settings" aria-labelledby="settings-title"><div class="settings-heading"><span class="eyebrow">Account settings</span><h2 id="settings-title">Creator controls</h2><p>Tune profile visibility, storefront behavior, launch notifications, and your display theme from profile settings.</p></div><div class="settings-list">${settings.map(({ group, title, description, enabled, theme }) => `<label class="setting-item"><span><small>${group}</small><strong>${title}</strong><em>${description}</em></span><input type="checkbox" ${enabled ? 'checked' : ''} ${theme ? 'id="theme-toggle"' : ''} aria-label="${title}"><i aria-hidden="true"></i></label>`).join('')}</div></section>`;
 }
 
 function profilePanel() {
-  return `<section class="profile-panel page" id="profile" data-page="profile" aria-labelledby="profile-title" style="--profile-cover: url('${profile.cover}')"><div class="profile-cover"></div><div class="profile-content"><div class="profile-header"><img src="${profile.avatar}" alt="${profile.username} profile"><div><span class="eyebrow">Creator profile</span><h2 id="profile-title">${profile.username}</h2><strong>${profile.name}</strong><p>${profile.bio}</p><a href="https://${profile.website}">${profile.website}</a></div><button type="button">Edit profile</button></div><div class="profile-metrics">${profile.metrics.map(([value, label]) => `<span><b>${value}</b>${label}</span>`).join('')}</div><div class="highlight-row" aria-label="Profile highlights">${profile.highlights.map((highlight) => `<span>${highlight}</span>`).join('')}</div>${profileSettingsPanel()}</div></section>`;
+  return `<section class="profile-panel page" id="profile" data-page="profile" aria-labelledby="profile-title" style="--profile-cover: url('${profile.cover}')"><div class="profile-cover"></div><div class="profile-content"><div class="profile-header"><img src="${profile.avatar}" alt="${profile.username} profile"><div><span class="eyebrow">Creator profile</span><h2 id="profile-title">${profile.username}</h2><strong>${profile.name}</strong><p>${profile.bio}</p><a href="https://${profile.website}">${profile.website}</a></div><div class="profile-actions"><button type="button">Edit profile</button><a class="settings-button" href="#settings">Settings</a></div></div><div class="profile-metrics">${profile.metrics.map(([value, label]) => `<span><b>${value}</b>${label}</span>`).join('')}</div><div class="highlight-row" aria-label="Profile highlights">${profile.highlights.map((highlight) => `<span>${highlight}</span>`).join('')}</div>${profileSettingsPanel()}</div></section>`;
 }
 
 function rightRail() {
   return `<aside class="right-rail"><div class="me"><img src="${profile.avatar}" alt="Your profile"><div><strong>${profile.username}</strong><span>Build your vibe</span></div></div><div class="stats"><span><b>12.8k</b> followers</span><span><b>46</b> drops</span></div><h3>Suggested sellers</h3>${products.slice(0, 4).map(([, seller,, category]) => `<div class="seller"><div><strong>${seller}</strong><span>${category}</span></div><button>Follow</button></div>`).join('')}</aside>`;
+}
+
+function messagesPage() {
+  const threads = [
+    ['Nova', 'Sent a preview of tonight\'s neon hoodie drop.', '2m', stories[0][1]],
+    ['PixelLab', 'Can you approve the creator lamp collab copy?', '18m', stories[1][1]],
+    ['Kicks', 'Your Signal Sneakers order is ready to ship.', '1h', stories[3][1]],
+  ];
+  return pageShell('messages', 'Messages', 'Keep conversations with sellers, collaborators, and followers separated from the feed.', `<div class="message-list">${threads.map(([name, text, time, image]) => `<a class="message-card" href="#messages"><img src="${image}" alt="${name} avatar"><span><strong>${name}</strong><em>${text}</em></span><small>${time}</small></a>`).join('')}</div>`);
+}
+
+function activityPage() {
+  const items = [
+    ['♡', 'mira.motion liked your storefront launch post.', 'Just now'],
+    ['◒', 'Prism Hoodie crossed 50 saved carts.', '24m'],
+    ['＋', 'Studio invited you to co-host a Glitch tomorrow.', '2h'],
+    ['▣', 'Your tagged product demo is trending in Glitches.', '4h'],
+  ];
+  return pageShell('notifications', 'Activity', 'Review likes, comments, follows, product alerts, and creator milestones in a dedicated activity center.', `<div class="activity-list">${items.map(([symbol, text, time]) => `<article class="activity-card">${icon(symbol)}<p>${text}<small>${time}</small></p><button type="button">View</button></article>`).join('')}</div>`);
 }
 
 function simplePage(id, symbol, title, description, actions = []) {
@@ -104,8 +124,8 @@ const pages = [
   simplePage('search', '⌕', 'Search', 'Find creators, products, posts, and tags without leaving a focused page.', [{ href: '#shop', label: 'Browse products' }]),
   simplePage('explore', '◈', 'Explore', 'Discover trending creators, fresh drops, and glitchy inspiration in its own space.', [{ href: '#home', label: 'Back to feed' }]),
   simplePage('glitches', '▣', 'Glitches', 'Watch short videos, creator clips, and tagged product demos on a dedicated Glitches page.', [{ href: '#shop', label: 'Shop tagged items' }]),
-  simplePage('messages', '✉', 'Messages', 'Keep conversations with sellers, collaborators, and followers separated from the feed.'),
-  simplePage('notifications', '♡', 'Notifications', 'Review likes, comments, follows, and launch alerts in a dedicated notification center.'),
+  messagesPage(),
+  activityPage(),
   simplePage('create', '＋', 'Create', 'Compose posts, glitches, and product teasers from a focused creation screen.', [{ href: '#shop', label: 'List a product' }]),
   profilePanel(),
   shop(),
@@ -143,5 +163,29 @@ function attachShopFilters() {
 
 document.getElementById('app').innerHTML = `${sidebar()}<main><div class="mobile-top"><a class="brand" href="#home">${icon('ϟ')}GlitchIt</a>${icon('◒')}</div>${pages.join('')}</main>${rightRail()}${bottomBar()}`;
 attachShopFilters();
+attachStoryLinks();
+attachThemeToggle();
 route();
 window.addEventListener('hashchange', route);
+
+function attachStoryLinks() {
+  document.querySelectorAll('[data-story-index]').forEach((storyLink) => {
+    storyLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      const [name, image, live] = stories[Number(storyLink.dataset.storyIndex)];
+      document.getElementById('story-viewer')?.remove();
+      document.body.insertAdjacentHTML('beforeend', `<div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="${name} story"><button type="button" class="story-close" aria-label="Close story">×</button><div><img src="${image}" alt="${name} story"><span>${live ? 'Live now' : 'Story'}</span><h2>${name}</h2><p>Tap through creator updates, product teasers, and behind-the-scenes moments.</p><a class="primary-action" href="#profile">View profile</a></div></div>`);
+      document.querySelector('.story-close').focus();
+    });
+  });
+  document.addEventListener('click', (event) => {
+    if (event.target.matches('.story-viewer, .story-close')) document.getElementById('story-viewer')?.remove();
+  });
+}
+
+function attachThemeToggle() {
+  const toggle = document.getElementById('theme-toggle');
+  toggle?.addEventListener('change', () => {
+    document.documentElement.dataset.theme = toggle.checked ? 'dark' : 'light';
+  });
+}

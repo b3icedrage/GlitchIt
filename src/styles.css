@@ -121,3 +121,71 @@ main { padding: 28px 0 56px; }
 .empty-state h2 { margin: 8px 0 0; font-size: 30px; }
 .empty-state p { max-width: 420px; margin: 0; color: #626262; }
 .empty-state div { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+
+.profile-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; align-self: center; }
+.profile-actions button, .settings-button { border: 1px solid #dbdbdb; border-radius: 999px; background: #fff; padding: 10px 16px; font-weight: 800; text-decoration: none; }
+.settings-button { color: #fff; border: 0; background: linear-gradient(135deg, #d62976, #4f5bd5); }
+
+.message-list, .activity-list { display: grid; gap: 12px; }
+.message-card, .activity-card { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; padding: 16px; border: 1px solid #dbdbdb; border-radius: 18px; background: #fff; text-decoration: none; box-shadow: 0 12px 30px rgba(0,0,0,.05); }
+.message-card img { width: 56px; height: 56px; object-fit: cover; border-radius: 50%; }
+.message-card span, .message-card em, .activity-card small { display: block; }
+.message-card em { margin-top: 4px; color: #626262; font-style: normal; }
+.message-card small, .activity-card small { color: #8e8e8e; font-weight: 800; }
+.activity-card .icon { width: 46px; height: 46px; border-radius: 16px; color: #fff; background: linear-gradient(135deg, #d62976, #4f5bd5); }
+.activity-card p { margin: 0; color: #171717; font-weight: 700; }
+.activity-card button { border: 0; border-radius: 999px; color: #fff; background: #171717; padding: 9px 14px; font-weight: 800; }
+
+.story { color: inherit; text-decoration: none; }
+.story:focus-visible, .message-card:focus-visible, .settings-button:focus-visible { outline: 3px solid #4f5bd5; outline-offset: 3px; }
+.story-viewer { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; color: #fff; background: rgba(0,0,0,.76); backdrop-filter: blur(18px); }
+.story-viewer > div { width: min(380px, 100%); padding: 24px; border: 1px solid rgba(255,255,255,.18); border-radius: 28px; background: linear-gradient(145deg, rgba(214,41,118,.92), rgba(79,91,213,.9)); text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,.38); }
+.story-viewer img { width: 132px; height: 132px; object-fit: cover; border: 5px solid #fff; border-radius: 50%; }
+.story-viewer span { display: inline-block; margin-top: 14px; font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.story-viewer h2 { margin: 6px 0; font-size: 34px; }
+.story-viewer p { margin: 0 0 18px; color: rgba(255,255,255,.84); }
+.story-close { position: fixed; top: 22px; right: 22px; width: 44px; height: 44px; border: 1px solid rgba(255,255,255,.35); border-radius: 50%; color: #fff; background: rgba(0,0,0,.35); font-size: 30px; line-height: 1; }
+
+:root[data-theme="dark"] { color-scheme: dark; color: #f6f3ff; background: #090912; }
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] .stories,
+:root[data-theme="dark"] .post,
+:root[data-theme="dark"] .shop,
+:root[data-theme="dark"] .profile-panel,
+:root[data-theme="dark"] .settings-panel,
+:root[data-theme="dark"] .page-intro,
+:root[data-theme="dark"] .empty-state,
+:root[data-theme="dark"] .message-card,
+:root[data-theme="dark"] .activity-card,
+:root[data-theme="dark"] .product,
+:root[data-theme="dark"] .stats span { border-color: #29253a; background: #141321; }
+:root[data-theme="dark"] .shop,
+:root[data-theme="dark"] .settings-panel,
+:root[data-theme="dark"] .empty-state,
+:root[data-theme="dark"] .page-intro { background: radial-gradient(circle at top, #28204a, #141321 56%); }
+:root[data-theme="dark"] .profile-header button,
+:root[data-theme="dark"] .profile-actions button,
+:root[data-theme="dark"] .shop-tools input,
+:root[data-theme="dark"] .shop-tools select,
+:root[data-theme="dark"] .listing-form input,
+:root[data-theme="dark"] .listing-form textarea,
+:root[data-theme="dark"] .comment-box input,
+:root[data-theme="dark"] .setting-item { border-color: #322d45; color: #f6f3ff; background: #1b1929; }
+:root[data-theme="dark"] .profile span,
+:root[data-theme="dark"] .me span,
+:root[data-theme="dark"] .seller span,
+:root[data-theme="dark"] .shop p,
+:root[data-theme="dark"] .page-intro p,
+:root[data-theme="dark"] .empty-state p,
+:root[data-theme="dark"] .profile-header p,
+:root[data-theme="dark"] .settings-heading p,
+:root[data-theme="dark"] .message-card em,
+:root[data-theme="dark"] .setting-item small,
+:root[data-theme="dark"] .setting-item em { color: #b9b3ce; }
+:root[data-theme="dark"] .stats b,
+:root[data-theme="dark"] .profile-metrics b,
+:root[data-theme="dark"] .activity-card p { color: #fff; }
+:root[data-theme="dark"] .mobile-top,
+:root[data-theme="dark"] .bottom-bar { border-color: #29253a; background: rgba(15,14,25,.94); }
+
+@media (max-width: 760px) { .profile-actions { justify-content: flex-start; } .message-card, .activity-card { grid-template-columns: auto 1fr; } .message-card small, .activity-card button { grid-column: 2; justify-self: start; } }
