@@ -25,8 +25,8 @@ const products = [
 const icon = (name) => `<span class="icon" aria-hidden="true">${name}</span>`;
 const currencyValue = (price) => Number(price.replace('$', ''));
 
-const navItems = [['⌂', 'Home'], ['⌕', 'Search'], ['◈', 'Explore'], ['▣', 'Reels'], ['✉', 'Messages'], ['♡', 'Notifications'], ['＋', 'Create'], ['◒', 'Shop'], ['◎', 'Profile'], ['⚙', 'Settings']];
-const bottomNavItems = navItems.filter(([, label]) => ['Home', 'Search', 'Create', 'Shop', 'Profile'].includes(label));
+const navItems = [['⌂', 'Home'], ['⌕', 'Search'], ['◈', 'Explore'], ['▣', 'Glitches'], ['✉', 'Messages'], ['♡', 'Notifications'], ['＋', 'Create'], ['◒', 'Shop'], ['◎', 'Profile']];
+const bottomNavItems = navItems.filter(([, label]) => ['Home', 'Search', 'Glitches', 'Create', 'Shop', 'Profile'].includes(label));
 
 const profile = {
   username: 'glitch_founder',
@@ -83,12 +83,12 @@ function productCards(items) {
   return items.map(([title, seller, price, category, image]) => `<article class="product" data-title="${title.toLowerCase()}" data-seller="${seller.toLowerCase()}" data-category="${category}"><img src="${image}" alt="${title}"><div><span>${category}</span><h3>${title}</h3><p>${seller}</p><strong>${price}</strong><button>Promote</button></div></article>`).join('');
 }
 
-function profilePanel() {
-  return `<section class="profile-panel page" id="profile" data-page="profile" aria-labelledby="profile-title" style="--profile-cover: url('${profile.cover}')"><div class="profile-cover"></div><div class="profile-content"><div class="profile-header"><img src="${profile.avatar}" alt="${profile.username} profile"><div><span class="eyebrow">Creator profile</span><h2 id="profile-title">${profile.username}</h2><strong>${profile.name}</strong><p>${profile.bio}</p><a href="https://${profile.website}">${profile.website}</a></div><button type="button">Edit profile</button></div><div class="profile-metrics">${profile.metrics.map(([value, label]) => `<span><b>${value}</b>${label}</span>`).join('')}</div><div class="highlight-row" aria-label="Profile highlights">${profile.highlights.map((highlight) => `<span>${highlight}</span>`).join('')}</div></div></section>`;
+function profileSettingsPanel() {
+  return `<section class="settings-panel profile-settings" aria-labelledby="settings-title"><div class="settings-heading"><span class="eyebrow">Account settings</span><h2 id="settings-title">Creator controls</h2><p>Tune profile visibility, storefront behavior, and launch notifications from your profile.</p></div><div class="settings-list">${accountSettings.map(({ group, title, description, enabled }) => `<label class="setting-item"><span><small>${group}</small><strong>${title}</strong><em>${description}</em></span><input type="checkbox" ${enabled ? 'checked' : ''} aria-label="${title}"><i aria-hidden="true"></i></label>`).join('')}</div></section>`;
 }
 
-function settingsPanel() {
-  return `<section class="settings-panel page" id="settings" data-page="settings" aria-labelledby="settings-title"><div class="settings-heading"><span class="eyebrow">Account settings</span><h2 id="settings-title">Creator controls</h2><p>Tune profile visibility, storefront behavior, and launch notifications from one dashboard.</p></div><div class="settings-list">${accountSettings.map(({ group, title, description, enabled }) => `<label class="setting-item"><span><small>${group}</small><strong>${title}</strong><em>${description}</em></span><input type="checkbox" ${enabled ? 'checked' : ''} aria-label="${title}"><i aria-hidden="true"></i></label>`).join('')}</div></section>`;
+function profilePanel() {
+  return `<section class="profile-panel page" id="profile" data-page="profile" aria-labelledby="profile-title" style="--profile-cover: url('${profile.cover}')"><div class="profile-cover"></div><div class="profile-content"><div class="profile-header"><img src="${profile.avatar}" alt="${profile.username} profile"><div><span class="eyebrow">Creator profile</span><h2 id="profile-title">${profile.username}</h2><strong>${profile.name}</strong><p>${profile.bio}</p><a href="https://${profile.website}">${profile.website}</a></div><button type="button">Edit profile</button></div><div class="profile-metrics">${profile.metrics.map(([value, label]) => `<span><b>${value}</b>${label}</span>`).join('')}</div><div class="highlight-row" aria-label="Profile highlights">${profile.highlights.map((highlight) => `<span>${highlight}</span>`).join('')}</div>${profileSettingsPanel()}</div></section>`;
 }
 
 function rightRail() {
@@ -103,12 +103,11 @@ const pages = [
   homePage(),
   simplePage('search', '⌕', 'Search', 'Find creators, products, posts, and tags without leaving a focused page.', [{ href: '#shop', label: 'Browse products' }]),
   simplePage('explore', '◈', 'Explore', 'Discover trending creators, fresh drops, and glitchy inspiration in its own space.', [{ href: '#home', label: 'Back to feed' }]),
-  simplePage('reels', '▣', 'Reels', 'Watch short-form creator clips and tagged product demos on a standalone page.', [{ href: '#shop', label: 'Shop tagged items' }]),
+  simplePage('glitches', '▣', 'Glitches', 'Watch short videos, creator clips, and tagged product demos on a dedicated Glitches page.', [{ href: '#shop', label: 'Shop tagged items' }]),
   simplePage('messages', '✉', 'Messages', 'Keep conversations with sellers, collaborators, and followers separated from the feed.'),
   simplePage('notifications', '♡', 'Notifications', 'Review likes, comments, follows, and launch alerts in a dedicated notification center.'),
-  simplePage('create', '＋', 'Create', 'Compose posts, reels, and product teasers from a focused creation screen.', [{ href: '#shop', label: 'List a product' }]),
+  simplePage('create', '＋', 'Create', 'Compose posts, glitches, and product teasers from a focused creation screen.', [{ href: '#shop', label: 'List a product' }]),
   profilePanel(),
-  settingsPanel(),
   shop(),
 ];
 
