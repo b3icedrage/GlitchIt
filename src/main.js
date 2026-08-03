@@ -36,14 +36,11 @@ const userUploads = { feed: [], stories: [], videos: [] };
 const bottomNavItems = navItems.filter(([, label]) => ['Home', 'Search', 'Glitches', 'Create', 'Shop', 'Profile'].includes(label));
 
 const profile = {
-  username: 'glitch_founder',
-  name: 'GlitchIt Studio',
-  avatar: stories[2][1],
-  cover: 'https://images.unsplash.com/photo-1558655146-9f40138edfeb?auto=format&fit=crop&w=1000&q=80',
-  bio: 'Creator tools, limited drops, and social shopping experiments from the GlitchIt team.',
-  website: 'glitchit.shop/studio',
-  metrics: [['128', 'posts'], ['12.8k', 'followers'], ['46', 'drops']],
-  highlights: ['Drops', 'Fits', 'Studio', 'Reviews'],
+  username: 'b3ice_drage',
+  name: 'ßrįæñ',
+  avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=240&q=80',
+  metrics: [['0', 'posts'], ['68', 'followers'], ['120', 'following']],
+  insights: '0 views in the last 30 days.',
 };
 
 const accountSettings = [
@@ -97,8 +94,9 @@ function profileSettingsPanel() {
 }
 
 function profilePanel() {
-  return `<section class="profile-panel page" id="profile" data-page="profile" aria-labelledby="profile-title" style="--profile-cover: url('${profile.cover}')"><div class="profile-cover"></div><div class="profile-content"><div class="profile-header"><img src="${profile.avatar}" alt="${profile.username} profile"><div><span class="eyebrow">Creator profile</span><h2 id="profile-title">${profile.username}</h2><strong>${profile.name}</strong><p>${profile.bio}</p><a href="https://${profile.website}">${profile.website}</a></div><div class="profile-actions"><button type="button">Edit profile</button><a class="settings-button" href="#settings">Settings</a></div></div><div class="profile-metrics">${profile.metrics.map(([value, label]) => `<span><b>${value}</b>${label}</span>`).join('')}</div><div class="highlight-row" aria-label="Profile highlights">${profile.highlights.map((highlight) => `<span>${highlight}</span>`).join('')}</div>${profileSettingsPanel()}</div></section>`;
+  return `<section class="profile-panel page" id="profile" data-page="profile" aria-labelledby="profile-title"><div class="profile-content"><div class="profile-topbar"><strong>${profile.username}</strong><div class="profile-top-actions">${icon('＋')}${icon('☰')}</div></div><div class="profile-header"><div class="profile-photo-wrap"><img src="${profile.avatar}" alt="${profile.username}'s profile picture"><button type="button">Change profile photo</button></div><div class="profile-summary"><div class="profile-identity"><h2 id="profile-title">${profile.username}</h2><button type="button">Edit profile</button><a class="settings-button" href="#settings">Settings</a></div><div class="profile-metrics">${profile.metrics.map(([value, label]) => `<span><b>${value}</b>${label}</span>`).join('')}</div><strong class="profile-name">${profile.name}</strong></div></div><p class="profile-insights">${profile.insights} <a href="#settings">View insights</a></p><div class="profile-share-empty">${icon('▧')}<h3>Share Photos</h3><p>When you share photos, they will appear on your profile.</p></div>${profileSettingsPanel()}</div></section>`;
 }
+
 
 
 function uploadCard(item, type) {
