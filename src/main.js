@@ -46,7 +46,8 @@ const accountSettings = [
 ];
 
 function navLink([symbol, label]) {
-  return `<a class="${label === 'Shop' ? 'active' : ''}" href="#${label.toLowerCase()}">${icon(symbol)}<span>${label}</span></a>`;
+  const page = label.toLowerCase();
+  return `<a data-page-link="${page}" href="#${page}">${icon(symbol)}<span>${label}</span></a>`;
 }
 
 function sidebar() {
@@ -65,9 +66,17 @@ function post([user, avatar, location, image, likes, caption, comments, tags]) {
   return `<article class="post"><header><div class="profile"><img src="${avatar}" alt="${user} avatar"><div><strong>${user}</strong><span>${location}</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${image}" alt="${user} post"><a class="shop-badge" href="#shop">${icon('◒')} ${tags[0]}</a></div><div class="actions"><div>${icon('♡')}${icon('◌')}${icon('↗')}</div>${icon('▱')}</div><strong>${likes} likes</strong><p><b>${user}</b> ${caption}</p><div class="tag-row"><span>${tags[1]}</span><a href="#shop">View in Shop</a></div><button class="text-button">View all ${comments} comments</button><form class="comment-box"><input aria-label="Add a comment" placeholder="Add a comment..."><button>Post</button></form></article>`;
 }
 
+function pageShell(id, title, description, content) {
+  return `<section class="page" id="${id}" data-page="${id}" aria-labelledby="${id}-title"><div class="page-intro"><span class="eyebrow">${title}</span><h1 id="${id}-title">${title}</h1><p>${description}</p></div>${content}</section>`;
+}
+
+function homePage() {
+  return pageShell('home', 'Home feed', 'Catch creator stories, posts, and shoppable moments in one dedicated feed.', `${storiesMarkup()}${feed.map(post).join('')}`);
+}
+
 function shop() {
   const featured = products.reduce((least, product) => currencyValue(product[2]) < currencyValue(least[2]) ? product : least, products[0]);
-  return `<section class="shop" id="shop"><div class="shop-heading"><div><span class="eyebrow">Creator marketplace</span><h2>Shop fresh drops on GlitchIt</h2><p>Creators can list products, tag them in posts, collect follows, and turn every profile into a storefront.</p></div><a class="primary-action" href="#list-product">List a product</a></div><div class="shop-tools"><label>Search marketplace<input id="shop-search" placeholder="Search products or sellers"></label><label>Category<select id="category-filter"><option value="all">All categories</option>${[...new Set(products.map((product) => product[3]))].map((category) => `<option>${category}</option>`).join('')}</select></label><div class="featured"><span>Best entry price</span><strong>${featured[0]} ${featured[2]}</strong></div></div><div class="product-grid" id="product-grid">${productCards(products)}</div><form class="listing-form" id="list-product"><h3>Market your product</h3><p>Create a storefront-ready listing for the GlitchIt Shop.</p><div><input aria-label="Product name" placeholder="Product name"><input aria-label="Price" placeholder="Price"></div><textarea aria-label="Product story" placeholder="Tell shoppers what makes it special"></textarea><button type="button">Save draft listing</button></form></section>`;
+  return `<section class="shop page" id="shop" data-page="shop" aria-labelledby="shop-title"><div class="shop-heading"><div><span class="eyebrow">Creator marketplace</span><h2 id="shop-title">Shop fresh drops on GlitchIt</h2><p>Creators can list products, tag them in posts, collect follows, and turn every profile into a storefront.</p></div><a class="primary-action" href="#list-product">List a product</a></div><div class="shop-tools"><label>Search marketplace<input id="shop-search" placeholder="Search products or sellers"></label><label>Category<select id="category-filter"><option value="all">All categories</option>${[...new Set(products.map((product) => product[3]))].map((category) => `<option>${category}</option>`).join('')}</select></label><div class="featured"><span>Best entry price</span><strong>${featured[0]} ${featured[2]}</strong></div></div><div class="product-grid" id="product-grid">${productCards(products)}</div><form class="listing-form" id="list-product"><h3>Market your product</h3><p>Create a storefront-ready listing for the GlitchIt Shop.</p><div><input aria-label="Product name" placeholder="Product name"><input aria-label="Price" placeholder="Price"></div><textarea aria-label="Product story" placeholder="Tell shoppers what makes it special"></textarea><button type="button">Save draft listing</button></form></section>`;
 }
 
 function productCards(items) {
@@ -75,15 +84,45 @@ function productCards(items) {
 }
 
 function profilePanel() {
-  return `<section class="profile-panel" id="profile" style="--profile-cover: url('${profile.cover}')"><div class="profile-cover"></div><div class="profile-content"><div class="profile-header"><img src="${profile.avatar}" alt="${profile.username} profile"><div><span class="eyebrow">Creator profile</span><h2>${profile.username}</h2><strong>${profile.name}</strong><p>${profile.bio}</p><a href="https://${profile.website}">${profile.website}</a></div><button type="button">Edit profile</button></div><div class="profile-metrics">${profile.metrics.map(([value, label]) => `<span><b>${value}</b>${label}</span>`).join('')}</div><div class="highlight-row" aria-label="Profile highlights">${profile.highlights.map((highlight) => `<span>${highlight}</span>`).join('')}</div></div></section>`;
+  return `<section class="profile-panel page" id="profile" data-page="profile" aria-labelledby="profile-title" style="--profile-cover: url('${profile.cover}')"><div class="profile-cover"></div><div class="profile-content"><div class="profile-header"><img src="${profile.avatar}" alt="${profile.username} profile"><div><span class="eyebrow">Creator profile</span><h2 id="profile-title">${profile.username}</h2><strong>${profile.name}</strong><p>${profile.bio}</p><a href="https://${profile.website}">${profile.website}</a></div><button type="button">Edit profile</button></div><div class="profile-metrics">${profile.metrics.map(([value, label]) => `<span><b>${value}</b>${label}</span>`).join('')}</div><div class="highlight-row" aria-label="Profile highlights">${profile.highlights.map((highlight) => `<span>${highlight}</span>`).join('')}</div></div></section>`;
 }
 
 function settingsPanel() {
-  return `<section class="settings-panel" id="settings"><div class="settings-heading"><span class="eyebrow">Account settings</span><h2>Creator controls</h2><p>Tune profile visibility, storefront behavior, and launch notifications from one dashboard.</p></div><div class="settings-list">${accountSettings.map(({ group, title, description, enabled }) => `<label class="setting-item"><span><small>${group}</small><strong>${title}</strong><em>${description}</em></span><input type="checkbox" ${enabled ? 'checked' : ''} aria-label="${title}"><i aria-hidden="true"></i></label>`).join('')}</div></section>`;
+  return `<section class="settings-panel page" id="settings" data-page="settings" aria-labelledby="settings-title"><div class="settings-heading"><span class="eyebrow">Account settings</span><h2 id="settings-title">Creator controls</h2><p>Tune profile visibility, storefront behavior, and launch notifications from one dashboard.</p></div><div class="settings-list">${accountSettings.map(({ group, title, description, enabled }) => `<label class="setting-item"><span><small>${group}</small><strong>${title}</strong><em>${description}</em></span><input type="checkbox" ${enabled ? 'checked' : ''} aria-label="${title}"><i aria-hidden="true"></i></label>`).join('')}</div></section>`;
 }
 
 function rightRail() {
   return `<aside class="right-rail"><div class="me"><img src="${profile.avatar}" alt="Your profile"><div><strong>${profile.username}</strong><span>Build your vibe</span></div></div><div class="stats"><span><b>12.8k</b> followers</span><span><b>46</b> drops</span></div><h3>Suggested sellers</h3>${products.slice(0, 4).map(([, seller,, category]) => `<div class="seller"><div><strong>${seller}</strong><span>${category}</span></div><button>Follow</button></div>`).join('')}</aside>`;
+}
+
+function simplePage(id, symbol, title, description, actions = []) {
+  return pageShell(id, title, description, `<div class="empty-state">${icon(symbol)}<h2>${title}</h2><p>${description}</p><div>${actions.map((action) => `<a class="primary-action" href="${action.href}">${action.label}</a>`).join('')}</div></div>`);
+}
+
+const pages = [
+  homePage(),
+  simplePage('search', '⌕', 'Search', 'Find creators, products, posts, and tags without leaving a focused page.', [{ href: '#shop', label: 'Browse products' }]),
+  simplePage('explore', '◈', 'Explore', 'Discover trending creators, fresh drops, and glitchy inspiration in its own space.', [{ href: '#home', label: 'Back to feed' }]),
+  simplePage('reels', '▣', 'Reels', 'Watch short-form creator clips and tagged product demos on a standalone page.', [{ href: '#shop', label: 'Shop tagged items' }]),
+  simplePage('messages', '✉', 'Messages', 'Keep conversations with sellers, collaborators, and followers separated from the feed.'),
+  simplePage('notifications', '♡', 'Notifications', 'Review likes, comments, follows, and launch alerts in a dedicated notification center.'),
+  simplePage('create', '＋', 'Create', 'Compose posts, reels, and product teasers from a focused creation screen.', [{ href: '#shop', label: 'List a product' }]),
+  profilePanel(),
+  settingsPanel(),
+  shop(),
+];
+
+function route() {
+  const target = window.location.hash.replace('#', '') || 'home';
+  const targetElement = document.getElementById(target);
+  const nestedPage = targetElement?.closest('[data-page]')?.dataset.page;
+  const validPage = document.querySelector(`[data-page="${target}"]`) ? target : nestedPage || 'home';
+  document.querySelectorAll('[data-page]').forEach((screen) => {
+    screen.hidden = screen.dataset.page !== validPage;
+  });
+  document.querySelectorAll('[data-page-link]').forEach((link) => {
+    link.classList.toggle('active', link.dataset.pageLink === validPage);
+  });
 }
 
 function attachShopFilters() {
@@ -103,5 +142,7 @@ function attachShopFilters() {
   category.addEventListener('change', filter);
 }
 
-document.getElementById('app').innerHTML = `${sidebar()}<main id="home"><div class="mobile-top"><a class="brand" href="#home">${icon('ϟ')}GlitchIt</a>${icon('◒')}</div>${storiesMarkup()}${feed.map(post).join('')}${profilePanel()}${settingsPanel()}${shop()}</main>${rightRail()}${bottomBar()}`;
+document.getElementById('app').innerHTML = `${sidebar()}<main><div class="mobile-top"><a class="brand" href="#home">${icon('ϟ')}GlitchIt</a>${icon('◒')}</div>${pages.join('')}</main>${rightRail()}${bottomBar()}`;
 attachShopFilters();
+route();
+window.addEventListener('hashchange', route);
