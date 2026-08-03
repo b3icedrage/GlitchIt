@@ -13,6 +13,12 @@ const feed = [
   ['mira.motion', stories[4][1], 'GlitchIt Reels', 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1000&q=80', '31,552', 'Styling creator-made accessories from the marketplace.', 804, ['Tagged products', 'Tap to browse']],
 ];
 
+const glitchVideos = [
+  { user: 'mira.motion', avatar: stories[4][1], title: 'Marketplace fit check', caption: 'Swipe-worthy styling loops with tagged accessories.', src: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', poster: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80' },
+  { user: 'glitchwear', avatar: stories[0][1], title: 'Neon drop preview', caption: 'A quick look at tonight\'s creator-made hoodie launch.', src: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', poster: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80' },
+  { user: 'pixelmakers', avatar: stories[1][1], title: 'Desk setup loop', caption: 'Creator lamp details made for short-form browsing.', src: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', poster: 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=900&q=80' },
+];
+
 const products = [
   ['Prism Hoodie', '@glitchwear', '$68', 'Streetwear', 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=600&q=80'],
   ['Signal Sneakers', '@kicksbyte', '$124', 'Footwear', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80'],
@@ -97,7 +103,12 @@ function profilePanel() {
 
 function uploadCard(item, type) {
   const isVideo = type === 'videos' || item.type === 'video';
-  return `<article class="post upload-card"><header><div class="profile"><img src="${profile.avatar}" alt="${profile.username} avatar"><div><strong>${profile.username}</strong><span>${isVideo ? 'Video post' : 'Fresh post'}</span></div></div><button class="more">•••</button></header><div class="media-wrap">${isVideo ? `<video class="post-image" controls src="${item.preview}"></video>` : `<img class="post-image" src="${item.preview}" alt="${item.title}">`}<span class="shop-badge">${icon(isVideo ? '▶' : '＋')} ${item.type}</span></div><div class="actions"><div>${icon('♡')}${icon('◌')}${icon('↗')}</div>${icon('▱')}</div><strong>New upload</strong><p><b>${profile.username}</b> ${item.caption || item.title}</p></article>`;
+  if (isVideo) return glitchVideoCard({ ...item, user: profile.username, avatar: profile.avatar, src: item.preview, caption: item.caption || item.title }, true);
+  return `<article class="post upload-card"><header><div class="profile"><img src="${profile.avatar}" alt="${profile.username} avatar"><div><strong>${profile.username}</strong><span>Fresh post</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${item.preview}" alt="${item.title}"><span class="shop-badge">${icon('＋')} ${item.type}</span></div><div class="actions"><div>${icon('♡')}${icon('◌')}${icon('↗')}</div>${icon('▱')}</div><strong>New upload</strong><p><b>${profile.username}</b> ${item.caption || item.title}</p></article>`;
+}
+
+function glitchVideoCard(video, uploaded = false) {
+  return `<article class="video-card ${uploaded ? 'upload-card' : ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><div class="video-overlay"><div class="profile"><img src="${video.avatar}" alt="${video.user} avatar"><div><strong>${video.user}</strong><span>${video.title}</span></div></div><p>${video.caption}</p><a class="shop-badge" href="#shop">${icon('◒')} Tagged products</a></div></article>`;
 }
 
 function renderUploads(type) {
@@ -105,7 +116,7 @@ function renderUploads(type) {
 }
 
 function glitchesPage() {
-  return pageShell('glitches', 'Glitches', 'Post and watch videos from creators.', `<div class="video-grid"><div id="video-feed">${renderUploads('videos')}</div><article class="video-card"><video controls poster="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80"></video><h3>Creator clip</h3><p>Tagged product demos and short videos live here.</p></article></div><a class="primary-action" href="#create">Post a video</a>`);
+  return pageShell('glitches', 'Glitches', 'Swipe through creator videos that autoplay like Reels until you pause or move to the next Glitch.', `<div class="video-grid" id="glitches-reel"><div id="video-feed">${renderUploads('videos')}</div>${glitchVideos.map((video) => glitchVideoCard(video)).join('')}</div><a class="primary-action" href="#create">Post a video</a>`);
 }
 
 function createPage() {
@@ -187,8 +198,13 @@ attachStoryLinks();
 attachThemeToggle();
 attachCreateForm();
 attachSettingsDrawer();
+attachGlitchAutoplay();
 route();
-window.addEventListener('hashchange', route);
+updateGlitchPlayback();
+window.addEventListener('hashchange', () => {
+  route();
+  updateGlitchPlayback();
+});
 
 function attachStoryLinks() {
   document.querySelectorAll('[data-story-index]').forEach((storyLink) => {
@@ -231,6 +247,7 @@ function rebuildDynamicUploads() {
   const videoTarget = document.getElementById('video-feed');
   if (videoTarget) videoTarget.innerHTML = renderUploads('videos');
   attachStoryLinks();
+  attachGlitchAutoplay();
 }
 
 function attachSettingsDrawer() {
@@ -251,3 +268,60 @@ function attachThemeToggle() {
     document.documentElement.dataset.theme = toggle.checked ? 'dark' : 'light';
   });
 }
+
+
+function getGlitchVideos() {
+  return [...document.querySelectorAll('.glitch-video')];
+}
+
+function pauseGlitchVideo(video) {
+  video.pause();
+  video.closest('.video-card')?.querySelector('.video-toggle').replaceChildren(document.createRange().createContextualFragment(icon('▶')));
+}
+
+function playGlitchVideo(video) {
+  if (video.dataset.userPaused === 'true') return;
+  getGlitchVideos().forEach((otherVideo) => {
+    if (otherVideo !== video) pauseGlitchVideo(otherVideo);
+  });
+  video.muted = true;
+  video.play().catch(() => pauseGlitchVideo(video));
+  video.closest('.video-card')?.querySelector('.video-toggle').replaceChildren(document.createRange().createContextualFragment(icon('Ⅱ')));
+}
+
+function updateGlitchPlayback() {
+  const glitchesPageVisible = !document.getElementById('glitches')?.hidden;
+  if (!glitchesPageVisible) {
+    getGlitchVideos().forEach(pauseGlitchVideo);
+    return;
+  }
+  const mostVisible = getGlitchVideos().map((video) => {
+    const rect = video.getBoundingClientRect();
+    const visible = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+    return { video, visible };
+  }).filter(({ visible }) => visible > 0).sort((a, b) => b.visible - a.visible)[0]?.video;
+  if (mostVisible) playGlitchVideo(mostVisible);
+}
+
+function attachGlitchAutoplay() {
+  getGlitchVideos().forEach((video) => {
+    if (video.dataset.autoplayReady) return;
+    video.dataset.autoplayReady = 'true';
+    video.addEventListener('click', () => {
+      video.dataset.userPaused = video.paused ? 'false' : 'true';
+      video.paused ? playGlitchVideo(video) : pauseGlitchVideo(video);
+    });
+    video.closest('.video-card')?.querySelector('.video-toggle')?.addEventListener('click', () => {
+      video.dataset.userPaused = video.paused ? 'false' : 'true';
+      video.paused ? playGlitchVideo(video) : pauseGlitchVideo(video);
+    });
+  });
+  const reel = document.getElementById('glitches-reel');
+  if (reel && !reel.dataset.scrollReady) {
+    reel.dataset.scrollReady = 'true';
+    reel.addEventListener('scroll', updateGlitchPlayback, { passive: true });
+  }
+  updateGlitchPlayback();
+}
+
+window.addEventListener('scroll', updateGlitchPlayback, { passive: true });
