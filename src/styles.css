@@ -189,3 +189,34 @@ main { padding: 28px 0 56px; }
 :root[data-theme="dark"] .bottom-bar { border-color: #29253a; background: rgba(15,14,25,.94); }
 
 @media (max-width: 760px) { .profile-actions { justify-content: flex-start; } .message-card, .activity-card { grid-template-columns: auto 1fr; } .message-card small, .activity-card button { grid-column: 2; justify-self: start; } }
+
+.post-button { text-decoration: none; }
+.story-create .story-ring { position: relative; }
+.story-create b { position: absolute; right: 0; bottom: 0; display: grid; place-items: center; width: 24px; height: 24px; border: 3px solid #fff; border-radius: 50%; color: #fff; background: linear-gradient(135deg, #d62976, #4f5bd5); }
+.create-form { display: grid; gap: 14px; padding: 22px; border: 1px solid #dbdbdb; border-radius: 18px; background: radial-gradient(circle at top left, #fff4fa, #fff 48%); }
+.create-form input, .create-form textarea { width: 100%; border: 1px solid #dbdbdb; border-radius: 14px; padding: 13px; background: #fff; color: #171717; }
+.create-form textarea { min-height: 120px; resize: vertical; }
+.create-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.create-options label, .file-drop { border: 1px solid #f0d5e4; border-radius: 16px; background: #fff9fc; padding: 13px; font-weight: 800; }
+.file-drop { display: grid; gap: 8px; color: #4f5bd5; border-style: dashed; }
+.create-status { min-height: 24px; margin: 0; color: #4f5bd5; font-weight: 800; }
+.upload-card { border-color: #f0d5e4; box-shadow: 0 18px 48px rgba(214,41,118,.10); }
+.video-grid { display: grid; gap: 18px; }
+.video-card { overflow: hidden; padding: 18px; border: 1px solid #dbdbdb; border-radius: 18px; background: #fff; }
+.video-card video { width: 100%; min-height: 320px; border-radius: 16px; background: linear-gradient(135deg, #d62976, #4f5bd5); object-fit: cover; }
+.video-card h3 { margin: 14px 0 4px; }
+.video-card p { margin: 0; color: #626262; }
+.settings-backdrop { position: fixed; inset: 0; z-index: 8; pointer-events: none; opacity: 0; background: rgba(0,0,0,.35); transition: opacity .25s ease; }
+.profile-settings { position: fixed; top: 0; right: 0; bottom: 0; z-index: 9; width: min(420px, 92vw); margin: 0; border-radius: 24px 0 0 24px; transform: translateX(105%); transition: transform .3s ease; box-shadow: -24px 0 70px rgba(0,0,0,.22); overflow-y: auto; }
+.settings-open .settings-backdrop { pointer-events: auto; opacity: 1; }
+.settings-open .profile-settings { transform: translateX(0); }
+.settings-close { justify-self: end; width: 42px; height: 42px; border: 0; border-radius: 50%; color: #fff; background: #171717; font-size: 26px; line-height: 1; }
+
+:root[data-theme="dark"] .create-form,
+:root[data-theme="dark"] .video-card { border-color: #29253a; background: #141321; }
+:root[data-theme="dark"] .create-form input,
+:root[data-theme="dark"] .create-form textarea,
+:root[data-theme="dark"] .create-options label,
+:root[data-theme="dark"] .file-drop { border-color: #322d45; color: #f6f3ff; background: #1b1929; }
+
+@media (max-width: 760px) { .create-options { grid-template-columns: 1fr; } .profile-settings { width: 100vw; border-radius: 0; } }

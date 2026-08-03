@@ -26,6 +26,7 @@ const icon = (name) => `<span class="icon" aria-hidden="true">${name}</span>`;
 const currencyValue = (price) => Number(price.replace('$', ''));
 
 const navItems = [['⌂', 'Home'], ['⌕', 'Search'], ['◈', 'Explore'], ['▣', 'Glitches'], ['✉', 'Messages'], ['♡', 'Notifications'], ['＋', 'Create'], ['◒', 'Shop'], ['◎', 'Profile']];
+const userUploads = { feed: [], stories: [], videos: [] };
 const bottomNavItems = navItems.filter(([, label]) => ['Home', 'Search', 'Glitches', 'Create', 'Shop', 'Profile'].includes(label));
 
 const profile = {
@@ -51,7 +52,7 @@ function navLink([symbol, label]) {
 }
 
 function sidebar() {
-  return `<aside class="sidebar"><a class="brand" href="#home">${icon('ϟ')}GlitchIt</a><nav>${navItems.map(navLink).join('')}</nav><button class="post-button">Post</button></aside>`;
+  return `<aside class="sidebar"><a class="brand" href="#home">${icon('ϟ')}GlitchIt</a><nav>${navItems.map(navLink).join('')}</nav><a class="post-button" href="#create">Post</a></aside>`;
 }
 
 function bottomBar() {
@@ -59,7 +60,8 @@ function bottomBar() {
 }
 
 function storiesMarkup() {
-  return `<section class="stories" aria-label="Stories">${stories.map(([name, image, live], index) => `<a class="story" href="#story-${index}" data-story-index="${index}" aria-label="Open ${name}'s story"><span class="story-ring ${live ? 'live' : ''}"><img src="${image}" alt="${name} avatar"></span><span>${name}</span></a>`).join('')}</section>`;
+  const allStories = [['Your story', profile.avatar, false, true], ...userUploads.stories.map((story) => [story.title, story.preview, true, false]), ...stories.map((story) => [...story, false])];
+  return `<section class="stories" aria-label="Stories">${allStories.map(([name, image, live, create], index) => `<a class="story ${create ? 'story-create' : ''}" href="${create ? '#create' : `#story-${index}`}" ${create ? '' : `data-story-index="${index}"`} aria-label="${create ? 'Create a story' : `Open ${name}'s story`}"><span class="story-ring ${live ? 'live' : ''}"><img src="${image}" alt="${name} avatar">${create ? '<b>＋</b>' : ''}</span><span>${name}</span></a>`).join('')}</section>`;
 }
 
 function post([user, avatar, location, image, likes, caption, comments, tags]) {
@@ -71,7 +73,7 @@ function pageShell(id, title, description, content) {
 }
 
 function homePage() {
-  return pageShell('home', 'Home feed', 'Catch creator stories, posts, and shoppable moments in one dedicated feed.', `${storiesMarkup()}${feed.map(post).join('')}`);
+  return pageShell('home', 'Home feed', 'Catch creator stories, videos, posts, and shoppable moments in one dedicated feed.', `${storiesMarkup()}<div id="upload-feed">${renderUploads('feed')}</div>${feed.map(post).join('')}`);
 }
 
 function shop() {
@@ -85,11 +87,29 @@ function productCards(items) {
 
 function profileSettingsPanel() {
   const settings = [...accountSettings, { group: 'Theme', title: 'Dark theme', description: 'Switch GlitchIt into a darker high-contrast interface.', enabled: false, theme: true }];
-  return `<section class="settings-panel profile-settings" id="settings" aria-labelledby="settings-title"><div class="settings-heading"><span class="eyebrow">Account settings</span><h2 id="settings-title">Creator controls</h2><p>Tune profile visibility, storefront behavior, launch notifications, and your display theme from profile settings.</p></div><div class="settings-list">${settings.map(({ group, title, description, enabled, theme }) => `<label class="setting-item"><span><small>${group}</small><strong>${title}</strong><em>${description}</em></span><input type="checkbox" ${enabled ? 'checked' : ''} ${theme ? 'id="theme-toggle"' : ''} aria-label="${title}"><i aria-hidden="true"></i></label>`).join('')}</div></section>`;
+  return `<div class="settings-backdrop"></div><section class="settings-panel profile-settings" id="settings" aria-labelledby="settings-title"><button type="button" class="settings-close" aria-label="Close settings">×</button><div class="settings-heading"><span class="eyebrow">Account settings</span><h2 id="settings-title">Creator controls</h2><p>Tune profile visibility, storefront behavior, launch notifications, and your display theme from profile settings.</p></div><div class="settings-list">${settings.map(({ group, title, description, enabled, theme }) => `<label class="setting-item"><span><small>${group}</small><strong>${title}</strong><em>${description}</em></span><input type="checkbox" ${enabled ? 'checked' : ''} ${theme ? 'id="theme-toggle"' : ''} aria-label="${title}"><i aria-hidden="true"></i></label>`).join('')}</div></section>`;
 }
 
 function profilePanel() {
   return `<section class="profile-panel page" id="profile" data-page="profile" aria-labelledby="profile-title" style="--profile-cover: url('${profile.cover}')"><div class="profile-cover"></div><div class="profile-content"><div class="profile-header"><img src="${profile.avatar}" alt="${profile.username} profile"><div><span class="eyebrow">Creator profile</span><h2 id="profile-title">${profile.username}</h2><strong>${profile.name}</strong><p>${profile.bio}</p><a href="https://${profile.website}">${profile.website}</a></div><div class="profile-actions"><button type="button">Edit profile</button><a class="settings-button" href="#settings">Settings</a></div></div><div class="profile-metrics">${profile.metrics.map(([value, label]) => `<span><b>${value}</b>${label}</span>`).join('')}</div><div class="highlight-row" aria-label="Profile highlights">${profile.highlights.map((highlight) => `<span>${highlight}</span>`).join('')}</div>${profileSettingsPanel()}</div></section>`;
+}
+
+
+function uploadCard(item, type) {
+  const isVideo = type === 'videos' || item.type === 'video';
+  return `<article class="post upload-card"><header><div class="profile"><img src="${profile.avatar}" alt="${profile.username} avatar"><div><strong>${profile.username}</strong><span>${isVideo ? 'Video post' : 'Fresh post'}</span></div></div><button class="more">•••</button></header><div class="media-wrap">${isVideo ? `<video class="post-image" controls src="${item.preview}"></video>` : `<img class="post-image" src="${item.preview}" alt="${item.title}">`}<span class="shop-badge">${icon(isVideo ? '▶' : '＋')} ${item.type}</span></div><div class="actions"><div>${icon('♡')}${icon('◌')}${icon('↗')}</div>${icon('▱')}</div><strong>New upload</strong><p><b>${profile.username}</b> ${item.caption || item.title}</p></article>`;
+}
+
+function renderUploads(type) {
+  return userUploads[type].map((item) => uploadCard(item, type)).join('');
+}
+
+function glitchesPage() {
+  return pageShell('glitches', 'Glitches', 'Post and watch videos from creators.', `<div class="video-grid"><div id="video-feed">${renderUploads('videos')}</div><article class="video-card"><video controls poster="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80"></video><h3>Creator clip</h3><p>Tagged product demos and short videos live here.</p></article></div><a class="primary-action" href="#create">Post a video</a>`);
+}
+
+function createPage() {
+  return pageShell('create', 'Create', 'Post to the feed, publish a story, or upload a video Glitch.', `<form class="create-form" id="create-form"><div class="create-options" role="radiogroup" aria-label="Post type"><label><input type="radio" name="post-type" value="feed" checked> Feed post</label><label><input type="radio" name="post-type" value="stories"> Story</label><label><input type="radio" name="post-type" value="videos"> Video</label></div><input name="title" aria-label="Title" placeholder="Title or story headline" required><textarea name="caption" aria-label="Caption" placeholder="Write a caption..."></textarea><label class="file-drop">Choose image or video<input name="media" type="file" accept="image/*,video/*"></label><button type="submit" class="primary-action">Publish</button><p class="create-status" id="create-status" role="status"></p></form>`);
 }
 
 function rightRail() {
@@ -123,10 +143,10 @@ const pages = [
   homePage(),
   simplePage('search', '⌕', 'Search', 'Find creators, products, posts, and tags without leaving a focused page.', [{ href: '#shop', label: 'Browse products' }]),
   simplePage('explore', '◈', 'Explore', 'Discover trending creators, fresh drops, and glitchy inspiration in its own space.', [{ href: '#home', label: 'Back to feed' }]),
-  simplePage('glitches', '▣', 'Glitches', 'Watch short videos, creator clips, and tagged product demos on a dedicated Glitches page.', [{ href: '#shop', label: 'Shop tagged items' }]),
+  glitchesPage(),
   messagesPage(),
   activityPage(),
-  simplePage('create', '＋', 'Create', 'Compose posts, glitches, and product teasers from a focused creation screen.', [{ href: '#shop', label: 'List a product' }]),
+  createPage(),
   profilePanel(),
   shop(),
 ];
@@ -165,6 +185,8 @@ document.getElementById('app').innerHTML = `${sidebar()}<main><div class="mobile
 attachShopFilters();
 attachStoryLinks();
 attachThemeToggle();
+attachCreateForm();
+attachSettingsDrawer();
 route();
 window.addEventListener('hashchange', route);
 
@@ -172,7 +194,8 @@ function attachStoryLinks() {
   document.querySelectorAll('[data-story-index]').forEach((storyLink) => {
     storyLink.addEventListener('click', (event) => {
       event.preventDefault();
-      const [name, image, live] = stories[Number(storyLink.dataset.storyIndex)];
+      const allStories = [...userUploads.stories.map((story) => [story.title, story.preview, true]), ...stories];
+      const [name, image, live] = allStories[Math.max(0, Number(storyLink.dataset.storyIndex) - 1)];
       document.getElementById('story-viewer')?.remove();
       document.body.insertAdjacentHTML('beforeend', `<div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="${name} story"><button type="button" class="story-close" aria-label="Close story">×</button><div><img src="${image}" alt="${name} story"><span>${live ? 'Live now' : 'Story'}</span><h2>${name}</h2><p>Tap through creator updates, product teasers, and behind-the-scenes moments.</p><a class="primary-action" href="#profile">View profile</a></div></div>`);
       document.querySelector('.story-close').focus();
@@ -180,6 +203,45 @@ function attachStoryLinks() {
   });
   document.addEventListener('click', (event) => {
     if (event.target.matches('.story-viewer, .story-close')) document.getElementById('story-viewer')?.remove();
+  });
+}
+
+function attachCreateForm() {
+  const form = document.getElementById('create-form');
+  form?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const type = data.get('post-type');
+    const file = data.get('media');
+    const isVideo = file?.type?.startsWith('video/');
+    const fallback = isVideo ? 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4' : 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1000&q=80';
+    const item = { title: data.get('title') || 'Untitled upload', caption: data.get('caption'), preview: file?.size ? URL.createObjectURL(file) : fallback, type: isVideo || type === 'videos' ? 'video' : type };
+    userUploads[type].unshift(item);
+    document.getElementById('create-status').textContent = `Published to ${type === 'videos' ? 'Glitches video' : type}.`;
+    form.reset();
+    rebuildDynamicUploads();
+  });
+}
+
+function rebuildDynamicUploads() {
+  const storyShelf = document.querySelector('.stories');
+  if (storyShelf) storyShelf.outerHTML = storiesMarkup();
+  const feedTarget = document.getElementById('upload-feed');
+  if (feedTarget) feedTarget.innerHTML = renderUploads('feed');
+  const videoTarget = document.getElementById('video-feed');
+  if (videoTarget) videoTarget.innerHTML = renderUploads('videos');
+  attachStoryLinks();
+}
+
+function attachSettingsDrawer() {
+  document.querySelectorAll('.settings-button').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      document.body.classList.toggle('settings-open');
+    });
+  });
+  document.addEventListener('click', (event) => {
+    if (document.body.classList.contains('settings-open') && event.target.matches('.settings-backdrop, .settings-close')) document.body.classList.remove('settings-open');
   });
 }
 
