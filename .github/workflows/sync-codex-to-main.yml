@@ -1,0 +1,32 @@
+name: Sync Codex branch to main
+
+on:
+  push:
+    branches:
+      - codex/create-glitchit-website-with-shop-feature
+
+permissions:
+  contents: write
+
+jobs:
+  sync-to-main:
+    name: Force sync Codex branch to main
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Reset main to Codex branch and force push
+        run: |
+          git fetch origin
+          git checkout -B main
+          git reset --hard origin/codex/create-glitchit-website-with-shop-feature
+          git push origin main --force
