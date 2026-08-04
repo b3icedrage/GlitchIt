@@ -569,3 +569,126 @@ main { height: 100vh; overflow-y: auto; padding: 28px 0 56px; scrollbar-width: t
 .note-trim-row em { font-size: 11px; color: #b9b3ce; font-style: normal; }
 .note-delete { margin-top: 16px; width: 100%; padding: 10px; border: 1px solid rgba(214, 41, 118, 0.4); border-radius: 12px; background: rgba(214, 41, 118, 0.1); color: #ff6b9d; font-weight: 700; cursor: pointer; }
 .note-delete:hover { background: rgba(214, 41, 118, 0.22); }
+
+/* ============ INSTAGRAM SKIN ============ */
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #262626;
+  background: #fafafa;
+}
+body { background: #fafafa; }
+#app { max-width: 935px; grid-template-columns: 240px minmax(0, 614px) 300px; }
+/* Feed + cards: plain white, thin borders, Instagram radius */
+.post, .stories, .page-intro, .empty-state, .message-card, .activity-card, .product, .store-profile, .profile-panel, .settings-panel {
+  border-color: #dbdbdb;
+  border-radius: 8px;
+  background: #fff;
+}
+.post { margin-bottom: 16px; box-shadow: none; }
+.page-intro { padding: 16px 20px; }
+.page-intro h1 { font-size: 20px; letter-spacing: normal; }
+#home .page-intro, #search .page-intro { display: none; }
+.post header { padding: 14px 16px; }
+.profile img, .me img { width: 42px; height: 42px; }
+.profile span, .me span { color: #8e8e8e; }
+.actions { padding: 6px 16px; }
+.actions svg { width: 24px; height: 24px; margin-right: 16px; color: #262626; transition: transform .15s ease, opacity .15s ease; }
+.actions svg:hover { opacity: .6; transform: scale(1.08); }
+.actions > svg { margin-right: 0; margin-left: auto; }
+.post .likes { margin: 0 16px; padding: 0; font-size: 14px; }
+.post .caption { margin: 4px 16px 0; padding: 0; font-size: 14px; }
+.text-button { color: #8e8e8e; font-size: 14px; margin-top: 4px; }
+.comment-box { border-top: 1px solid #efefef; }
+.comment-box input { font-size: 14px; color: #262626; }
+.comment-box button { color: #0095f6; font-weight: 600; }
+.tag-row { color: #8e8e8e; font-size: 13px; }
+.primary-action, .post-button, .product button, .listing-form button, .seller button, .activity-card button, .store-follow {
+  background: #0095f6;
+  border-radius: 8px;
+}
+.primary-action:hover, .post-button:hover, .product button:hover, .listing-form button:hover, .seller button:hover, .activity-card button:hover, .store-follow:hover { background: #1877f2; }
+.profile-identity button, .profile-identity .settings-button, .profile-header button, .profile-actions button {
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  background: #fff;
+  color: #262626;
+}
+.profile-identity button:hover, .profile-identity .settings-button:hover { background: #fafafa; }
+a, .tag-row a, .comment-box button, .text-button a, .profile-insights a { color: #0095f6; }
+.sidebar { border-right: 1px solid #dbdbdb; background: #fff; padding: 24px 12px; }
+.sidebar nav { gap: 2px; }
+.sidebar nav a { border-radius: 8px; font-size: 16px; padding: 12px; }
+.sidebar nav a:hover { background: #fafafa; font-weight: 400; }
+.sidebar nav a.active { background: transparent; font-weight: 700; color: #262626; }
+.brand { font-size: 26px; }
+.stories { justify-content: center; padding: 16px 0; margin-bottom: 16px; }
+.story-ring { width: 66px; height: 66px; }
+.story img { width: 60px; height: 60px; }
+.right-rail h3 { font-size: 14px; font-weight: 600; color: #8e8e8e; }
+.rail-head { display: flex; align-items: center; justify-content: space-between; }
+.rail-head a { font-size: 13px; font-weight: 600; }
+.stats span { border: 0; background: transparent; padding: 8px 0; }
+.seller { padding: 10px 0; }
+.seller button { padding: 6px 14px; font-size: 13px; }
+.search-box input { background: #efefef; border: 0; border-radius: 8px; padding: 12px 16px; font-size: 14px; }
+.search-box input:focus { border: 0; box-shadow: none; }
+.create-form input, .create-form textarea, .listing-form input, .listing-form textarea, .shop-tools input, .shop-tools select, .comment-box input {
+  background: #efefef;
+  border: 0;
+  border-radius: 8px;
+  color: #262626;
+}
+.listing-form { border-color: #dbdbdb; background: #fff; }
+.create-tabs, .shop-tabs { border: 1px solid #dbdbdb; background: #fff; }
+.create-tab, .shop-tab { color: #262626; }
+.create-tab.active, .shop-tab.active { background: #0095f6; }
+.message-card { padding: 14px 16px; }
+.activity-card p { font-weight: 600; }
+.profile-panel .profile-topbar { font-weight: 600; }
+.profile-identity h2 { font-weight: 600; }
+.profile-panel .profile-metrics span { font-size: 14px; }
+.profile-panel .profile-metrics b { font-size: 17px; }
+.profile-share-empty { border-top-color: #dbdbdb; }
+.bottom-bar { border-top-color: #dbdbdb; background: rgba(255,255,255,.98); }
+.bottom-bar a { color: #262626; }
+.bottom-bar a.active { font-weight: 700; }
+/* ---------- INSTAGRAM SKIN: dark mode ---------- */
+:root[data-theme="dark"] { color-scheme: dark; color: #f5f5f5; background: #000; }
+:root[data-theme="dark"] body { background: #000; }
+:root[data-theme="dark"] .post,
+:root[data-theme="dark"] .stories,
+:root[data-theme="dark"] .page-intro,
+:root[data-theme="dark"] .empty-state,
+:root[data-theme="dark"] .message-card,
+:root[data-theme="dark"] .activity-card,
+:root[data-theme="dark"] .product,
+:root[data-theme="dark"] .store-profile,
+:root[data-theme="dark"] .profile-panel,
+:root[data-theme="dark"] .settings-panel { border-color: #262626; background: #000; }
+:root[data-theme="dark"] .sidebar { border-right-color: #262626; background: #000; }
+:root[data-theme="dark"] .sidebar nav a:hover { background: #111; }
+:root[data-theme="dark"] .sidebar nav a.active { color: #f5f5f5; }
+:root[data-theme="dark"] .create-form input,
+:root[data-theme="dark"] .create-form textarea,
+:root[data-theme="dark"] .listing-form input,
+:root[data-theme="dark"] .listing-form textarea,
+:root[data-theme="dark"] .shop-tools input,
+:root[data-theme="dark"] .shop-tools select,
+:root[data-theme="dark"] .comment-box input,
+:root[data-theme="dark"] .search-box input { background: #121212; color: #f5f5f5; }
+:root[data-theme="dark"] .comment-box { border-top-color: #262626; }
+:root[data-theme="dark"] .actions svg { color: #f5f5f5; }
+:root[data-theme="dark"] .profile-identity button,
+:root[data-theme="dark"] .profile-identity .settings-button,
+:root[data-theme="dark"] .profile-header button,
+:root[data-theme="dark"] .profile-actions button { border-color: #363636; background: #000; color: #f5f5f5; }
+:root[data-theme="dark"] .mobile-top,
+:root[data-theme="dark"] .bottom-bar { border-color: #262626; background: rgba(0,0,0,.98); }
+:root[data-theme="dark"] .bottom-bar a { color: #f5f5f5; }
+:root[data-theme="dark"] .create-tabs,
+:root[data-theme="dark"] .shop-tabs { border-color: #262626; background: #000; }
+:root[data-theme="dark"] .create-tab,
+:root[data-theme="dark"] .shop-tab { color: #f5f5f5; }
+:root[data-theme="dark"] .profile-share-empty { border-top-color: #262626; }
+/* Instagram skin: grid sizing fix (columns shrink instead of overflowing) */
+#app { max-width: 1230px; grid-template-columns: 240px minmax(0, 614px) minmax(0, 300px); }
