@@ -33,7 +33,6 @@ const currencyValue = (price) => Number(price.replace('$', ''));
 
 const navItems = [['⌂', 'Home'], ['⌕', 'Search'], ['◈', 'Explore'], ['▣', 'Glitches'], ['✉', 'Messages'], ['♡', 'Notifications'], ['＋', 'Create'], ['◒', 'Shop'], ['◎', 'Profile']];
 const userUploads = { feed: [], stories: [], videos: [] };
-const bottomNavItems = navItems.filter(([, label]) => ['Home', 'Search', 'Glitches', 'Create', 'Shop', 'Profile'].includes(label));
 
 const profile = {
   username: 'b3ice_drage',
@@ -58,8 +57,44 @@ function sidebar() {
   return `<aside class="sidebar"><a class="brand" href="#home">${icon('ϟ')}GlitchIt</a><nav>${navItems.map(navLink).join('')}</nav><a class="post-button" href="#create">Post</a></aside>`;
 }
 
+// Bottom bar: all pages included, Glitches gets a glowing play SVG
+const bottomNavItems = [
+  ['⌂', 'Home'],
+  ['⌕', 'Search'],
+  ['◈', 'Explore'],
+  ['✉', 'Messages'],
+  ['♡', 'Notifications'],
+  ['▶', 'Glitches'],
+  ['＋', 'Create'],
+  ['◒', 'Shop'],
+  ['◎', 'Profile'],
+];
+
 function bottomBar() {
-  return `<nav class="bottom-bar" aria-label="Primary mobile navigation">${bottomNavItems.map(navLink).join('')}</nav>`;
+  return `<nav class="bottom-bar" aria-label="Primary mobile navigation">${bottomNavItems.map(([symbol, label]) => {
+    const page = label.toLowerCase();
+    const isGlitches = label === 'Glitches';
+    if (isGlitches) {
+      return `<a data-page-link="${page}" href="#${page}" class="glitch-nav-btn">
+        <svg class="glitch-play-icon" viewBox="0 0 48 48" width="32" height="32">
+          <defs>
+            <radialGradient id="glow-grad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#d62976" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="#4f5bd5" stop-opacity="0"/>
+            </radialGradient>
+            <filter id="glow-filter">
+              <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#d62976" flood-opacity="0.8"/>
+            </filter>
+          </defs>
+          <circle cx="24" cy="24" r="22" fill="url(#glow-grad)" class="glow-pulse"/>
+          <circle cx="24" cy="24" r="21" fill="#1a1a2e" stroke="#d62976" stroke-width="1.5" filter="url(#glow-filter)"/>
+          <polygon points="19,14 19,34 35,24" fill="#fff" filter="url(#glow-filter)"/>
+        </svg>
+        <span>${label}</span>
+      </a>`;
+    }
+    return `<a data-page-link="${page}" href="#${page}">${icon(symbol)}<span>${label}</span></a>`;
+  }).join('')}</nav>`;
 }
 
 function storiesMarkup() {
