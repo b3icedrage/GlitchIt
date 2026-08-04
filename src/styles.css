@@ -148,12 +148,35 @@ main { height: 100vh; overflow-y: auto; padding: 28px 0 56px; scrollbar-width: t
   [data-page] { animation: none; }
 }
 
-/* Every page has its own visible end */
-.page-end { display: flex; align-items: center; gap: 14px; padding: 34px 8px 10px; color: #a8a8a8; }
-.page-end-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, #e2e2e2); }
-.page-end-line:last-child { background: linear-gradient(90deg, #e2e2e2, transparent); }
-.page-end-mark .icon { width: auto; height: auto; font-size: 20px; color: #d62976; filter: drop-shadow(3px 2px 0 rgba(79, 91, 213, .35)); }
-.page-end-text { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; color: #9a9a9a; }
+/* Animated "all caught up" toast that shows for 2s at the end of every page */
+.end-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  box-shadow: 0 16px 40px rgba(214, 41, 118, .35);
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+.end-toast.show { animation: toastLife 2s ease forwards; }
+.end-toast-mark .icon { width: auto; height: auto; font-size: 18px; }
+@keyframes toastLife {
+  0% { opacity: 0; transform: translateX(-50%) translateY(18px) scale(.94); }
+  12% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  82% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(.98); }
+}
 
 .profile-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; align-self: center; }
 .profile-actions button, .settings-button { border: 1px solid #dbdbdb; border-radius: 999px; background: #fff; padding: 10px 16px; font-weight: 800; text-decoration: none; }
@@ -223,9 +246,10 @@ main { height: 100vh; overflow-y: auto; padding: 28px 0 56px; scrollbar-width: t
 :root[data-theme="dark"] .bottom-bar a svg { stroke: #b9b3ce; }
 :root[data-theme="dark"] .bottom-bar a.active svg { stroke: #fff; }
 :root[data-theme="dark"] .top-activity-btn .icon { color: #f6f3ff; }
-:root[data-theme="dark"] .page-end-line { background: linear-gradient(90deg, transparent, #322d45); }
-:root[data-theme="dark"] .page-end-line:last-child { background: linear-gradient(90deg, #322d45, transparent); }
-:root[data-theme="dark"] .page-end-text { color: #6e6884; }
+:root[data-theme="dark"] .end-toast { box-shadow: 0 16px 40px rgba(0, 0, 0, .5); }
+@media (max-width: 760px) {
+  .end-toast { bottom: calc(76px + 20px); }
+}
 
 @media (max-width: 760px) { .profile-actions { justify-content: flex-start; } .message-card, .activity-card { grid-template-columns: auto 1fr; } .message-card small, .activity-card button { grid-column: 2; justify-self: start; } }
 

@@ -101,12 +101,8 @@ function post([user, avatar, location, image, likes, caption, comments, tags]) {
   return `<article class="post"><header><div class="profile"><img src="${avatar}" alt="${user} avatar"><div><strong>${user}</strong><span>${location}</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${image}" alt="${user} post"><a class="shop-badge" href="#shop">${icon('◒')} ${tags[0]}</a></div><div class="actions"><div>${icon('♡')}${icon('◌')}${icon('↗')}</div>${icon('▱')}</div><strong>${likes} likes</strong><p><b>${user}</b> ${caption}</p><div class="tag-row"><span>${tags[1]}</span><a href="#shop">View in Shop</a></div><button class="text-button">View all ${comments} comments</button><form class="comment-box"><input aria-label="Add a comment" placeholder="Add a comment..."><button>Post</button></form></article>`;
 }
 
-function pageEnd(title) {
-  return `<div class="page-end" aria-hidden="true"><span class="page-end-line"></span><span class="page-end-mark">${icon('ϟ')}</span><span class="page-end-text">You've reached the end of ${title}</span><span class="page-end-line"></span></div>`;
-}
-
 function pageShell(id, title, description, content) {
-  return `<section class="page" id="${id}" data-page="${id}" aria-labelledby="${id}-title"><div class="page-intro"><span class="eyebrow">${title}</span><h1 id="${id}-title">${title}</h1><p>${description}</p></div>${content}${pageEnd(title)}</section>`;
+  return `<section class="page" id="${id}" data-page="${id}" aria-labelledby="${id}-title"><div class="page-intro"><span class="eyebrow">${title}</span><h1 id="${id}-title">${title}</h1><p>${description}</p></div>${content}</section>`;
 }
 
 function homePage() {
@@ -115,7 +111,7 @@ function homePage() {
 
 function shop() {
   const featured = products.reduce((least, product) => currencyValue(product[2]) < currencyValue(least[2]) ? product : least, products[0]);
-  return `<section class="shop page" id="shop" data-page="shop" aria-labelledby="shop-title"><div class="shop-heading"><div><span class="eyebrow">Creator marketplace</span><h2 id="shop-title">Shop fresh drops on GlitchIt</h2><p>Creators can list products, tag them in posts, collect follows, and turn every profile into a storefront.</p></div><a class="primary-action" href="#list-product">List a product</a></div><div class="shop-tools"><label>Search marketplace<input id="shop-search" placeholder="Search products or sellers"></label><label>Category<select id="category-filter"><option value="all">All categories</option>${[...new Set(products.map((product) => product[3]))].map((category) => `<option>${category}</option>`).join('')}</select></label><div class="featured"><span>Best entry price</span><strong>${featured[0]} ${featured[2]}</strong></div></div><div class="product-grid" id="product-grid">${productCards(products)}</div><form class="listing-form" id="list-product"><h3>Market your product</h3><p>Create a storefront-ready listing for the GlitchIt Shop.</p><div><input aria-label="Product name" placeholder="Product name"><input aria-label="Price" placeholder="Price"></div><textarea aria-label="Product story" placeholder="Tell shoppers what makes it special"></textarea><button type="button">Save draft listing</button></form>${pageEnd('Shop')}</section>`;
+  return `<section class="shop page" id="shop" data-page="shop" aria-labelledby="shop-title"><div class="shop-heading"><div><span class="eyebrow">Creator marketplace</span><h2 id="shop-title">Shop fresh drops on GlitchIt</h2><p>Creators can list products, tag them in posts, collect follows, and turn every profile into a storefront.</p></div><a class="primary-action" href="#list-product">List a product</a></div><div class="shop-tools"><label>Search marketplace<input id="shop-search" placeholder="Search products or sellers"></label><label>Category<select id="category-filter"><option value="all">All categories</option>${[...new Set(products.map((product) => product[3]))].map((category) => `<option>${category}</option>`).join('')}</select></label><div class="featured"><span>Best entry price</span><strong>${featured[0]} ${featured[2]}</strong></div></div><div class="product-grid" id="product-grid">${productCards(products)}</div><form class="listing-form" id="list-product"><h3>Market your product</h3><p>Create a storefront-ready listing for the GlitchIt Shop.</p><div><input aria-label="Product name" placeholder="Product name"><input aria-label="Price" placeholder="Price"></div><textarea aria-label="Product story" placeholder="Tell shoppers what makes it special"></textarea><button type="button">Save draft listing</button></form></section>`;
 }
 
 function productCards(items) {
@@ -128,7 +124,7 @@ function profileSettingsPanel() {
 }
 
 function profilePanel() {
-  return `<section class="profile-panel page" id="profile" data-page="profile" aria-labelledby="profile-title"><div class="profile-content"><div class="profile-topbar"><strong>${profile.username}</strong><div class="profile-top-actions">${icon('＋')}${icon('☰')}</div></div><div class="profile-header"><div class="profile-photo-wrap"><img src="${profile.avatar}" alt="${profile.username}'s profile picture"><button type="button">Change profile photo</button></div><div class="profile-summary"><div class="profile-identity"><h2 id="profile-title">${profile.username}</h2><button type="button">Edit profile</button><a class="settings-button" href="#settings">Settings</a></div><div class="profile-metrics">${profile.metrics.map(([value, label]) => `<span><b>${value}</b>${label}</span>`).join('')}</div><strong class="profile-name">${profile.name}</strong></div></div><p class="profile-insights">${profile.insights} <a href="#settings">View insights</a></p><div class="profile-share-empty">${icon('▧')}<h3>Share Photos</h3><p>When you share photos, they will appear on your profile.</p></div>${profileSettingsPanel()}</div>${pageEnd('Profile')}</section>`;
+  return `<section class="profile-panel page" id="profile" data-page="profile" aria-labelledby="profile-title"><div class="profile-content"><div class="profile-topbar"><strong>${profile.username}</strong><div class="profile-top-actions">${icon('＋')}${icon('☰')}</div></div><div class="profile-header"><div class="profile-photo-wrap"><img src="${profile.avatar}" alt="${profile.username}'s profile picture"><button type="button">Change profile photo</button></div><div class="profile-summary"><div class="profile-identity"><h2 id="profile-title">${profile.username}</h2><button type="button">Edit profile</button><a class="settings-button" href="#settings">Settings</a></div><div class="profile-metrics">${profile.metrics.map(([value, label]) => `<span><b>${value}</b>${label}</span>`).join('')}</div><strong class="profile-name">${profile.name}</strong></div></div><p class="profile-insights">${profile.insights} <a href="#settings">View insights</a></p><div class="profile-share-empty">${icon('▧')}<h3>Share Photos</h3><p>When you share photos, they will appear on your profile.</p></div>${profileSettingsPanel()}</div></section>`;
 }
 
 
@@ -233,6 +229,7 @@ attachThemeToggle();
 attachCreateForm();
 attachSettingsDrawer();
 attachGlitchAutoplay();
+attachEndOfPageDetection();
 route();
 updateGlitchPlayback();
 window.addEventListener('hashchange', () => {
@@ -305,6 +302,51 @@ function attachThemeToggle() {
   toggle?.addEventListener('change', () => {
     document.documentElement.dataset.theme = toggle.checked ? 'dark' : 'light';
   });
+}
+
+// End-of-page animated toast: shows "You've seen all updates" for 2s at the bottom of every page
+let endToastTimer = null;
+let lastEndToastAt = 0;
+
+function showEndOfUpdates() {
+  const now = Date.now();
+  if (now - lastEndToastAt < 3000) return;
+  lastEndToastAt = now;
+  let toast = document.getElementById('end-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'end-toast';
+    toast.className = 'end-toast';
+    toast.setAttribute('role', 'status');
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = `<span class="end-toast-mark">${icon('ϟ')}</span><span class="end-toast-text">You've seen all updates</span>`;
+  toast.classList.remove('show');
+  void toast.offsetWidth; // restart the animation
+  toast.classList.add('show');
+  clearTimeout(endToastTimer);
+  endToastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function isNearBottom(el) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 12;
+}
+
+function checkEndOfPage() {
+  const activePage = [...document.querySelectorAll('[data-page]')].find((page) => !page.hidden);
+  if (!activePage) return;
+  const reel = document.getElementById('glitches-reel');
+  const mainEl = document.querySelector('main');
+  if (activePage.id === 'glitches' && reel && isNearBottom(reel)) {
+    showEndOfUpdates();
+  } else if (mainEl && isNearBottom(mainEl)) {
+    showEndOfUpdates();
+  }
+}
+
+function attachEndOfPageDetection() {
+  document.querySelector('main')?.addEventListener('scroll', checkEndOfPage, { passive: true });
+  document.getElementById('glitches-reel')?.addEventListener('scroll', checkEndOfPage, { passive: true });
 }
 
 
