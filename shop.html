@@ -36,41 +36,184 @@
             <div>
               <span class="eyebrow">Creator marketplace</span>
               <h2 id="shop-title">Shop fresh drops on GlitchIt</h2>
-              <p>Creators can list products, tag them in posts, collect follows, and turn every profile into a storefront.</p>
+              <p>Everything commerce lives here — a product feed, seller stories, shop glitches, and storefront profiles.</p>
             </div>
             <a class="primary-action" href="#list-product">List a product</a>
           </div>
 
-          <div class="shop-tools">
-            <label>Search marketplace<input id="shop-search" placeholder="Search products or sellers"></label>
-            <label>Category<select id="category-filter">
-              <option value="all">All categories</option>
-              <option>Streetwear</option>
-              <option>Footwear</option>
-              <option>Home studio</option>
-              <option>Accessories</option>
-              <option>Audio</option>
-              <option>Outerwear</option>
-            </select></label>
-            <div class="featured"><span>Best entry price</span><strong>Loop Tote $36</strong></div>
+          <div class="shop-tabs" role="tablist" aria-label="Shop sections">
+            <button type="button" class="shop-tab active" data-shop-tab="feed" role="tab" aria-selected="true">Feed</button>
+            <button type="button" class="shop-tab" data-shop-tab="stories" role="tab" aria-selected="false">S.</button>
+            <button type="button" class="shop-tab" data-shop-tab="glitches" role="tab" aria-selected="false">Glitches</button>
+            <button type="button" class="shop-tab" data-shop-tab="profile" role="tab" aria-selected="false">Profile</button>
           </div>
 
-          <div class="product-grid" id="product-grid">
-            <article class="product" data-title="prism hoodie" data-seller="@glitchwear" data-category="Streetwear"><img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=600&q=80" alt="Prism Hoodie"><div><span>Streetwear</span><h3>Prism Hoodie</h3><p>@glitchwear</p><strong>$68</strong><button>Promote</button></div></article>
-            <article class="product" data-title="signal sneakers" data-seller="@kicksbyte" data-category="Footwear"><img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80" alt="Signal Sneakers"><div><span>Footwear</span><h3>Signal Sneakers</h3><p>@kicksbyte</p><strong>$124</strong><button>Promote</button></div></article>
-            <article class="product" data-title="creator lamp" data-seller="@pixelmakers" data-category="Home studio"><img src="https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=600&q=80" alt="Creator Lamp"><div><span>Home studio</span><h3>Creator Lamp</h3><p>@pixelmakers</p><strong>$42</strong><button>Promote</button></div></article>
-            <article class="product" data-title="loop tote" data-seller="@craftloop" data-category="Accessories"><img src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=600&q=80" alt="Loop Tote"><div><span>Accessories</span><h3>Loop Tote</h3><p>@craftloop</p><strong>$36</strong><button>Promote</button></div></article>
-            <article class="product" data-title="chrome headphones" data-seller="@soundshift" data-category="Audio"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80" alt="Chrome Headphones"><div><span>Audio</span><h3>Chrome Headphones</h3><p>@soundshift</p><strong>$89</strong><button>Promote</button></div></article>
-            <article class="product" data-title="analog jacket" data-seller="@vintagelane" data-category="Outerwear"><img src="https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=600&q=80" alt="Analog Jacket"><div><span>Outerwear</span><h3>Analog Jacket</h3><p>@vintagelane</p><strong>$96</strong><button>Promote</button></div></article>
+          <!-- Feed: shoppable posts + marketplace browse -->
+          <div class="shop-panel" data-shop-panel="feed">
+            <div class="shop-feed">
+              <article class="post">
+                <header>
+                  <div class="profile"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80" alt="glitchwear avatar"><div><strong>glitchwear</strong><span>New drop</span></div></div>
+                  <button class="more">•••</button>
+                </header>
+                <div class="media-wrap">
+                  <img class="post-image" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1000&q=80" alt="Prism Hoodie drop">
+                </div>
+                <div class="actions"><div><span class="icon" aria-hidden="true">♡</span><span class="icon" aria-hidden="true">◌</span><span class="icon" aria-hidden="true">↗</span></div><span class="icon" aria-hidden="true">▱</span></div>
+                <strong>$68 · 12 left</strong>
+                <p><b>glitchwear</b> The Prism Hoodie drops tonight. First 12 units — one per customer.</p>
+                <div class="tag-row"><span>Streetwear</span><a class="text-button" href="#list-product">Buy now</a></div>
+                <button class="text-button">View all 38 comments</button>
+                <form class="comment-box"><input aria-label="Add a comment" placeholder="Add a comment..."><button>Post</button></form>
+              </article>
+
+              <article class="post">
+                <header>
+                  <div class="profile"><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80" alt="pixelmakers avatar"><div><strong>pixelmakers</strong><span>Studio restock</span></div></div>
+                  <button class="more">•••</button>
+                </header>
+                <div class="media-wrap">
+                  <img class="post-image" src="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1000&q=80" alt="Creator Lamp restock">
+                </div>
+                <div class="actions"><div><span class="icon" aria-hidden="true">♡</span><span class="icon" aria-hidden="true">◌</span><span class="icon" aria-hidden="true">↗</span></div><span class="icon" aria-hidden="true">▱</span></div>
+                <strong>$42 · Back in stock</strong>
+                <p><b>pixelmakers</b> Creator Lamp restock — 30 units ship this week.</p>
+                <div class="tag-row"><span>Home studio</span><a class="text-button" href="#list-product">Buy now</a></div>
+                <button class="text-button">View all 12 comments</button>
+                <form class="comment-box"><input aria-label="Add a comment" placeholder="Add a comment..."><button>Post</button></form>
+              </article>
+
+              <article class="post">
+                <header>
+                  <div class="profile"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" alt="mira.motion avatar"><div><strong>mira.motion</strong><span>Curated pick</span></div></div>
+                  <button class="more">•••</button>
+                </header>
+                <div class="media-wrap">
+                  <img class="post-image" src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1000&q=80" alt="Signal Sneakers curated pick">
+                </div>
+                <div class="actions"><div><span class="icon" aria-hidden="true">♡</span><span class="icon" aria-hidden="true">◌</span><span class="icon" aria-hidden="true">↗</span></div><span class="icon" aria-hidden="true">▱</span></div>
+                <strong>$124 · Staff pick</strong>
+                <p><b>mira.motion</b> Signal Sneakers, curated from this week's drops.</p>
+                <div class="tag-row"><span>Footwear</span><a class="text-button" href="#list-product">Buy now</a></div>
+                <button class="text-button">View all 64 comments</button>
+                <form class="comment-box"><input aria-label="Add a comment" placeholder="Add a comment..."><button>Post</button></form>
+              </article>
+            </div>
+
+            <div class="shop-tools">
+              <label>Search marketplace<input id="shop-search" placeholder="Search products or sellers"></label>
+              <label>Category<select id="category-filter">
+                <option value="all">All categories</option>
+                <option>Streetwear</option>
+                <option>Footwear</option>
+                <option>Home studio</option>
+                <option>Accessories</option>
+                <option>Audio</option>
+                <option>Outerwear</option>
+              </select></label>
+              <div class="featured"><span>Best entry price</span><strong>Loop Tote $36</strong></div>
+            </div>
+
+            <div class="product-grid" id="product-grid">
+              <article class="product" data-title="prism hoodie" data-seller="@glitchwear" data-category="Streetwear"><img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=600&q=80" alt="Prism Hoodie"><div><span>Streetwear</span><h3>Prism Hoodie</h3><p>@glitchwear</p><strong>$68</strong><button>Promote</button></div></article>
+              <article class="product" data-title="signal sneakers" data-seller="@kicksbyte" data-category="Footwear"><img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80" alt="Signal Sneakers"><div><span>Footwear</span><h3>Signal Sneakers</h3><p>@kicksbyte</p><strong>$124</strong><button>Promote</button></div></article>
+              <article class="product" data-title="creator lamp" data-seller="@pixelmakers" data-category="Home studio"><img src="https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=600&q=80" alt="Creator Lamp"><div><span>Home studio</span><h3>Creator Lamp</h3><p>@pixelmakers</p><strong>$42</strong><button>Promote</button></div></article>
+              <article class="product" data-title="loop tote" data-seller="@craftloop" data-category="Accessories"><img src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=600&q=80" alt="Loop Tote"><div><span>Accessories</span><h3>Loop Tote</h3><p>@craftloop</p><strong>$36</strong><button>Promote</button></div></article>
+              <article class="product" data-title="chrome headphones" data-seller="@soundshift" data-category="Audio"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80" alt="Chrome Headphones"><div><span>Audio</span><h3>Chrome Headphones</h3><p>@soundshift</p><strong>$89</strong><button>Promote</button></div></article>
+              <article class="product" data-title="analog jacket" data-seller="@vintagelane" data-category="Outerwear"><img src="https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=600&q=80" alt="Analog Jacket"><div><span>Outerwear</span><h3>Analog Jacket</h3><p>@vintagelane</p><strong>$96</strong><button>Promote</button></div></article>
+            </div>
+
+            <form class="listing-form" id="list-product">
+              <h3>Market your product</h3>
+              <p>Create a storefront-ready listing for the GlitchIt Shop.</p>
+              <div><input aria-label="Product name" placeholder="Product name"><input aria-label="Price" placeholder="Price"></div>
+              <textarea aria-label="Product story" placeholder="Tell shoppers what makes it special"></textarea>
+              <button type="button">Save draft listing</button>
+            </form>
           </div>
 
-          <form class="listing-form" id="list-product">
-            <h3>Market your product</h3>
-            <p>Create a storefront-ready listing for the GlitchIt Shop.</p>
-            <div><input aria-label="Product name" placeholder="Product name"><input aria-label="Price" placeholder="Price"></div>
-            <textarea aria-label="Product story" placeholder="Tell shoppers what makes it special"></textarea>
-            <button type="button">Save draft listing</button>
-          </form>
+          <!-- S.: seller stories -->
+          <div class="shop-panel" data-shop-panel="stories" hidden>
+            <section class="stories" aria-label="Seller stories">
+              <a class="story" href="#" data-story-name="glitchwear" data-story-image="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" data-story-live="true" aria-label="Open glitchwear's story">
+                <span class="story-ring live"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="glitchwear avatar"></span><span>glitchwear</span>
+              </a>
+              <a class="story" href="#" data-story-name="kicksbyte" data-story-image="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=200&q=80" data-story-live="true" aria-label="Open kicksbyte's story">
+                <span class="story-ring live"><img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=200&q=80" alt="kicksbyte avatar"></span><span>kicksbyte</span>
+              </a>
+              <a class="story" href="#" data-story-name="pixelmakers" data-story-image="https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=200&q=80" data-story-live="false" aria-label="Open pixelmakers' story">
+                <span class="story-ring"><img src="https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=200&q=80" alt="pixelmakers avatar"></span><span>pixelmakers</span>
+              </a>
+              <a class="story" href="#" data-story-name="craftloop" data-story-image="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=200&q=80" data-story-live="true" aria-label="Open craftloop's story">
+                <span class="story-ring live"><img src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=200&q=80" alt="craftloop avatar"></span><span>craftloop</span>
+              </a>
+              <a class="story" href="#" data-story-name="soundshift" data-story-image="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=200&q=80" data-story-live="false" aria-label="Open soundshift's story">
+                <span class="story-ring"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=200&q=80" alt="soundshift avatar"></span><span>soundshift</span>
+              </a>
+            </section>
+            <div class="shop-panel-note">
+              <span class="icon" aria-hidden="true">◒</span>
+              <h3>Seller stories</h3>
+              <p>Behind-the-scenes previews, restock alerts, and limited drops straight from creator storefronts.</p>
+            </div>
+          </div>
+
+          <!-- Glitches: shop videos -->
+          <div class="shop-panel" data-shop-panel="glitches" hidden>
+            <div class="video-grid" id="glitches-reel">
+              <article class="video-card">
+                <video class="glitch-video" playsinline loop preload="metadata" poster="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" aria-label="Hoodie drop preview"></video>
+                <button type="button" class="video-toggle" aria-label="Pause Hoodie drop preview"><span class="icon" aria-hidden="true">Ⅱ</span></button>
+                <button type="button" class="sound-toggle" aria-label="Mute Hoodie drop preview"><span class="icon" aria-hidden="true">🔊</span></button>
+                <div class="video-overlay">
+                  <div class="profile"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80" alt="glitchwear avatar"><div><strong>glitchwear</strong><span>Hoodie drop preview</span></div></div>
+                  <p>First look at the Prism Hoodie — midnight drop, 12 units.</p>
+                  <span class="shop-badge">Buy · $68</span>
+                </div>
+              </article>
+              <article class="video-card">
+                <video class="glitch-video" playsinline loop preload="metadata" poster="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" aria-label="Sneaker close-up"></video>
+                <button type="button" class="video-toggle" aria-label="Pause Sneaker close-up"><span class="icon" aria-hidden="true">Ⅱ</span></button>
+                <button type="button" class="sound-toggle" aria-label="Mute Sneaker close-up"><span class="icon" aria-hidden="true">🔊</span></button>
+                <div class="video-overlay">
+                  <div class="profile"><img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=200&q=80" alt="kicksbyte avatar"><div><strong>kicksbyte</strong><span>Sneaker close-up</span></div></div>
+                  <p>Signal Sneakers texture loop — free shipping this week.</p>
+                  <span class="shop-badge">Buy · $124</span>
+                </div>
+              </article>
+              <article class="video-card">
+                <video class="glitch-video" playsinline loop preload="metadata" poster="https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=900&q=80" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" aria-label="Desk lamp loop"></video>
+                <button type="button" class="video-toggle" aria-label="Pause Desk lamp loop"><span class="icon" aria-hidden="true">Ⅱ</span></button>
+                <button type="button" class="sound-toggle" aria-label="Mute Desk lamp loop"><span class="icon" aria-hidden="true">🔊</span></button>
+                <div class="video-overlay">
+                  <div class="profile"><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80" alt="pixelmakers avatar"><div><strong>pixelmakers</strong><span>Desk lamp loop</span></div></div>
+                  <p>Creator Lamp details — restock ships this week.</p>
+                  <span class="shop-badge">Buy · $42</span>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <!-- Profile: storefront -->
+          <div class="shop-panel" data-shop-panel="profile" hidden>
+            <div class="store-profile">
+              <header class="store-header">
+                <img class="store-avatar" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=240&q=80" alt="GlitchIt Store avatar">
+                <div class="store-id"><h2>GlitchIt Store</h2><span>@glitchit.store</span></div>
+                <button type="button" class="store-follow">Follow</button>
+              </header>
+              <div class="store-metrics">
+                <span><b>24</b> products</span><span><b>12.8k</b> followers</span><span><b>46</b> drops</span>
+              </div>
+              <p class="store-bio">Creator-made drops, limited runs, and shop-exclusive glitches — every item in one storefront.</p>
+              <h3>Latest drops</h3>
+              <div class="product-grid store-grid">
+                <article class="store-card"><img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=600&q=80" alt="Prism Hoodie"><div><span>Streetwear</span><h3>Prism Hoodie</h3><p>@glitchwear</p><strong>$68</strong></div></article>
+                <article class="store-card"><img src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=600&q=80" alt="Loop Tote"><div><span>Accessories</span><h3>Loop Tote</h3><p>@craftloop</p><strong>$36</strong></div></article>
+                <article class="store-card"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80" alt="Chrome Headphones"><div><span>Audio</span><h3>Chrome Headphones</h3><p>@soundshift</p><strong>$89</strong></div></article>
+              </div>
+            </div>
+          </div>
         </section>
       </main>
 

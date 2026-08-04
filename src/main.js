@@ -35,7 +35,7 @@ function uploadCard(item, type) {
 }
 
 function glitchVideoCard(video, uploaded = false) {
-  return `<article class="video-card ${uploaded ? 'upload-card' : ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="video-overlay"><div class="profile"><img src="${video.avatar}" alt="${video.user} avatar"><div><strong>${video.user}</strong><span>${video.title}</span></div></div><p>${video.caption}</p><a class="shop-badge" href="shop.html">${icon('◒')} Tagged products</a></div></article>`;
+  return `<article class="video-card ${uploaded ? 'upload-card' : ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="video-overlay"><div class="profile"><img src="${video.avatar}" alt="${video.user} avatar"><div><strong>${video.user}</strong><span>${video.title}</span></div></div><p>${video.caption}</p></div></article>`;
 }
 
 function renderUploads(type) {
@@ -365,6 +365,25 @@ function attachThemeToggle() {
 }
 
 // ---------- Shop page ----------
+function attachShopTabs() {
+  const tabs = [...document.querySelectorAll('.shop-tab')];
+  if (!tabs.length) return;
+  const panels = [...document.querySelectorAll('[data-shop-panel]')];
+  const show = (name) => {
+    tabs.forEach((t) => {
+      const on = t.dataset.shopTab === name;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    panels.forEach((p) => { p.hidden = p.dataset.shopPanel !== name; });
+    try { sessionStorage.setItem('glitchit.shopTab', name); } catch (e) { /* ignore */ }
+  };
+  let saved = null;
+  try { saved = sessionStorage.getItem('glitchit.shopTab'); } catch (e) { /* ignore */ }
+  show(tabs.some((t) => t.dataset.shopTab === saved) ? saved : 'feed');
+  tabs.forEach((t) => t.addEventListener('click', () => show(t.dataset.shopTab)));
+}
+
 function attachShopFilters() {
   const search = document.getElementById('shop-search');
   const category = document.getElementById('category-filter');
@@ -574,7 +593,7 @@ function runPage() {
   }
   if (page === 'create') attachCreateStudio();
   if (page === 'profile') attachSettingsDrawer();
-  if (page === 'shop') attachShopFilters();
+  if (page === 'shop') { attachShopTabs(); attachShopFilters(); attachStoryLinks(); attachGlitchAutoplay(); }
   if (page === 'search') attachSearchForm();
 
   window.addEventListener('scroll', updateGlitchPlayback, { passive: true });
