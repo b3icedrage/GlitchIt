@@ -82,7 +82,10 @@ main { padding: 28px 0 56px; }
 .seller button { padding: 7px 13px; font-size: 13px; }
 
 @media (max-width: 1050px) { #app { grid-template-columns: 88px minmax(0, 640px); } .sidebar { padding: 22px 12px; } .sidebar .brand { font-size: 0; justify-content: center; } .sidebar nav a span, .right-rail, .post-button { display: none; } }
-@media (max-width: 760px) { #app { display: block; } .sidebar { display: none; } main { padding: 0 0 96px; } .mobile-top { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(255,255,255,.94); border-bottom: 1px solid #eee; } .mobile-top .brand { font-size: 27px; } .stories, .post, .shop { border-left: 0; border-right: 0; border-radius: 0; } .shop-heading, .shop-tools { align-items: stretch; grid-template-columns: 1fr; flex-direction: column; } .product-grid, .listing-form div { grid-template-columns: 1fr; } .bottom-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; padding: 6px max(6px, env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-right)); border-top: 1px solid #e8e8e8; background: rgba(255,255,255,.96); box-shadow: 0 -12px 32px rgba(0,0,0,.08); backdrop-filter: blur(18px); } .bottom-bar a { justify-content: center; gap: 2px; padding: 6px 2px; border-radius: 16px; font-size: 10px; flex-direction: column; } .bottom-bar .icon { width: 20px; height: 20px; font-size: 19px; }
+@media (max-width: 760px) { #app { display: block; } .sidebar { display: none; } main { padding: 0 0 96px; } .mobile-top { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(255,255,255,.94); border-bottom: 1px solid #eee; } .mobile-top .brand { font-size: 27px; }
+.mobile-top-actions { display: flex; align-items: center; gap: 12px; }
+.top-activity-btn { display: flex; align-items: center; }
+.top-activity-btn .icon { font-size: 24px; } .stories, .post, .shop { border-left: 0; border-right: 0; border-radius: 0; } .shop-heading, .shop-tools { align-items: stretch; grid-template-columns: 1fr; flex-direction: column; } .product-grid, .listing-form div { grid-template-columns: 1fr; } .bottom-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 6px max(6px, env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-right)); border-top: 1px solid #e8e8e8; background: rgba(255,255,255,.96); box-shadow: 0 -12px 32px rgba(0,0,0,.08); backdrop-filter: blur(18px); } .bottom-bar a { justify-content: center; gap: 2px; padding: 6px 2px; border-radius: 16px; font-size: 10px; flex-direction: column; } .bottom-bar a svg { display: block; margin: 0 auto; }
 
 /* Glowing play button in bottom nav */
 .glitch-nav-btn { position: relative; overflow: visible; }
@@ -94,7 +97,7 @@ main { padding: 28px 0 56px; }
   0%, 100% { opacity: .6; }
   50% { opacity: 1; }
 }
-.glitch-nav-btn span { font-size: 9px; margin-top: 1px; } }
+.glitch-nav-btn span { font-size: 9px; margin-top: 1px; }
 
 .profile-panel, .settings-panel { overflow: hidden; margin-bottom: 22px; border: 1px solid #dbdbdb; border-radius: 18px; background: #fff; }
 .profile-cover { min-height: 132px; background: linear-gradient(135deg, rgba(214,41,118,.9), rgba(79,91,213,.88)), var(--profile-cover) center/cover; }
@@ -199,6 +202,9 @@ main { padding: 28px 0 56px; }
 :root[data-theme="dark"] .activity-card p { color: #fff; }
 :root[data-theme="dark"] .mobile-top,
 :root[data-theme="dark"] .bottom-bar { border-color: #29253a; background: rgba(15,14,25,.94); }
+:root[data-theme="dark"] .bottom-bar a svg { stroke: #b9b3ce; }
+:root[data-theme="dark"] .bottom-bar a.active svg { stroke: #fff; }
+:root[data-theme="dark"] .top-activity-btn .icon { color: #f6f3ff; }
 
 @media (max-width: 760px) { .profile-actions { justify-content: flex-start; } .message-card, .activity-card { grid-template-columns: auto 1fr; } .message-card small, .activity-card button { grid-column: 2; justify-self: start; } }
 
