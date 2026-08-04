@@ -1,0 +1,12 @@
+/* ============ Supabase database UI: saved reels + profile Saved tab ============ */
+.reel-save { margin-top: 2px; }
+.reel-save svg { width: 26px; height: 26px; transition: transform .15s ease, fill .15s ease; }
+.reel-save:hover svg { transform: scale(1.12); }
+.reel-save.saved svg { fill: #fff; stroke: #fff; }
+
+.profile-grid .saved-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+.profile-empty { grid-column: 1 / -1; padding: 44px 18px; color: #8e8e8e; font-size: 14px; text-align: center; }
+
+@media (max-width: 760px) {
+  .reel-save svg { width: 24px; height: 24px; }
+}

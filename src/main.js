@@ -11,6 +11,8 @@ const reelIcon = (kind) => kind === 'heart'
   ? '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
   : kind === 'comment'
   ? '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'
+  : kind === 'bookmark'
+  ? '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
   : '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 22-7z"/></svg>';
 
 const profile = {
@@ -20,6 +22,11 @@ const profile = {
 };
 
 const page = document.body.dataset.page || 'home';
+
+// ---------- Supabase database (optional — see src/config.js) ----------
+// Loaded lazily so the app works identically when no keys are configured.
+let DB = null;
+import('./db.js').then((mod) => { DB = mod; }).catch(() => { DB = null; });
 
 // ---------- Shared state (persisted across pages) ----------
 const UPLOADS_KEY = 'glitchit.uploads.v1';
@@ -46,7 +53,8 @@ function glitchVideoCard(video, uploaded = false) {
   const comments = video.comments || '312';
   const shares = video.shares || '8.1K';
   const replyTo = video.replyTo || video.user;
-  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span></div><div class="video-overlay reel-overlay"><div class="reel-creator"><img src="${video.avatar}" alt="${video.user} avatar"><div class="reel-meta"><strong>${video.user}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
+  const savedClass = video.saved ? ' saved' : '';
+  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><img src="${video.avatar}" alt="${video.user} avatar"><div class="reel-meta"><strong>${video.user}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
 }
 
 function renderUploads(type) {
@@ -340,7 +348,15 @@ function attachCreateStudio() {
     if (isVideo && preview !== CREATE_SAMPLE_VIDEO) item.src = CREATE_SAMPLE_VIDEO;
     userUploads[type].unshift(item);
     saveUploads();
-    if (status) status.textContent = `Published to ${isVideo ? 'Glitches' : type}. View it on ${isVideo ? 'the Glitches page' : 'the Home feed'}.`;
+    if (DB) {
+      DB.saveMedia({ ...item, file: file?.size ? file : null, user: profile.username, avatar: profile.avatar }).then((res) => {
+        if (status) status.textContent = res.ok
+          ? `Published to ${isVideo ? 'Glitches' : type} and saved to the database.`
+          : `Published to ${isVideo ? 'Glitches' : type} (local only — add Supabase keys to enable the database).`;
+      });
+    } else if (status) {
+      status.textContent = `Published to ${isVideo ? 'Glitches' : type}. View it on ${isVideo ? 'the Glitches page' : 'the Home feed'}.`;
+    }
     form.reset();
     resetStudio();
   });
@@ -580,6 +596,41 @@ function attachReelsActions() {
     btn.addEventListener('click', () => {
       const on = btn.classList.toggle('following');
       btn.textContent = on ? 'Following' : 'Follow';
+    });
+  });
+  document.querySelectorAll('.reel-save').forEach((btn) => {
+    if (btn.dataset.saveReady) return;
+    btn.dataset.saveReady = 'true';
+    btn.addEventListener('click', async () => {
+      const card = btn.closest('.video-card');
+      const video = {
+        id: btn.dataset.videoId || '',
+        src: card?.querySelector('video')?.getAttribute('src') || '',
+        poster: card?.querySelector('video')?.getAttribute('poster') || '',
+        title: card?.querySelector('video')?.getAttribute('aria-label') || '',
+        caption: card?.querySelector('.reel-meta p')?.textContent || '',
+        user: card?.querySelector('.reel-meta strong')?.textContent || 'b3ice_drage',
+        avatar: card?.querySelector('.reel-creator img')?.getAttribute('src') || '',
+      };
+      const saving = btn.classList.toggle('saved');
+      btn.setAttribute('aria-label', `${saving ? 'Unsave' : 'Save'} ${video.title}`);
+      if (saving) await DB?.saveVideo(video);
+      else await DB?.unsaveVideo(video);
+    });
+  });
+}
+
+// Mark reel cards that are already saved (bookmark filled) once saved list loads.
+function markSavedReels() {
+  if (!DB) return;
+  DB.loadSaved().then((saved) => {
+    if (!saved.length) return;
+    document.querySelectorAll('.reel-save').forEach((btn) => {
+      const src = btn.closest('.video-card')?.querySelector('video')?.getAttribute('src');
+      if (src && saved.some((s) => s.url === src)) {
+        btn.classList.add('saved');
+        btn.setAttribute('aria-label', `Unsave ${btn.closest('.video-card')?.querySelector('video')?.getAttribute('aria-label') || 'video'}`);
+      }
     });
   });
 }
@@ -1031,6 +1082,32 @@ function attachNotes(containerId) {
   renderNoteShelves();
 }
 
+// ---------- Profile tabs (Posts / Reels / Tagged / Saved) ----------
+function attachProfileTabs() {
+  const tabs = document.querySelectorAll('.profile-tab');
+  const grid = document.querySelector('.profile-grid');
+  if (!tabs.length || !grid) return;
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', async () => {
+      tabs.forEach((t) => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      const label = (tab.getAttribute('aria-label') || 'posts').toLowerCase();
+      grid.setAttribute('aria-label', label);
+      if (label === 'saved') {
+        grid.innerHTML = '<p class="profile-empty">Loading saved…</p>';
+        const saved = DB ? await DB.loadSaved() : [];
+        if (!saved.length) {
+          grid.innerHTML = '<p class="profile-empty">Nothing saved yet — tap the bookmark on any Glitch to keep it here.</p>';
+          return;
+        }
+        grid.innerHTML = saved.map((s) => `<img class="saved-thumb" src="${s.poster || s.url}" alt="${escapeHtml(s.title || 'Saved video')}" loading="lazy">`).join('');
+      }
+      // Posts / Reels / Tagged keep the static grid already in the HTML
+    });
+  });
+}
+
 // ---------- Page dispatch ----------
 function runPage() {
   attachThemeToggle();
@@ -1039,6 +1116,13 @@ function runPage() {
   if (page === 'home') {
     const feedTarget = document.getElementById('upload-feed');
     if (feedTarget) feedTarget.innerHTML = renderUploads('feed');
+    if (DB) {
+      DB.loadMedia('image').then((rows) => {
+        if (!rows.length || !feedTarget) return;
+        const cards = rows.map((r) => uploadCard({ preview: r.url, title: r.title, caption: r.caption, type: 'image', user: r.user, avatar: r.avatar }, 'feed')).join('');
+        feedTarget.insertAdjacentHTML('afterbegin', cards);
+      });
+    }
     hydrateStoryShelf();
     attachNotes('home-notes');
   }
@@ -1046,12 +1130,23 @@ function runPage() {
   if (page === 'glitches') {
     const videoTarget = document.getElementById('video-feed');
     if (videoTarget) videoTarget.innerHTML = renderUploads('videos');
+    if (DB) {
+      DB.loadMedia('video').then((rows) => {
+        if (!rows.length || !videoTarget) return;
+        const cards = rows.map((r) => glitchVideoCard({ id: r.id, title: r.title, caption: r.caption, src: r.url, poster: r.poster || r.url, user: r.user, avatar: r.avatar, likes: String(r.likes || 0), comments: String(r.comments || 0), shares: String(r.shares || 0) })).join('');
+        videoTarget.insertAdjacentHTML('afterbegin', cards);
+        attachReelsActions();
+        attachGlitchAutoplay();
+      });
+    }
     attachGlitchAutoplay();
     attachReelsActions();
+    markSavedReels();
   }
   if (page === 'create') attachCreateStudio();
   if (page === 'profile') {
     attachSettingsDrawer();
+    attachProfileTabs();
     document.getElementById('share-song')?.addEventListener('click', () => openNoteComposer());
     document.getElementById('share-profile')?.addEventListener('click', () => {
       const url = location.href;
