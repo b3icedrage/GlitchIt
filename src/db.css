@@ -1,4 +1,5 @@
 /* ============ Supabase database UI: saved reels + profile Saved tab ============ */
+.music-hint { margin: 0 0 10px; font-size: 13px; color: #8a86a3; line-height: 1.45; }
 .reel-save { margin-top: 2px; }
 .reel-save svg { width: 26px; height: 26px; transition: transform .15s ease, fill .15s ease; }
 .reel-save:hover svg { transform: scale(1.12); }

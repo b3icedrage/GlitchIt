@@ -397,12 +397,17 @@ function attachSettingsDrawer() {
   });
 }
 
-function attachThemeToggle() {
-  const toggle = document.getElementById('theme-toggle');
-  if (!toggle) return;
+// Apply the saved theme on every page, not just the one holding the toggle.
+function applySavedTheme() {
   const saved = localStorage.getItem(THEME_KEY);
   if (saved) document.documentElement.dataset.theme = saved;
-  toggle.checked = saved === 'dark';
+}
+
+function attachThemeToggle() {
+  applySavedTheme();
+  const toggle = document.getElementById('theme-toggle');
+  if (!toggle) return;
+  toggle.checked = localStorage.getItem(THEME_KEY) === 'dark';
   toggle.addEventListener('change', () => {
     const theme = toggle.checked ? 'dark' : 'light';
     document.documentElement.dataset.theme = theme;
@@ -683,29 +688,6 @@ try {
 
 // ---------- Notes (Messages + home instants) with music ----------
 const NOTES_KEY = 'glitchit.notes.v1';
-// Live YouTube search key — paste a free YouTube Data API v3 key in the music
-// library's "Live search" field (saved to localStorage) to enable on-demand
-// YouTube lookups. Without a key, the built-in library below is used.
-const YOUTUBE_API_KEY = window.GLITCHIT_CONFIG?.youtubeApiKey || '';
-
-const NOTE_MUSIC_LIBRARY = [
-  { title: 'Dance Monkey', artist: 'Tones and I', genre: 'Pop', videoId: 'q0hyYWKXF0Q' },
-  { title: 'Shape of You', artist: 'Ed Sheeran', genre: 'Pop', videoId: 'JGwWNGJdvx8' },
-  { title: 'Uptown Funk', artist: 'Mark Ronson ft. Bruno Mars', genre: 'Funk', videoId: 'OPf0YbXqDm0' },
-  { title: 'Despacito', artist: 'Luis Fonsi ft. Daddy Yankee', genre: 'Latin', videoId: 'kJQP7kiw5Fk' },
-  { title: 'bad guy', artist: 'Billie Eilish', genre: 'Alt', videoId: 'DyDfgMOUjCI' },
-  { title: 'Blinding Lights', artist: 'The Weeknd', genre: 'Synthpop', videoId: '4NRXx6U8ABQ' },
-  { title: 'Levitating', artist: 'Dua Lipa', genre: 'Pop', videoId: 'TUVcZfQe-Kw' },
-  { title: 'Believer', artist: 'Imagine Dragons', genre: 'Rock', videoId: '7wtfhZwyrcc' },
-  { title: 'Location', artist: 'Khalid', genre: 'R&B', videoId: 'by3yRdlQvB4' },
-  { title: 'Heat Waves', artist: 'Glass Animals', genre: 'Indie', videoId: 'mRD0-GxqHVo' },
-  { title: 'Say So', artist: 'Doja Cat', genre: 'Pop', videoId: 'pok8H_KF1G4' },
-  { title: 'Circles', artist: 'Post Malone', genre: 'Hip-hop', videoId: 'wXhTHyIgQ_U' },
-  { title: 'Easy On Me', artist: 'Adele', genre: 'Ballad', videoId: 'U3ASj1L6pYk' },
-  { title: 'Locked Out of Heaven', artist: 'Bruno Mars', genre: 'Funk', videoId: 'e-fA-gBCkj0' },
-  { title: 'Yellow', artist: 'Coldplay', genre: 'Rock', videoId: 'yKNxeF4KMsY' },
-  { title: 'Bohemian Rhapsody', artist: 'Queen', genre: 'Rock', videoId: 'fJ9rUzIMcZQ' },
-];
 let userNotes = [];
 try {
   const savedNotes = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]');
@@ -718,12 +700,10 @@ function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-const noteState = { audio: null, uiReady: false, currentUrl: null, currentVideoId: null, composerMusic: null, viewerIndex: -1, containers: new Set(), ytPlayer: null, ytLoading: false, trackCache: {}, trimTimer: null, trimStart: 0, trimEnd: Infinity };
+const noteState = { audio: null, uiReady: false, currentUrl: null, composerMusic: null, viewerIndex: -1, containers: new Set(), trackCache: {}, trimTimer: null, trimStart: 0, trimEnd: Infinity };
 
 function thumbFor(track) {
-  if (track.art) return track.art;
-  if (track.videoId) return `https://i.ytimg.com/vi/${track.videoId}/mqdefault.jpg`;
-  return '';
+  return track.art || '';
 }
 function clearTrimTimer() {
   if (noteState.trimTimer) { clearInterval(noteState.trimTimer); noteState.trimTimer = null; }
@@ -733,74 +713,18 @@ function fmtTime(sec) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-function ensureYtApi(cb) {
-  if (window.YT && window.YT.Player) { cb(); return; }
-  if (noteState.ytLoading) { return; }
-  noteState.ytLoading = true;
-  window.onYouTubeIframeAPIReady = () => cb();
-  const tag = document.createElement('script');
-  tag.src = 'https://www.youtube.com/iframe_api';
-  document.head.appendChild(tag);
-}
-
-function ytLoad(track) {
-  ensureYtApi(() => {
-    if (noteState.ytPlayer) { noteState.ytPlayer.loadVideoById(track.videoId); return; }
-    const host = document.createElement('div');
-    host.id = 'yt-backdrop';
-    document.body.appendChild(host);
-    noteState.ytPlayer = new YT.Player('yt-backdrop', {
-      playerVars: { autoplay: 1, rel: 0, playsinline: 1 },
-      events: {
-        onReady: (e) => e.target.playVideo(),
-        onStateChange: (e) => {
-          if (e.data === YT.PlayerState.ENDED) {
-            clearTrimTimer();
-            noteState.currentUrl = null;
-            noteState.currentVideoId = null;
-            document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
-          } else if (e.data === YT.PlayerState.PLAYING) {
-            document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
-            const btn = document.querySelector(`[data-note-play][data-id="${noteState.currentVideoId}"]`);
-            if (btn) btn.textContent = '❚❚';
-            if (noteState.trimEnd !== Infinity) {
-              e.target.seekTo(noteState.trimStart, true);
-              clearTrimTimer();
-              noteState.trimTimer = setInterval(() => {
-                if (noteState.ytPlayer && noteState.ytPlayer.getCurrentTime() >= noteState.trimEnd) {
-                  noteState.ytPlayer.pauseVideo();
-                  clearTrimTimer();
-                }
-              }, 250);
-            }
-          } else if (e.data === YT.PlayerState.PAUSED) {
-            clearTrimTimer();
-            document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
-          }
-        }
-      }
-    });
-  });
-}
-
 function findTrack(id) {
-  if (noteState.trackCache[id]) return noteState.trackCache[id];
-  return NOTE_MUSIC_LIBRARY.find((t) => t.videoId === id || t.url === id);
+  return noteState.trackCache[id] || null;
 }
 
 function notePlay(track, button) {
-  const url = track.videoId ? `yt:${track.videoId}` : track.url;
+  if (!track?.url) return;
+  const url = track.url;
   const trim = typeof track.start === 'number' && typeof track.duration === 'number' && track.duration > 0;
   noteState.trimStart = trim ? Math.max(0, track.start) : 0;
   noteState.trimEnd = trim ? noteState.trimStart + track.duration : Infinity;
   if (noteState.currentUrl === url) {
-    if (track.videoId) {
-      if (noteState.ytPlayer && noteState.ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
-        noteState.ytPlayer.pauseVideo();
-      } else if (noteState.ytPlayer) {
-        noteState.ytPlayer.playVideo();
-      }
-    } else if (noteState.audio.paused) {
+    if (noteState.audio.paused) {
       if (trim && noteState.audio.currentTime < noteState.trimStart) noteState.audio.currentTime = noteState.trimStart;
       noteState.audio.play().catch(() => {});
       if (button) button.textContent = '❚❚';
@@ -810,33 +734,25 @@ function notePlay(track, button) {
     }
     return;
   }
-  if (noteState.audio) noteState.audio.pause();
-  if (noteState.ytPlayer) noteState.ytPlayer.stopVideo();
+  noteState.audio.pause();
   clearTrimTimer();
   noteState.currentUrl = url;
-  noteState.currentVideoId = track.videoId || null;
   document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
   if (button) button.textContent = '❚❚';
-  if (track.videoId) {
-    noteState.trackCache[track.videoId] = track;
-    ytLoad(track);
-  } else {
-    noteState.trackCache[track.url] = track;
-    noteState.audio.src = track.url;
-    const startPlay = () => {
-      if (trim && noteState.audio.currentTime < noteState.trimStart) noteState.audio.currentTime = noteState.trimStart;
-      noteState.audio.play().catch(() => {});
-    };
-    if (noteState.audio.readyState >= 1) startPlay();
-    else noteState.audio.addEventListener('loadedmetadata', startPlay, { once: true });
-  }
+  noteState.trackCache[url] = track;
+  noteState.audio.src = url;
+  const startPlay = () => {
+    if (trim && noteState.audio.currentTime < noteState.trimStart) noteState.audio.currentTime = noteState.trimStart;
+    noteState.audio.play().catch(() => {});
+  };
+  if (noteState.audio.readyState >= 1) startPlay();
+  else noteState.audio.addEventListener('loadedmetadata', startPlay, { once: true });
 }
+
 function noteStop() {
   if (noteState.audio) noteState.audio.pause();
-  if (noteState.ytPlayer) noteState.ytPlayer.stopVideo();
   clearTrimTimer();
   noteState.currentUrl = null;
-  noteState.currentVideoId = null;
   document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
 }
 
@@ -866,7 +782,7 @@ function buildNotesUi() {
   library.className = 'note-modal';
   library.id = 'music-library';
   library.hidden = true;
-  library.innerHTML = `<div class="note-modal-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><h3 class="music-title">Music library</h3><div class="music-key-banner" id="music-key-banner" hidden><b>🌐 Web music search</b><p>Type any song and GlitchIt searches the web (Apple Music, Deezer + YouTube) in the background and plays it right here. Add a free YouTube Data API v3 key to include YouTube results too.</p><div class="music-key-row"><input id="music-key-input" placeholder="Paste YouTube Data API v3 key" aria-label="YouTube Data API key"><button type="button" id="music-key-save">Save</button></div></div><input class="music-search" id="music-search" placeholder="Search songs, artists, or genres..."><div class="music-list" id="music-list"></div></div>`;
+  library.innerHTML = `<div class="note-modal-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><h3 class="music-title">Music library</h3><p class="music-hint">Type any song, artist, or genre — GlitchIt searches the web (Apple Music + Deezer) in the background and plays it right here.</p><input class="music-search" id="music-search" placeholder="Search songs, artists, or genres..."><div class="music-list" id="music-list"></div></div>`;
   document.body.appendChild(library);
 
   const viewer = document.createElement('div');
@@ -888,11 +804,6 @@ function buildNotesUi() {
   document.getElementById('note-add-music').addEventListener('click', () => { renderMusicLibrary(); document.getElementById('music-library').hidden = false; });
   document.getElementById('note-music-play').addEventListener('click', (e) => { e.stopPropagation(); if (noteState.composerMusic) notePlay(noteState.composerMusic, e.currentTarget); });
   document.getElementById('note-music-clear').addEventListener('click', () => { noteState.composerMusic = null; document.getElementById('note-music-row').hidden = true; document.getElementById('note-trim-row').hidden = true; noteStop(); });
-  document.getElementById('music-key-save').addEventListener('click', () => {
-    const key = document.getElementById('music-key-input').value.trim();
-    try { localStorage.setItem('glitchit.youtubeKey', key); } catch (err) { /* storage unavailable */ }
-    renderMusicLibrary();
-  });
   document.getElementById('note-trim-start').addEventListener('input', applyTrim);
   document.getElementById('note-trim-len').addEventListener('input', applyTrim);
   document.getElementById('note-post').addEventListener('click', () => {
@@ -943,9 +854,9 @@ let ytSearchTimer = null;
 function renderTrackRows(tracks, list, emptyMsg) {
   list.innerHTML = tracks.length
     ? tracks.map((t) => {
-        const id = t.videoId || t.url;
+        const id = t.url;
         const thumb = thumbFor(t);
-        return `<button type="button" class="music-row" data-id="${escapeHtml(id)}"><span class="music-thumb${thumb ? '' : ' fallback'}">${thumb ? `<img src="${thumb}" alt="" loading="lazy">` : '♪'}</span><span class="music-play" data-note-play data-id="${escapeHtml(id)}" aria-label="Preview">▶</span><span class="music-meta"><b>${escapeHtml(t.title)}</b><em>${escapeHtml(t.artist)} · ${escapeHtml(t.genre)}</em></span><span class="music-tag">${escapeHtml(t.source || 'YouTube')}</span><span class="music-use">Use</span></button>`;
+        return `<button type="button" class="music-row" data-id="${escapeHtml(id)}"><span class="music-thumb${thumb ? '' : ' fallback'}">${thumb ? `<img src="${thumb}" alt="" loading="lazy">` : '♪'}</span><span class="music-play" data-note-play data-id="${escapeHtml(id)}" aria-label="Preview">▶</span><span class="music-meta"><b>${escapeHtml(t.title)}</b><em>${escapeHtml(t.artist)} · ${escapeHtml(t.genre)}</em></span><span class="music-tag">${escapeHtml(t.source || 'Music')}</span><span class="music-use">Use</span></button>`;
       }).join('')
     : `<p class="music-empty">${escapeHtml(emptyMsg || 'No tracks match your search.')}</p>`;
   list.querySelectorAll('.music-row').forEach((row) => {
@@ -962,7 +873,7 @@ function renderTrackRows(tracks, list, emptyMsg) {
       document.getElementById('note-music-title').textContent = track.title;
       document.getElementById('note-music-artist').textContent = `${track.artist} · ${track.genre}`;
       const chipBtn = document.getElementById('note-music-play');
-      chipBtn.dataset.id = track.videoId || track.url || '';
+      chipBtn.dataset.id = track.url || '';
       const trimRow = document.getElementById('note-trim-row');
       if (trimRow) {
         const startInput = document.getElementById('note-trim-start');
@@ -977,27 +888,6 @@ function renderTrackRows(tracks, list, emptyMsg) {
       noteStop();
     });
   });
-}
-
-function renderLocalLibrary(q, list) {
-  const query = (q || '').toLowerCase();
-  const tracks = NOTE_MUSIC_LIBRARY.filter((t) => !query || t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query) || t.genre.toLowerCase().includes(query));
-  renderTrackRows(tracks, list, 'No tracks match your search.');
-}
-
-async function searchYouTube(query) {
-  const key = localStorage.getItem('glitchit.youtubeKey') || YOUTUBE_API_KEY;
-  if (!key) return [];
-  const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=15&q=${encodeURIComponent(query)}&key=${encodeURIComponent(key)}`);
-  if (!res.ok) throw new Error('YouTube search unavailable');
-  const data = await res.json();
-  return (data.items || []).map((it) => ({
-    title: it.snippet.title,
-    artist: it.snippet.channelTitle,
-    genre: 'YouTube',
-    videoId: it.id.videoId,
-    source: 'YouTube'
-  })).filter((t) => t.videoId);
 }
 
 async function searchAppleMusic(query) {
@@ -1031,25 +921,21 @@ async function searchDeezer(query) {
 async function searchWeb(query, list) {
   list.innerHTML = '<p class="music-empty">Searching the web…</p>';
   const sources = [searchAppleMusic(query), searchDeezer(query)];
-  if (localStorage.getItem('glitchit.youtubeKey') || YOUTUBE_API_KEY) sources.push(searchYouTube(query));
   const settled = await Promise.allSettled(sources);
   const tracks = settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : []));
-  tracks.forEach((t) => { noteState.trackCache[t.videoId || t.url] = t; });
+  tracks.forEach((t) => { if (t.url) noteState.trackCache[t.url] = t; });
   renderTrackRows(tracks.slice(0, 30), list, 'No web results for that search.');
 }
 
 function renderMusicLibrary() {
   const q = (document.getElementById('music-search').value || '').trim();
   const list = document.getElementById('music-list');
-  const key = localStorage.getItem('glitchit.youtubeKey') || YOUTUBE_API_KEY;
-  const banner = document.getElementById('music-key-banner');
-  if (banner) banner.hidden = !!key;
   if (q) {
     clearTimeout(ytSearchTimer);
     ytSearchTimer = setTimeout(() => searchWeb(q, list), 350);
     return;
   }
-  renderLocalLibrary(q, list);
+  renderTrackRows([], list, 'Search any song, artist, or genre to add music.');
 }
 
 function openNoteComposer() {
@@ -1067,11 +953,11 @@ function openNoteViewer(index) {
   document.getElementById('viewer-author').textContent = note.author;
   document.getElementById('viewer-text').textContent = note.text;
   const musicRow = document.getElementById('viewer-music');
-  if (note.music && (note.music.videoId || note.music.url)) {
+  if (note.music && note.music.url) {
     document.getElementById('viewer-music-title').textContent = note.music.title;
     document.getElementById('viewer-music-artist').textContent = `${note.music.artist} · ${note.music.genre}`;
     document.getElementById('viewer-play').textContent = '▶';
-    document.getElementById('viewer-play').dataset.id = note.music.videoId || note.music.url || '';
+    document.getElementById('viewer-play').dataset.id = note.music.url;
     let meta = `${note.music.artist} · ${note.music.genre}`;
     if (typeof note.music.start === 'number' && typeof note.music.duration === 'number' && note.music.duration > 0) {
       meta += ` · ✂ ${fmtTime(note.music.start)}–${fmtTime(note.music.start + note.music.duration)}`;
@@ -1245,9 +1131,20 @@ function attachAuthPage(auth) {
   });
 }
 
-// Profile page: reflect the signed-in user and offer Log out.
+// Profile page: reflect the signed-in user and wire the Log out button.
 function attachProfileAuth() {
   const user = window.GLITCHIT_USER;
+  const logoutBtn = document.getElementById('auth-logout');
+  if (logoutBtn) {
+    logoutBtn.textContent = (user && user.guest) ? 'Exit guest mode' : 'Log out';
+    logoutBtn.addEventListener('click', async () => {
+      const auth = window.GLITCHIT_AUTH;
+      if (auth) await auth.signOut();
+      window.GLITCHIT_USER = null;
+      try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
+      location.href = 'auth.html';
+    });
+  }
   if (!user || user.guest) return;
   const handle = user.user_metadata?.username || user.email?.split('@')[0] || '';
   const top = document.querySelector('.profile-topbar strong');
@@ -1258,21 +1155,6 @@ function attachProfileAuth() {
   }
   const me = document.querySelector('.me strong');
   if (me && handle) me.textContent = handle;
-  const list = document.querySelector('.settings-list');
-  if (list && !document.getElementById('auth-logout')) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.id = 'auth-logout';
-    btn.className = 'auth-logout';
-    btn.textContent = 'Log out';
-    list.appendChild(btn);
-    btn.addEventListener('click', async () => {
-      const auth = window.GLITCHIT_AUTH;
-      if (auth) await auth.signOut();
-      window.GLITCHIT_USER = null;
-      location.href = 'auth.html';
-    });
-  }
 }
 
 // Check whether this device is signed in before showing any app page.
