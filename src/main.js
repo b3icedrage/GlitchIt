@@ -319,7 +319,7 @@ function showSplashScreen() {
     splash.addEventListener('transitionend', () => splash.remove(), { once: true });
     setTimeout(() => splash.remove(), 700); // fallback
   };
-  setTimeout(dismiss, 1400);
+  setTimeout(dismiss, 4000);
 }
 
 try {
