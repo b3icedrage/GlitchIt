@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Log in · GlitchIt</title>
+    <link rel="stylesheet" href="src/styles.css" />
+    <link rel="stylesheet" href="src/auth.css" />
+  </head>
+  <body data-page="auth">
+    <div class="auth-page">
+      <div class="auth-card">
+        <span class="auth-mark" aria-hidden="true">ϟ</span>
+        <h1>GlitchIt</h1>
+        <p class="auth-sub">Create · Drop · Glitch</p>
+
+        <div class="auth-tabs" role="tablist" aria-label="Account">
+          <button type="button" class="auth-tab active" data-auth-mode="login" role="tab" aria-selected="true">Log in</button>
+          <button type="button" class="auth-tab" data-auth-mode="signup" role="tab" aria-selected="false">Sign up</button>
+        </div>
+
+        <form id="auth-form" novalidate>
+          <div class="auth-field" id="auth-username-field" hidden>
+            <label for="auth-username">Username</label>
+            <input id="auth-username" name="username" autocomplete="username" placeholder="glitchy" />
+          </div>
+          <div class="auth-field">
+            <label for="auth-email">Email</label>
+            <input id="auth-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+          </div>
+          <div class="auth-field">
+            <label for="auth-password">Password</label>
+            <div class="auth-password">
+              <input id="auth-password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+              <button type="button" id="auth-toggle-password" aria-label="Show password">👁</button>
+            </div>
+          </div>
+          <p class="auth-error" id="auth-error" role="alert" hidden></p>
+          <button type="submit" class="auth-submit" id="auth-submit">Log in</button>
+        </form>
+
+        <div class="auth-guest">
+          <span>— or —</span>
+          <button type="button" id="auth-guest">Continue without an account</button>
+        </div>
+      </div>
+      <p class="auth-foot">Your posts, saves, and notes are tied to your GlitchIt account.</p>
+    </div>
+    <script src="src/main.js" defer></script>
+  </body>
+</html>

@@ -7,6 +7,12 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 const SAVED_KEY = 'glitchit.saved.v1';
 let client = null;
 let clientPromise = null;
+let currentHandle = '';
+
+// Tie posts/saves to the signed-in account (empty = demo/guest mode).
+export function setCurrentUser(handle) {
+  currentHandle = handle || '';
+}
 
 export function dbAvailable() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
@@ -78,7 +84,7 @@ export async function saveMedia(item) {
       caption: item.caption || '',
       url,
       poster,
-      user: item.user || 'b3ice_drage',
+      user: item.user || currentHandle || 'b3ice_drage',
       avatar: item.avatar || '',
       likes: item.likes || 0,
       comments: item.comments || 0,
@@ -161,7 +167,7 @@ export async function saveVideo(video) {
       url: video.src || video.url,
       poster: video.poster,
       title: video.title,
-      user: video.user || 'b3ice_drage',
+      user: currentHandle || 'b3ice_drage',
     };
     const { error } = await sb.from('saved').insert(row);
     if (error) throw error;
@@ -178,7 +184,9 @@ export async function unsaveVideo(video) {
   try {
     const sb = await getClient();
     if (!sb) return;
-    const { error } = await sb.from('saved').delete().eq('url', url);
+    let q = sb.from('saved').delete().eq('url', url);
+    if (currentHandle) q = q.eq('user', currentHandle);
+    const { error } = await q;
     if (error) throw error;
   } catch (err) {
     console.warn('GlitchIt: unsave failed', err);
@@ -190,7 +198,9 @@ export async function loadSaved() {
   try {
     const sb = await getClient();
     if (sb) {
-      const { data, error } = await sb.from('saved').select('*').order('created_at', { ascending: false });
+      let q = sb.from('saved').select('*').order('created_at', { ascending: false });
+      if (currentHandle) q = q.eq('user', currentHandle);
+      const { data, error } = await q;
       if (!error && data && data.length) {
         data.forEach((row) => {
           if (!merged.some((s) => s.url === row.url)) {

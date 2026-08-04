@@ -23,6 +23,10 @@ const profile = {
 
 const page = document.body.dataset.page || 'home';
 
+function returnToPage() {
+  try { return new URLSearchParams(location.search).get('returnTo') || ''; } catch (e) { return ''; }
+}
+
 // ---------- Supabase database (optional — see src/config.js) ----------
 // Loaded lazily so the app works identically when no keys are configured.
 let DB = null;
@@ -349,7 +353,7 @@ function attachCreateStudio() {
     userUploads[type].unshift(item);
     saveUploads();
     if (DB) {
-      DB.saveMedia({ ...item, file: file?.size ? file : null, user: profile.username, avatar: profile.avatar }).then((res) => {
+      DB.saveMedia({ ...item, file: file?.size ? file : null, user: window.GLITCHIT_USER?.user_metadata?.username || window.GLITCHIT_USER?.email?.split('@')[0] || profile.username, avatar: profile.avatar }).then((res) => {
         if (!status) return;
         if (res.ok) { status.textContent = `Published to ${isVideo ? 'Glitches' : type} and saved to the database.`; return; }
         if (res.reason === 'config') status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only — add Supabase keys in src/config.js).`;
@@ -671,7 +675,7 @@ function showSplashScreen() {
 }
 
 try {
-  if (!sessionStorage.getItem(SPLASH_KEY)) {
+  if (page !== 'auth' && !sessionStorage.getItem(SPLASH_KEY)) {
     sessionStorage.setItem(SPLASH_KEY, '1');
     showSplashScreen();
   }
@@ -1162,6 +1166,7 @@ function runPage() {
   if (page === 'profile') {
     attachSettingsDrawer();
     attachProfileTabs();
+    attachProfileAuth();
     document.getElementById('share-song')?.addEventListener('click', () => openNoteComposer());
     document.getElementById('share-profile')?.addEventListener('click', () => {
       const url = location.href;
@@ -1183,4 +1188,136 @@ function runPage() {
   window.addEventListener('scroll', updateGlitchPlayback, { passive: true });
 }
 
-runPage();
+// ---------- Supabase auth bootstrap ----------
+const GUEST_KEY = 'glitchit.auth.guest.v1';
+
+// Auth page (auth.html): login / signup form with show-password + guest mode.
+function attachAuthPage(auth) {
+  const form = document.getElementById('auth-form');
+  if (!form || !auth) return;
+  const tabs = [...document.querySelectorAll('.auth-tab')];
+  const usernameField = document.getElementById('auth-username-field');
+  const errorEl = document.getElementById('auth-error');
+  const submit = document.getElementById('auth-submit');
+  let mode = 'login';
+  const setMode = (m) => {
+    mode = m;
+    tabs.forEach((t) => {
+      const on = t.dataset.authMode === m;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    if (usernameField) usernameField.hidden = m !== 'signup';
+    if (submit) submit.textContent = m === 'signup' ? 'Sign up' : 'Log in';
+    if (errorEl) errorEl.hidden = true;
+  };
+  tabs.forEach((t) => t.addEventListener('click', () => setMode(t.dataset.authMode)));
+  document.getElementById('auth-toggle-password')?.addEventListener('click', (e) => {
+    const input = document.getElementById('auth-password');
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    e.currentTarget.textContent = show ? '\U0001F647' : '\U0001F441';
+    e.currentTarget.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  });
+  document.getElementById('auth-guest')?.addEventListener('click', () => {
+    try { localStorage.setItem(GUEST_KEY, '1'); } catch (err) { /* storage unavailable */ }
+    location.href = returnToPage() || 'index.html';
+  });
+  const showError = (msg) => { if (errorEl) { errorEl.textContent = msg; errorEl.hidden = false; } };
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (errorEl) errorEl.hidden = true;
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const username = (document.getElementById('auth-username')?.value || '').trim();
+    if (!email || !password) { showError('Enter your email and password.'); return; }
+    if (submit) { submit.disabled = true; submit.textContent = 'Please wait\u2026'; }
+    const res = mode === 'signup'
+      ? await auth.signUp(email, password, username)
+      : await auth.signIn(email, password);
+    if (submit) { submit.disabled = false; submit.textContent = mode === 'signup' ? 'Sign up' : 'Log in'; }
+    if (!res.ok) { showError(res.error || 'Something went wrong.'); return; }
+    try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
+    window.GLITCHIT_USER = res.user;
+    auth.setHandle(auth.userHandle(res.user));
+    import('./db.js').then((db) => db.setCurrentUser?.(auth.userHandle(res.user))).catch(() => {});
+    location.href = returnToPage() || 'index.html';
+  });
+}
+
+// Profile page: reflect the signed-in user and offer Log out.
+function attachProfileAuth() {
+  const user = window.GLITCHIT_USER;
+  if (!user || user.guest) return;
+  const handle = user.user_metadata?.username || user.email?.split('@')[0] || '';
+  const top = document.querySelector('.profile-topbar strong');
+  if (top && handle) top.textContent = handle;
+  const nameEl = document.querySelector('.profile-name');
+  if (nameEl && handle) {
+    nameEl.innerHTML = `${escapeHtml(handle)} <span class="pronouns">${escapeHtml(user.email || '')}</span>`;
+  }
+  const me = document.querySelector('.me strong');
+  if (me && handle) me.textContent = handle;
+  const list = document.querySelector('.settings-list');
+  if (list && !document.getElementById('auth-logout')) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'auth-logout';
+    btn.className = 'auth-logout';
+    btn.textContent = 'Log out';
+    list.appendChild(btn);
+    btn.addEventListener('click', async () => {
+      const auth = window.GLITCHIT_AUTH;
+      if (auth) await auth.signOut();
+      window.GLITCHIT_USER = null;
+      location.href = 'auth.html';
+    });
+  }
+}
+
+// Check whether this device is signed in before showing any app page.
+async function boot() {
+  const isAuthPage = page === 'auth';
+  let auth = null;
+  try { auth = await import('./auth.js'); } catch (err) { auth = null; }
+  window.GLITCHIT_AUTH = auth;
+  let guest = false;
+  try { guest = localStorage.getItem(GUEST_KEY) === '1'; } catch (err) { /* ignore */ }
+  const dbReady = async () => {
+    if (DB) return DB;
+    try { return await import('./db.js'); } catch (err) { return null; }
+  };
+  if (auth && auth.authAvailable()) {
+    if (isAuthPage) {
+      // Already signed in? Skip the form and go straight to the app.
+      if (!guest) {
+        const user = await auth.currentUser();
+        if (user) {
+          auth.setHandle(auth.userHandle(user));
+          const db = await dbReady();
+          db?.setCurrentUser?.(auth.userHandle(user));
+          location.replace(returnToPage() || 'index.html');
+          return;
+        }
+      }
+      attachAuthPage(auth);
+    } else if (!guest) {
+      const user = await auth.currentUser();
+      if (!user) {
+        location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
+        return;
+      }
+      window.GLITCHIT_USER = user;
+      auth.setHandle(auth.userHandle(user));
+      const db = await dbReady();
+      db?.setCurrentUser?.(auth.userHandle(user));
+    } else {
+      window.GLITCHIT_USER = { guest: true };
+      const db = await dbReady();
+      db?.setCurrentUser?.('');
+    }
+  }
+  runPage();
+}
+
+boot();
