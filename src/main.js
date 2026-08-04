@@ -106,7 +106,7 @@ function uploadCard(item, type) {
 }
 
 function glitchVideoCard(video, uploaded = false) {
-  return `<article class="video-card ${uploaded ? 'upload-card' : ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><div class="video-overlay"><div class="profile"><img src="${video.avatar}" alt="${video.user} avatar"><div><strong>${video.user}</strong><span>${video.title}</span></div></div><p>${video.caption}</p><a class="shop-badge" href="#shop">${icon('◒')} Tagged products</a></div></article>`;
+  return `<article class="video-card ${uploaded ? 'upload-card' : ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Unmute ${video.title}">${icon('🔇')}</button><div class="video-overlay"><div class="profile"><img src="${video.avatar}" alt="${video.user} avatar"><div><strong>${video.user}</strong><span>${video.title}</span></div></div><p>${video.caption}</p><a class="shop-badge" href="#shop">${icon('◒')} Tagged products</a></div></article>`;
 }
 
 function renderUploads(type) {
@@ -274,7 +274,8 @@ function getGlitchVideos() {
 
 function pauseGlitchVideo(video) {
   video.pause();
-  video.closest('.video-card')?.querySelector('.video-toggle').replaceChildren(document.createRange().createContextualFragment(icon('▶')));
+  const card = video.closest('.video-card');
+  card?.querySelector('.video-toggle')?.replaceChildren(document.createRange().createContextualFragment(icon('▶')));
 }
 
 function playGlitchVideo(video) {
@@ -282,9 +283,9 @@ function playGlitchVideo(video) {
   getGlitchVideos().forEach((otherVideo) => {
     if (otherVideo !== video) pauseGlitchVideo(otherVideo);
   });
-  video.muted = true;
   video.play().catch(() => pauseGlitchVideo(video));
-  video.closest('.video-card')?.querySelector('.video-toggle').replaceChildren(document.createRange().createContextualFragment(icon('Ⅱ')));
+  const card = video.closest('.video-card');
+  card?.querySelector('.video-toggle')?.replaceChildren(document.createRange().createContextualFragment(icon('Ⅱ')));
 }
 
 function updateGlitchPlayback() {
@@ -313,6 +314,30 @@ function attachGlitchAutoplay() {
       video.dataset.userPaused = video.paused ? 'false' : 'true';
       video.paused ? playGlitchVideo(video) : pauseGlitchVideo(video);
     });
+    // Sound toggle: unmute on first user gesture, toggle after
+    const soundBtn = video.closest('.video-card')?.querySelector('.sound-toggle');
+    if (soundBtn) {
+      soundBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wasUnmuted = video.dataset.userUnmuted === 'true';
+        if (wasUnmuted) {
+          video.muted = true;
+          video.dataset.userUnmuted = 'false';
+          soundBtn.replaceChildren(document.createRange().createContextualFragment(icon('🔇')));
+          soundBtn.setAttribute('aria-label', `Unmute ${video.getAttribute('aria-label') || 'video'}`);
+        } else {
+          video.muted = false;
+          video.dataset.userUnmuted = 'true';
+          soundBtn.replaceChildren(document.createRange().createContextualFragment(icon('🔊')));
+          soundBtn.setAttribute('aria-label', `Mute ${video.getAttribute('aria-label') || 'video'}`);
+        }
+        // Ensure the video is playing when sound is toggled
+        if (video.paused) {
+          video.dataset.userPaused = 'false';
+          playGlitchVideo(video);
+        }
+      });
+    }
   });
   const reel = document.getElementById('glitches-reel');
   if (reel && !reel.dataset.scrollReady) {

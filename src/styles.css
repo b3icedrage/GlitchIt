@@ -229,6 +229,10 @@ main { padding: 28px 0 56px; }
 .video-card h3, .video-card > p { display: none; }
 .video-toggle { position: absolute; top: 18px; right: 18px; z-index: 1; display: grid; place-items: center; width: 48px; height: 48px; border: 0; border-radius: 50%; color: #fff; background: rgba(0,0,0,.48); backdrop-filter: blur(12px); }
 .video-toggle .icon { font-size: 22px; }
+.sound-toggle { position: absolute; top: 18px; right: 76px; z-index: 1; display: grid; place-items: center; width: 48px; height: 48px; border: 0; border-radius: 50%; color: #fff; background: rgba(0,0,0,.48); backdrop-filter: blur(12px); cursor: pointer; transition: transform .15s ease, background .15s ease; }
+.sound-toggle:hover { background: rgba(0,0,0,.7); transform: scale(1.05); }
+.sound-toggle .icon { font-size: 20px; }
+.sound-toggle[data-sound="on"] { background: rgba(79,91,213,.7); }
 .video-overlay { position: absolute; inset: auto 0 0; display: grid; gap: 12px; padding: 88px 20px 20px; border-radius: 0 0 24px 24px; background: linear-gradient(transparent, rgba(0,0,0,.82)); }
 .video-overlay p { max-width: 82%; margin: 0; color: rgba(255,255,255,.88); font-weight: 700; }
 .video-overlay .profile span { color: rgba(255,255,255,.76); }
