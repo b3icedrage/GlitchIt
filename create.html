@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create · GlitchIt</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body data-page="create">
+    <div id="app">
+      <aside class="sidebar">
+        <a class="brand" href="index.html"><span class="icon" aria-hidden="true">ϟ</span>GlitchIt</a>
+        <nav>
+          <a href="index.html"><span class="icon" aria-hidden="true">⌂</span><span>Home</span></a>
+          <a href="search.html"><span class="icon" aria-hidden="true">⌕</span><span>Search</span></a>
+          <a href="glitches.html"><span class="icon" aria-hidden="true">▣</span><span>Glitches</span></a>
+          <a href="messages.html"><span class="icon" aria-hidden="true">✉</span><span>Messages</span></a>
+          <a href="activity.html"><span class="icon" aria-hidden="true">♡</span><span>Activity</span></a>
+          <a class="active" href="create.html"><span class="icon" aria-hidden="true">＋</span><span>Create</span></a>
+          <a href="shop.html"><span class="icon" aria-hidden="true">◒</span><span>Shop</span></a>
+          <a href="profile.html"><span class="icon" aria-hidden="true">◎</span><span>Profile</span></a>
+        </nav>
+        <a class="post-button" href="create.html">Post</a>
+      </aside>
+
+      <main>
+        <div class="mobile-top">
+          <a class="brand" href="index.html"><span class="icon" aria-hidden="true">ϟ</span>GlitchIt</a>
+          <div class="mobile-top-actions">
+            <a href="activity.html" class="top-activity-btn" aria-label="Activity"><span class="icon" aria-hidden="true">♡</span></a><span class="icon" aria-hidden="true">◒</span>
+          </div>
+        </div>
+
+        <section class="page" id="create" data-page="create" aria-labelledby="create-title">
+          <div class="page-intro">
+            <span class="eyebrow">Create</span>
+            <h1 id="create-title">Create</h1>
+            <p>Post to the feed, publish a story, or upload a video Glitch.</p>
+          </div>
+
+          <form class="create-form" id="create-form">
+            <div class="create-options" role="radiogroup" aria-label="Post type">
+              <label><input type="radio" name="post-type" value="feed" checked> Feed post</label>
+              <label><input type="radio" name="post-type" value="stories"> Story</label>
+              <label><input type="radio" name="post-type" value="videos"> Video</label>
+            </div>
+            <input name="title" aria-label="Title" placeholder="Title or story headline" required>
+            <textarea name="caption" aria-label="Caption" placeholder="Write a caption..."></textarea>
+            <label class="file-drop">Choose image or video<input name="media" type="file" accept="image/*,video/*"></label>
+            <button type="submit" class="primary-action">Publish</button>
+            <p class="create-status" id="create-status" role="status"></p>
+          </form>
+        </section>
+      </main>
+
+      <aside class="right-rail">
+        <div class="me"><img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=240&q=80" alt="Your profile"><div><strong>b3ice_drage</strong><span>Build your vibe</span></div></div>
+        <div class="stats"><span><b>12.8k</b> followers</span><span><b>46</b> drops</span></div>
+        <h3>Suggested sellers</h3>
+        <div class="seller"><div><strong>@glitchwear</strong><span>Streetwear</span></div><button>Follow</button></div>
+        <div class="seller"><div><strong>@kicksbyte</strong><span>Footwear</span></div><button>Follow</button></div>
+        <div class="seller"><div><strong>@pixelmakers</strong><span>Home studio</span></div><button>Follow</button></div>
+        <div class="seller"><div><strong>@craftloop</strong><span>Accessories</span></div><button>Follow</button></div>
+      </aside>
+
+      <nav class="bottom-bar" aria-label="Primary mobile navigation">
+        <a href="index.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1V10"/></svg><span>Home</span></a>
+        <a href="search.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><span>Search</span></a>
+        <a href="messages.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Messages</span></a>
+        <a href="glitches.html" class="glitch-nav-btn"><svg class="glitch-play-icon" viewBox="0 0 48 48" width="32" height="32"><defs><radialGradient id="glow-grad" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#d62976" stop-opacity="0.6"/><stop offset="100%" stop-color="#4f5bd5" stop-opacity="0"/></radialGradient><filter id="glow-filter"><feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#d62976" flood-opacity="0.8"/></filter></defs><circle cx="24" cy="24" r="22" fill="url(#glow-grad)" class="glow-pulse"/><circle cx="24" cy="24" r="21" fill="#1a1a2e" stroke="#d62976" stroke-width="1.5" filter="url(#glow-filter)"/><polygon points="19,14 19,34 35,24" fill="#fff" filter="url(#glow-filter)"/></svg><span>Glitches</span></a>
+        <a href="create.html" class="active"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Create</span></a>
+        <a href="shop.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Shop</span></a>
+        <a href="profile.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></a>
+      </nav>
+    </div>
+    <script src="src/main.js" defer></script>
+  </body>
+</html>
