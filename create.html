@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Create · GlitchIt</title>
     <link rel="stylesheet" href="src/styles.css" />
   </head>
@@ -34,18 +34,9 @@
         </div>
 
         <section class="page create-studio" id="create" data-page="create" aria-labelledby="create-title">
-          <div class="create-studio-top">
-            <div><span class="eyebrow">Create</span><h1 id="create-title">New post</h1></div>
-            <button type="button" id="create-next" class="primary-action" hidden>Next</button>
-          </div>
+          <h1 id="create-title" hidden>Create</h1>
 
-          <div class="create-tabs" role="tablist" aria-label="Post type">
-            <button type="button" class="create-tab active" data-tab="feed" role="tab" aria-selected="true">Feed</button>
-            <button type="button" class="create-tab" data-tab="stories" role="tab" aria-selected="false">Story</button>
-            <button type="button" class="create-tab" data-tab="videos" role="tab" aria-selected="false">Video</button>
-          </div>
-
-          <div class="create-stage" id="create-stage">
+          <div class="create-tools ig-stage" id="create-stage">
             <video id="camera-feed" autoplay playsinline aria-label="Camera preview"></video>
             <div class="stage-fallback" id="stage-fallback" hidden>
               <span class="stage-fallback-mark">ϟ</span>
@@ -54,48 +45,91 @@
             </div>
             <img id="stage-photo" class="stage-photo" alt="Selected photo" hidden>
             <div class="stage-fx" id="stage-fx" aria-hidden="true"></div>
-            <button type="button" class="stage-btn flash-btn" id="flash-btn" aria-label="Toggle flash">⚡</button>
-            <button type="button" class="stage-btn flip-btn" id="flip-btn" aria-label="Flip camera">⇄</button>
-            <button type="button" class="capture-btn" id="capture-btn" aria-label="Capture photo"></button>
+
+            <!-- Top bar: close, flash, settings -->
+            <div class="ig-top">
+              <a class="ig-top-btn" href="index.html" aria-label="Close">✕</a>
+              <div class="ig-top-right">
+                <button type="button" class="ig-top-btn" id="flash-btn" aria-label="Toggle flash" title="Flash">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/><line x1="3" y1="3" x2="21" y2="21" stroke="#fff" stroke-width="1.6"/></svg>
+                </button>
+                <button type="button" class="ig-top-btn" aria-label="Settings" title="Settings">⚙</button>
+                <button type="button" id="create-next" class="ig-next" hidden>Next</button>
+              </div>
+            </div>
+
+            <!-- Left rail: Boomerang / Layout / more -->
+            <div class="ig-rail" aria-label="Camera modes">
+              <button type="button" class="rail-item active" aria-label="Boomerang">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M8 6.8c-2.1 0-3.8 2.3-3.8 5.2s1.7 5.2 3.8 5.2c1.9 0 3.1-1.5 3.9-3.1.8 1.6 2 3.1 3.9 3.1 2.1 0 3.8-2.3 3.8-5.2S18.2 6.8 16.1 6.8c-1.9 0-3.1 1.5-3.9 3.1-.8-1.6-2-3.1-3.9-3.1z"/></svg>
+                <span>Boomerang</span>
+              </button>
+              <button type="button" class="rail-item" aria-label="Layout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+                <span>Layout</span>
+              </button>
+              <button type="button" class="rail-item" aria-label="More modes">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+            </div>
+
             <button type="button" class="stage-btn mic-btn" id="mic-btn" aria-label="Mute microphone" hidden>🎤</button>
             <div class="stage-captured" id="stage-captured" hidden>✓</div>
-          </div>
 
-          <div class="create-tools">
-            <div class="filter-strip" id="filter-strip" aria-label="Filters">
-              <button type="button" class="filter-chip active" data-filter="none"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Original</span></button>
-              <button type="button" class="filter-chip" data-filter="clarendon"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Clarendon</span></button>
-              <button type="button" class="filter-chip" data-filter="gingham"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Gingham</span></button>
-              <button type="button" class="filter-chip" data-filter="moon"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Moon</span></button>
-              <button type="button" class="filter-chip" data-filter="lark"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Lark</span></button>
-              <button type="button" class="filter-chip" data-filter="reyes"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Reyes</span></button>
-              <button type="button" class="filter-chip" data-filter="juno"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Juno</span></button>
-              <button type="button" class="filter-chip" data-filter="slumber"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Slumber</span></button>
-              <button type="button" class="filter-chip" data-filter="crema"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Crema</span></button>
-              <button type="button" class="filter-chip" data-filter="ludwig"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Ludwig</span></button>
-              <button type="button" class="filter-chip" data-filter="aden"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Aden</span></button>
-              <button type="button" class="filter-chip" data-filter="perpetua"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Perpetua</span></button>
-              <button type="button" class="filter-chip" data-filter="glitch"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Glitch</span></button>
-              <button type="button" class="filter-chip" data-filter="vhs"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>VHS</span></button>
-              <button type="button" class="filter-chip" data-filter="neon"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" alt="" loading="lazy"><span>Neon</span></button>
+            <!-- Bottom controls: recent media + circular filters around the shutter -->
+            <div class="ig-controls">
+              <div class="media-strip" id="media-strip" aria-label="Media sources">
+                <button type="button" class="media-tile media-camera active" id="media-camera" aria-label="Use camera"><span class="media-tile-icon">📷</span></button>
+                <label class="media-tile media-upload" for="media-upload-input" aria-label="Upload"><span class="media-tile-icon">＋</span></label>
+                <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=300&q=80" aria-label="Recent photo"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=300&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=300&q=80" aria-label="Recent photo"><img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=300&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=300&q=80" aria-label="Recent photo"><img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=300&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=300&q=80" aria-label="Recent photo"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=300&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=300&q=80" aria-label="Recent photo"><img src="https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=300&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=300&q=80" aria-label="Recent photo"><img src="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=300&q=80" alt="" loading="lazy"></button>
+              </div>
+
+              <div class="filter-strip" id="filter-strip" aria-label="Filters">
+                <button type="button" class="filter-chip" data-filter="none" aria-label="Original"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="clarendon" aria-label="Clarendon"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="gingham" aria-label="Gingham"><img class="chip-thumb" src="https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="moon" aria-label="Moon"><img class="chip-thumb" src="https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="lark" aria-label="Lark"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="reyes" aria-label="Reyes"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="juno" aria-label="Juno"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="capture-btn" id="capture-btn" aria-label="Capture photo"></button>
+                <button type="button" class="filter-chip" data-filter="slumber" aria-label="Slumber"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="crema" aria-label="Crema"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="ludwig" aria-label="Ludwig"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="aden" aria-label="Aden"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="perpetua" aria-label="Perpetua"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="glitch" aria-label="Glitch"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="vhs" aria-label="VHS"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+                <button type="button" class="filter-chip" data-filter="neon" aria-label="Neon"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+              </div>
             </div>
 
-            <div class="media-strip" id="media-strip" aria-label="Media sources">
-              <button type="button" class="media-tile media-camera active" id="media-camera"><span class="media-tile-icon">📷</span><span>Camera</span></button>
-              <label class="media-tile media-upload" for="media-upload-input"><span class="media-tile-icon">＋</span><span>Upload</span></label>
-              <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=300&q=80"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=300&q=80" alt="Recent photo" loading="lazy"></button>
-              <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=300&q=80"><img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=300&q=80" alt="Recent photo" loading="lazy"></button>
-              <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=300&q=80"><img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=300&q=80" alt="Recent photo" loading="lazy"></button>
-              <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=300&q=80"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=300&q=80" alt="Recent photo" loading="lazy"></button>
-              <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=300&q=80"><img src="https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=300&q=80" alt="Recent photo" loading="lazy"></button>
-              <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=300&q=80"><img src="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=300&q=80" alt="Recent photo" loading="lazy"></button>
+            <!-- Bottom bar: layout icon · POST / STORY / REEL · flip camera -->
+            <div class="ig-modebar">
+              <button type="button" class="mode-icon" aria-label="Layout options" title="Layout">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/></svg>
+              </button>
+              <div class="create-tabs" role="tablist" aria-label="Post type">
+                <button type="button" class="create-tab" data-tab="feed" role="tab" aria-selected="false">POST</button>
+                <button type="button" class="create-tab active" data-tab="stories" role="tab" aria-selected="true">STORY</button>
+                <button type="button" class="create-tab" data-tab="videos" role="tab" aria-selected="false">REEL</button>
+              </div>
+              <button type="button" class="mode-icon" id="flip-btn" aria-label="Flip camera" title="Flip camera">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              </button>
             </div>
+            <div class="home-indicator" aria-hidden="true"></div>
           </div>
 
           <form class="create-form" id="create-form" hidden>
             <div class="create-form-head">
               <button type="button" id="create-back" aria-label="Back to camera">←</button>
-              <strong id="create-form-head-label">New post</strong>
+              <strong id="create-form-head-label">New story</strong>
               <span></span>
             </div>
             <div class="create-preview-row">
