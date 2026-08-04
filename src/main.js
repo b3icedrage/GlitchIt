@@ -613,10 +613,19 @@ function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-const noteState = { audio: null, uiReady: false, currentUrl: null, currentVideoId: null, composerMusic: null, viewerIndex: -1, containers: new Set(), ytPlayer: null, ytLoading: false, trackCache: {} };
+const noteState = { audio: null, uiReady: false, currentUrl: null, currentVideoId: null, composerMusic: null, viewerIndex: -1, containers: new Set(), ytPlayer: null, ytLoading: false, trackCache: {}, trimTimer: null, trimStart: 0, trimEnd: Infinity };
 
 function thumbFor(track) {
-  return `https://i.ytimg.com/vi/${track.videoId}/mqdefault.jpg`;
+  if (track.art) return track.art;
+  if (track.videoId) return `https://i.ytimg.com/vi/${track.videoId}/mqdefault.jpg`;
+  return '';
+}
+function clearTrimTimer() {
+  if (noteState.trimTimer) { clearInterval(noteState.trimTimer); noteState.trimTimer = null; }
+}
+function fmtTime(sec) {
+  const s = Math.max(0, Math.floor(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
 function ensureYtApi(cb) {
@@ -629,9 +638,9 @@ function ensureYtApi(cb) {
   document.head.appendChild(tag);
 }
 
-function ytLoad(videoId) {
+function ytLoad(track) {
   ensureYtApi(() => {
-    if (noteState.ytPlayer) { noteState.ytPlayer.loadVideoById(videoId); return; }
+    if (noteState.ytPlayer) { noteState.ytPlayer.loadVideoById(track.videoId); return; }
     const host = document.createElement('div');
     host.id = 'yt-backdrop';
     document.body.appendChild(host);
@@ -641,14 +650,26 @@ function ytLoad(videoId) {
         onReady: (e) => e.target.playVideo(),
         onStateChange: (e) => {
           if (e.data === YT.PlayerState.ENDED) {
+            clearTrimTimer();
             noteState.currentUrl = null;
             noteState.currentVideoId = null;
             document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
           } else if (e.data === YT.PlayerState.PLAYING) {
             document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
-            const btn = document.querySelector(`[data-note-play][data-video="${noteState.currentVideoId}"]`);
+            const btn = document.querySelector(`[data-note-play][data-id="${noteState.currentVideoId}"]`);
             if (btn) btn.textContent = '❚❚';
+            if (noteState.trimEnd !== Infinity) {
+              e.target.seekTo(noteState.trimStart, true);
+              clearTrimTimer();
+              noteState.trimTimer = setInterval(() => {
+                if (noteState.ytPlayer && noteState.ytPlayer.getCurrentTime() >= noteState.trimEnd) {
+                  noteState.ytPlayer.pauseVideo();
+                  clearTrimTimer();
+                }
+              }, 250);
+            }
           } else if (e.data === YT.PlayerState.PAUSED) {
+            clearTrimTimer();
             document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
           }
         }
@@ -657,13 +678,16 @@ function ytLoad(videoId) {
   });
 }
 
-function findTrack(videoId) {
-  if (noteState.trackCache[videoId]) return noteState.trackCache[videoId];
-  return NOTE_MUSIC_LIBRARY.find((t) => t.videoId === videoId);
+function findTrack(id) {
+  if (noteState.trackCache[id]) return noteState.trackCache[id];
+  return NOTE_MUSIC_LIBRARY.find((t) => t.videoId === id || t.url === id);
 }
 
 function notePlay(track, button) {
   const url = track.videoId ? `yt:${track.videoId}` : track.url;
+  const trim = typeof track.start === 'number' && typeof track.duration === 'number' && track.duration > 0;
+  noteState.trimStart = trim ? Math.max(0, track.start) : 0;
+  noteState.trimEnd = trim ? noteState.trimStart + track.duration : Infinity;
   if (noteState.currentUrl === url) {
     if (track.videoId) {
       if (noteState.ytPlayer && noteState.ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
@@ -672,6 +696,7 @@ function notePlay(track, button) {
         noteState.ytPlayer.playVideo();
       }
     } else if (noteState.audio.paused) {
+      if (trim && noteState.audio.currentTime < noteState.trimStart) noteState.audio.currentTime = noteState.trimStart;
       noteState.audio.play().catch(() => {});
       if (button) button.textContent = '❚❚';
     } else {
@@ -682,21 +707,29 @@ function notePlay(track, button) {
   }
   if (noteState.audio) noteState.audio.pause();
   if (noteState.ytPlayer) noteState.ytPlayer.stopVideo();
+  clearTrimTimer();
   noteState.currentUrl = url;
   noteState.currentVideoId = track.videoId || null;
   document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
   if (button) button.textContent = '❚❚';
   if (track.videoId) {
     noteState.trackCache[track.videoId] = track;
-    ytLoad(track.videoId);
+    ytLoad(track);
   } else {
+    noteState.trackCache[track.url] = track;
     noteState.audio.src = track.url;
-    noteState.audio.play().catch(() => {});
+    const startPlay = () => {
+      if (trim && noteState.audio.currentTime < noteState.trimStart) noteState.audio.currentTime = noteState.trimStart;
+      noteState.audio.play().catch(() => {});
+    };
+    if (noteState.audio.readyState >= 1) startPlay();
+    else noteState.audio.addEventListener('loadedmetadata', startPlay, { once: true });
   }
 }
 function noteStop() {
   if (noteState.audio) noteState.audio.pause();
   if (noteState.ytPlayer) noteState.ytPlayer.stopVideo();
+  clearTrimTimer();
   noteState.currentUrl = null;
   noteState.currentVideoId = null;
   document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
@@ -708,27 +741,34 @@ function buildNotesUi() {
   noteState.audio = new Audio();
   noteState.audio.preload = 'none';
   noteState.audio.addEventListener('ended', () => { noteState.currentUrl = null; document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; }); });
+  noteState.audio.addEventListener('timeupdate', () => {
+    if (noteState.trimEnd !== Infinity && noteState.audio.currentTime >= noteState.trimEnd) {
+      noteState.audio.pause();
+      noteState.currentUrl = null;
+      document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
+    }
+  });
   document.body.appendChild(noteState.audio);
 
   const composer = document.createElement('div');
   composer.className = 'note-modal';
   composer.id = 'note-composer';
   composer.hidden = true;
-  composer.innerHTML = `<div class="note-modal-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><div class="note-composer-head"><img class="note-avatar" src="${profile.avatar}" alt=""><strong>${escapeHtml(profile.username)}</strong></div><textarea class="note-text" placeholder="Share a note with the people you know..."></textarea><div class="note-music-row" id="note-music-row" hidden><span class="note-music-chip"><span class="note-music-note">♪</span><span><b id="note-music-title"></b><em id="note-music-artist"></em></span><button type="button" class="note-chip-btn" id="note-music-play" data-note-play aria-label="Play preview">▶</button><button type="button" class="note-chip-btn" id="note-music-clear" aria-label="Remove music">×</button></span></div><div class="note-composer-actions"><button type="button" class="note-add-music" id="note-add-music">♪ Add music</button><button type="button" class="primary-action" id="note-post">Share</button></div></div>`;
+  composer.innerHTML = `<div class="note-modal-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><div class="note-composer-head"><img class="note-avatar" src="${profile.avatar}" alt=""><strong>${escapeHtml(profile.username)}</strong></div><textarea class="note-text" placeholder="Share a note with the people you know..."></textarea><div class="note-music-row" id="note-music-row" hidden><span class="note-music-chip"><span class="note-music-note">♪</span><span><b id="note-music-title"></b><em id="note-music-artist"></em></span><button type="button" class="note-chip-btn" id="note-music-play" data-note-play aria-label="Play preview">▶</button><button type="button" class="note-chip-btn" id="note-music-clear" aria-label="Remove music">×</button></span></div><div class="note-trim-row" id="note-trim-row" hidden><span class="note-trim-label">✂ Clip</span><label>Start (s)<input id="note-trim-start" type="number" min="0" step="1" value="0"></label><label>Length (s)<input id="note-trim-len" type="number" min="1" step="1" value="30"></label><em id="note-trim-hint">Plays the full track</em></div><div class="note-composer-actions"><button type="button" class="note-add-music" id="note-add-music">♪ Add music</button><button type="button" class="primary-action" id="note-post">Share</button></div></div>`;
   document.body.appendChild(composer);
 
   const library = document.createElement('div');
   library.className = 'note-modal';
   library.id = 'music-library';
   library.hidden = true;
-  library.innerHTML = `<div class="note-modal-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><h3 class="music-title">Music library</h3><div class="music-key-banner" id="music-key-banner" hidden><b>🔑 Live YouTube search</b><p>Type any song and GlitchIt will look it up on YouTube in the background and play it right here. Add your free YouTube Data API v3 key to enable it.</p><div class="music-key-row"><input id="music-key-input" placeholder="Paste YouTube Data API v3 key" aria-label="YouTube Data API key"><button type="button" id="music-key-save">Save</button></div></div><input class="music-search" id="music-search" placeholder="Search songs, artists, or genres..."><div class="music-list" id="music-list"></div></div>`;
+  library.innerHTML = `<div class="note-modal-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><h3 class="music-title">Music library</h3><div class="music-key-banner" id="music-key-banner" hidden><b>🌐 Web music search</b><p>Type any song and GlitchIt searches the web (Apple Music, Deezer + YouTube) in the background and plays it right here. Add a free YouTube Data API v3 key to include YouTube results too.</p><div class="music-key-row"><input id="music-key-input" placeholder="Paste YouTube Data API v3 key" aria-label="YouTube Data API key"><button type="button" id="music-key-save">Save</button></div></div><input class="music-search" id="music-search" placeholder="Search songs, artists, or genres..."><div class="music-list" id="music-list"></div></div>`;
   document.body.appendChild(library);
 
   const viewer = document.createElement('div');
   viewer.className = 'note-modal';
   viewer.id = 'note-viewer';
   viewer.hidden = true;
-  viewer.innerHTML = `<div class="note-modal-card note-viewer-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><img class="note-avatar note-viewer-avatar" id="viewer-avatar" alt=""><h3 id="viewer-author"></h3><p id="viewer-text"></p><div class="note-music-row" id="viewer-music" hidden><span class="note-music-chip"><span class="note-music-note">♪</span><span><b id="viewer-music-title"></b><em id="viewer-music-artist"></em></span><button type="button" class="note-chip-btn" id="viewer-play" data-note-play aria-label="Play">▶</button></span></div></div>`;
+  viewer.innerHTML = `<div class="note-modal-card note-viewer-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><img class="note-avatar note-viewer-avatar" id="viewer-avatar" alt=""><h3 id="viewer-author"></h3><p id="viewer-text"></p><div class="note-music-row" id="viewer-music" hidden><span class="note-music-chip"><span class="note-music-note">♪</span><span><b id="viewer-music-title"></b><em id="viewer-music-artist"></em></span><button type="button" class="note-chip-btn" id="viewer-play" data-note-play aria-label="Play">▶</button></span></div><button type="button" class="note-delete" id="note-delete" hidden>🗑 Delete note</button></div>`;
   document.body.appendChild(viewer);
 
   document.querySelectorAll('.note-modal').forEach((modal) => {
@@ -742,22 +782,25 @@ function buildNotesUi() {
 
   document.getElementById('note-add-music').addEventListener('click', () => { renderMusicLibrary(); document.getElementById('music-library').hidden = false; });
   document.getElementById('note-music-play').addEventListener('click', (e) => { e.stopPropagation(); if (noteState.composerMusic) notePlay(noteState.composerMusic, e.currentTarget); });
-  document.getElementById('note-music-clear').addEventListener('click', () => { noteState.composerMusic = null; document.getElementById('note-music-row').hidden = true; noteStop(); });
+  document.getElementById('note-music-clear').addEventListener('click', () => { noteState.composerMusic = null; document.getElementById('note-music-row').hidden = true; document.getElementById('note-trim-row').hidden = true; noteStop(); });
   document.getElementById('music-key-save').addEventListener('click', () => {
     const key = document.getElementById('music-key-input').value.trim();
     try { localStorage.setItem('glitchit.youtubeKey', key); } catch (err) { /* storage unavailable */ }
     renderMusicLibrary();
   });
+  document.getElementById('note-trim-start').addEventListener('input', applyTrim);
+  document.getElementById('note-trim-len').addEventListener('input', applyTrim);
   document.getElementById('note-post').addEventListener('click', () => {
     const textInput = composer.querySelector('.note-text');
     const text = textInput.value.trim();
     if (!text) { textInput.focus(); return; }
     const m = noteState.composerMusic;
-    userNotes.unshift({ id: Date.now(), author: profile.username, avatar: profile.avatar, text, music: m ? { title: m.title, artist: m.artist, genre: m.genre, videoId: m.videoId || null, url: m.url || null } : null, createdAt: Date.now() });
+    userNotes.unshift({ id: Date.now(), author: profile.username, avatar: profile.avatar, text, music: m ? { title: m.title, artist: m.artist, genre: m.genre, videoId: m.videoId || null, url: m.url || null, art: m.art || null, source: m.source || null, start: m.start, duration: m.duration } : null, createdAt: Date.now() });
     saveNotes();
     noteState.composerMusic = null;
     textInput.value = '';
     document.getElementById('note-music-row').hidden = true;
+    document.getElementById('note-trim-row').hidden = true;
     composer.hidden = true;
     noteStop();
     renderNoteShelves();
@@ -768,29 +811,62 @@ function buildNotesUi() {
     const note = userNotes[noteState.viewerIndex];
     if (note?.music) notePlay(note.music, e.currentTarget);
   });
+  document.getElementById('note-delete').addEventListener('click', () => {
+    const note = userNotes[noteState.viewerIndex];
+    if (!note) return;
+    if (!confirm(`Delete ${note.author}'s note?`)) return;
+    userNotes.splice(noteState.viewerIndex, 1);
+    saveNotes();
+    noteStop();
+    document.getElementById('note-viewer').hidden = true;
+    renderNoteShelves();
+  });
+}
+
+function applyTrim() {
+  const m = noteState.composerMusic;
+  if (!m) return;
+  const start = Math.max(0, Number(document.getElementById('note-trim-start').value) || 0);
+  const len = Math.max(1, Number(document.getElementById('note-trim-len').value) || 30);
+  m.start = start;
+  m.duration = len;
+  document.getElementById('note-trim-hint').textContent = `Plays ${fmtTime(start)}–${fmtTime(start + len)}`;
 }
 
 let ytSearchTimer = null;
 
 function renderTrackRows(tracks, list, emptyMsg) {
   list.innerHTML = tracks.length
-    ? tracks.map((t) => `<button type="button" class="music-row" data-video="${t.videoId}"><img class="music-thumb" src="${thumbFor(t)}" alt="" loading="lazy"><span class="music-play" data-note-play data-video="${t.videoId}" aria-label="Preview">▶</span><span class="music-meta"><b>${escapeHtml(t.title)}</b><em>${escapeHtml(t.artist)} · ${escapeHtml(t.genre)}</em></span><span class="music-use">Use</span></button>`).join('')
+    ? tracks.map((t) => {
+        const id = t.videoId || t.url;
+        const thumb = thumbFor(t);
+        return `<button type="button" class="music-row" data-id="${escapeHtml(id)}"><span class="music-thumb${thumb ? '' : ' fallback'}">${thumb ? `<img src="${thumb}" alt="" loading="lazy">` : '♪'}</span><span class="music-play" data-note-play data-id="${escapeHtml(id)}" aria-label="Preview">▶</span><span class="music-meta"><b>${escapeHtml(t.title)}</b><em>${escapeHtml(t.artist)} · ${escapeHtml(t.genre)}</em></span><span class="music-tag">${escapeHtml(t.source || 'YouTube')}</span><span class="music-use">Use</span></button>`;
+      }).join('')
     : `<p class="music-empty">${escapeHtml(emptyMsg || 'No tracks match your search.')}</p>`;
   list.querySelectorAll('.music-row').forEach((row) => {
-    const videoId = row.dataset.video;
+    const id = row.dataset.id;
     row.querySelector('.music-play').addEventListener('click', (e) => {
       e.stopPropagation();
-      const track = findTrack(videoId);
+      const track = findTrack(id);
       if (track) notePlay(track, e.currentTarget);
     });
     row.addEventListener('click', () => {
-      const track = findTrack(videoId);
+      const track = findTrack(id);
       if (!track) return;
       noteState.composerMusic = track;
       document.getElementById('note-music-title').textContent = track.title;
       document.getElementById('note-music-artist').textContent = `${track.artist} · ${track.genre}`;
       const chipBtn = document.getElementById('note-music-play');
-      chipBtn.dataset.video = track.videoId || '';
+      chipBtn.dataset.id = track.videoId || track.url || '';
+      const trimRow = document.getElementById('note-trim-row');
+      if (trimRow) {
+        const startInput = document.getElementById('note-trim-start');
+        const lenInput = document.getElementById('note-trim-len');
+        startInput.value = (typeof track.start === 'number' && track.duration > 0) ? track.start : 0;
+        lenInput.value = (typeof track.duration === 'number' && track.duration > 0) ? track.duration : 30;
+        trimRow.hidden = false;
+        applyTrim();
+      }
       document.getElementById('note-music-row').hidden = false;
       document.getElementById('music-library').hidden = true;
       noteStop();
@@ -804,24 +880,57 @@ function renderLocalLibrary(q, list) {
   renderTrackRows(tracks, list, 'No tracks match your search.');
 }
 
-async function searchYouTube(query, list) {
+async function searchYouTube(query) {
   const key = localStorage.getItem('glitchit.youtubeKey') || YOUTUBE_API_KEY;
-  try {
-    const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=20&q=${encodeURIComponent(query)}&key=${encodeURIComponent(key)}`);
-    if (!res.ok) throw new Error('YouTube search unavailable');
-    const data = await res.json();
-    const tracks = (data.items || []).map((it) => ({
-      title: it.snippet.title,
-      artist: it.snippet.channelTitle,
-      genre: 'YouTube',
-      videoId: it.id.videoId
-    })).filter((t) => t.videoId);
-    tracks.forEach((t) => { noteState.trackCache[t.videoId] = t; });
-    renderTrackRows(tracks, list, 'No YouTube results for that search.');
-  } catch (err) {
-    list.innerHTML = `<p class="music-empty">YouTube search isn't available right now — showing the built-in library.</p>`;
-    renderLocalLibrary('', list);
-  }
+  if (!key) return [];
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=15&q=${encodeURIComponent(query)}&key=${encodeURIComponent(key)}`);
+  if (!res.ok) throw new Error('YouTube search unavailable');
+  const data = await res.json();
+  return (data.items || []).map((it) => ({
+    title: it.snippet.title,
+    artist: it.snippet.channelTitle,
+    genre: 'YouTube',
+    videoId: it.id.videoId,
+    source: 'YouTube'
+  })).filter((t) => t.videoId);
+}
+
+async function searchAppleMusic(query) {
+  const res = await fetch(`https://itunes.apple.com/search?media=music&limit=20&term=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error('Apple Music search unavailable');
+  const data = await res.json();
+  return (data.results || []).filter((r) => r.previewUrl).map((r) => ({
+    title: r.trackName,
+    artist: r.artistName,
+    genre: r.primaryGenreName || 'Music',
+    url: r.previewUrl,
+    art: r.artworkUrl100,
+    source: 'Apple Music'
+  }));
+}
+
+async function searchDeezer(query) {
+  const res = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(query)}&limit=20`);
+  if (!res.ok) throw new Error('Deezer search unavailable');
+  const data = await res.json();
+  return (data.data || []).filter((t) => t.preview).map((t) => ({
+    title: t.title,
+    artist: (t.artist && t.artist.name) || 'Unknown',
+    genre: 'Deezer',
+    url: t.preview,
+    art: (t.album && t.album.cover_small) || '',
+    source: 'Deezer'
+  }));
+}
+
+async function searchWeb(query, list) {
+  list.innerHTML = '<p class="music-empty">Searching the web…</p>';
+  const sources = [searchAppleMusic(query), searchDeezer(query)];
+  if (localStorage.getItem('glitchit.youtubeKey') || YOUTUBE_API_KEY) sources.push(searchYouTube(query));
+  const settled = await Promise.allSettled(sources);
+  const tracks = settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : []));
+  tracks.forEach((t) => { noteState.trackCache[t.videoId || t.url] = t; });
+  renderTrackRows(tracks.slice(0, 30), list, 'No web results for that search.');
 }
 
 function renderMusicLibrary() {
@@ -830,10 +939,9 @@ function renderMusicLibrary() {
   const key = localStorage.getItem('glitchit.youtubeKey') || YOUTUBE_API_KEY;
   const banner = document.getElementById('music-key-banner');
   if (banner) banner.hidden = !!key;
-  if (key && q) {
+  if (q) {
     clearTimeout(ytSearchTimer);
-    list.innerHTML = '<p class="music-empty">Searching YouTube…</p>';
-    ytSearchTimer = setTimeout(() => searchYouTube(q, list), 350);
+    ytSearchTimer = setTimeout(() => searchWeb(q, list), 350);
     return;
   }
   renderLocalLibrary(q, list);
@@ -858,11 +966,17 @@ function openNoteViewer(index) {
     document.getElementById('viewer-music-title').textContent = note.music.title;
     document.getElementById('viewer-music-artist').textContent = `${note.music.artist} · ${note.music.genre}`;
     document.getElementById('viewer-play').textContent = '▶';
-    document.getElementById('viewer-play').dataset.video = note.music.videoId || '';
+    document.getElementById('viewer-play').dataset.id = note.music.videoId || note.music.url || '';
+    let meta = `${note.music.artist} · ${note.music.genre}`;
+    if (typeof note.music.start === 'number' && typeof note.music.duration === 'number' && note.music.duration > 0) {
+      meta += ` · ✂ ${fmtTime(note.music.start)}–${fmtTime(note.music.start + note.music.duration)}`;
+    }
+    document.getElementById('viewer-music-artist').textContent = meta;
     musicRow.hidden = false;
   } else {
     musicRow.hidden = true;
   }
+  document.getElementById('note-delete').hidden = note.author !== profile.username;
   document.getElementById('note-viewer').hidden = false;
 }
 
