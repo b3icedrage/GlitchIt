@@ -124,7 +124,14 @@ function attachCreateStudio() {
   const mediaTiles = [...document.querySelectorAll('.media-tile')];
   const tools = document.querySelector('.create-tools');
 
-  const state = { type: 'feed', filter: 'none', captured: null, mode: 'camera', stream: null, hadCamera: false, facing: 'user', torch: false };
+  const micBtn = document.getElementById('mic-btn');
+  const state = { type: 'feed', filter: 'none', captured: null, mode: 'camera', stream: null, hadCamera: false, facing: 'user', torch: false, mic: false, hasMic: false };
+
+  const updateMicButton = () => {
+    if (!micBtn) return;
+    micBtn.textContent = state.mic ? '🎤' : '🔇';
+    micBtn.setAttribute('aria-label', state.mic ? 'Mute microphone' : 'Unmute microphone');
+  };
 
   const setMode = (mode) => {
     state.mode = mode;
@@ -133,6 +140,7 @@ function attachCreateStudio() {
     document.getElementById('flip-btn').hidden = mode !== 'camera';
     document.getElementById('flash-btn').hidden = mode !== 'camera';
     document.getElementById('capture-btn').hidden = mode !== 'camera';
+    if (micBtn) micBtn.hidden = mode !== 'camera' || !state.hasMic;
     nextBtn.hidden = mode !== 'photo';
     applyFilter();
   };
@@ -149,17 +157,30 @@ function attachCreateStudio() {
       fallback.hidden = false;
       return;
     }
+    const videoConstraints = { facingMode, width: { ideal: 1280 } };
+    let stream = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode, width: { ideal: 1280 } }, audio: false });
-      state.stream = stream;
-      state.hadCamera = true;
-      video.srcObject = stream;
-      fallback.hidden = true;
-      setMode('camera');
+      // Request microphone + camera preview together
+      stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: true });
     } catch (err) {
-      fallback.hidden = false;
-      setMode('camera');
+      // Mic denied or missing — fall back to camera-only preview
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
+      } catch (err2) {
+        fallback.hidden = false;
+        setMode('camera');
+        return;
+      }
     }
+    state.stream = stream;
+    state.hadCamera = true;
+    video.srcObject = stream;
+    state.hasMic = stream.getAudioTracks().length > 0;
+    state.mic = state.hasMic;
+    video.muted = !state.hasMic;
+    updateMicButton();
+    fallback.hidden = true;
+    setMode('camera');
   };
 
   const setPhoto = (src) => {
@@ -245,6 +266,13 @@ function attachCreateStudio() {
   document.getElementById('flip-btn').addEventListener('click', () => {
     state.facing = state.facing === 'user' ? 'environment' : 'user';
     startCamera();
+  });
+
+  // Microphone preview toggle
+  micBtn?.addEventListener('click', () => {
+    state.mic = !state.mic;
+    video.muted = !state.mic;
+    updateMicButton();
   });
 
   // Flash: hardware torch where supported, white flash otherwise

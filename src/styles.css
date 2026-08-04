@@ -427,6 +427,7 @@ main { height: 100vh; overflow-y: auto; padding: 28px 0 56px; scrollbar-width: t
 .stage-btn { position: absolute; top: 14px; width: 42px; height: 42px; border: 0; border-radius: 50%; background: rgba(14, 13, 26, .55); color: #fff; font-size: 20px; backdrop-filter: blur(6px); }
 .flip-btn { right: 14px; }
 .flash-btn { left: 14px; }
+.stage-btn.mic-btn { top: auto; right: 14px; bottom: 18px; }
 .stage-captured { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; background: linear-gradient(135deg, #d62976, #4f5bd5); }
 .stage-flashing::after { content: ''; position: absolute; inset: 0; background: #fff; opacity: .85; pointer-events: none; }
 .create-tools { display: grid; gap: 12px; margin-top: 14px; }
