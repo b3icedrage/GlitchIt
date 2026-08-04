@@ -30,7 +30,7 @@ function returnToPage() {
 // ---------- Supabase database (optional — see src/config.js) ----------
 // Loaded lazily so the app works identically when no keys are configured.
 let DB = null;
-import('./db.js').then((mod) => { DB = mod; }).catch(() => { DB = null; });
+import('./db.js?v=3').then((mod) => { DB = mod; }).catch(() => { DB = null; });
 
 // ---------- Shared state (persisted across pages) ----------
 const UPLOADS_KEY = 'glitchit.uploads.v1';
@@ -1240,7 +1240,7 @@ function attachAuthPage(auth) {
     try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
     window.GLITCHIT_USER = res.user;
     auth.setHandle(auth.userHandle(res.user));
-    import('./db.js').then((db) => db.setCurrentUser?.(auth.userHandle(res.user))).catch(() => {});
+    import('./db.js?v=3').then((db) => db.setCurrentUser?.(auth.userHandle(res.user))).catch(() => {});
     location.href = returnToPage() || 'index.html';
   });
 }
@@ -1279,13 +1279,13 @@ function attachProfileAuth() {
 async function boot() {
   const isAuthPage = page === 'auth';
   let auth = null;
-  try { auth = await import('./auth.js'); } catch (err) { auth = null; }
+  try { auth = await import('./auth.js?v=3'); } catch (err) { auth = null; }
   window.GLITCHIT_AUTH = auth;
   let guest = false;
   try { guest = localStorage.getItem(GUEST_KEY) === '1'; } catch (err) { /* ignore */ }
   const dbReady = async () => {
     if (DB) return DB;
-    try { return await import('./db.js'); } catch (err) { return null; }
+    try { return await import('./db.js?v=3'); } catch (err) { return null; }
   };
   if (auth && auth.authAvailable()) {
     if (isAuthPage) {
