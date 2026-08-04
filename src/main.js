@@ -578,23 +578,28 @@ try {
 
 // ---------- Notes (Messages + home instants) with music ----------
 const NOTES_KEY = 'glitchit.notes.v1';
+// Live YouTube search key — paste a free YouTube Data API v3 key in the music
+// library's "Live search" field (saved to localStorage) to enable on-demand
+// YouTube lookups. Without a key, the built-in library below is used.
+const YOUTUBE_API_KEY = window.GLITCHIT_CONFIG?.youtubeApiKey || '';
+
 const NOTE_MUSIC_LIBRARY = [
-  { title: 'Neon Sky', artist: 'SoundHelix', genre: 'Synthwave', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
-  { title: 'Afterglow', artist: 'SoundHelix', genre: 'Chill', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
-  { title: 'Midnight Drive', artist: 'SoundHelix', genre: 'Lo-fi', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' },
-  { title: 'Pulse', artist: 'SoundHelix', genre: 'House', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3' },
-  { title: 'Golden Hour', artist: 'SoundHelix', genre: 'Pop', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3' },
-  { title: 'Static Bloom', artist: 'SoundHelix', genre: 'Electronica', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3' },
-  { title: 'Daydream', artist: 'SoundHelix', genre: 'Ambient', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3' },
-  { title: 'City Lights', artist: 'SoundHelix', genre: 'Synthwave', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3' },
-  { title: 'Low Tide', artist: 'SoundHelix', genre: 'Chill', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3' },
-  { title: 'Velvet', artist: 'SoundHelix', genre: 'R&B', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3' },
-  { title: 'High Voltage', artist: 'SoundHelix', genre: 'House', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3' },
-  { title: 'Paper Planes', artist: 'SoundHelix', genre: 'Indie', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3' },
-  { title: 'Solar Flare', artist: 'SoundHelix', genre: 'Electronica', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3' },
-  { title: 'Blue Hour', artist: 'SoundHelix', genre: 'Ambient', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3' },
-  { title: 'Retrograde', artist: 'SoundHelix', genre: 'Lo-fi', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3' },
-  { title: 'Echoes', artist: 'SoundHelix', genre: 'Ambient', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3' },
+  { title: 'Dance Monkey', artist: 'Tones and I', genre: 'Pop', videoId: 'q0hyYWKXF0Q' },
+  { title: 'Shape of You', artist: 'Ed Sheeran', genre: 'Pop', videoId: 'JGwWNGJdvx8' },
+  { title: 'Uptown Funk', artist: 'Mark Ronson ft. Bruno Mars', genre: 'Funk', videoId: 'OPf0YbXqDm0' },
+  { title: 'Despacito', artist: 'Luis Fonsi ft. Daddy Yankee', genre: 'Latin', videoId: 'kJQP7kiw5Fk' },
+  { title: 'bad guy', artist: 'Billie Eilish', genre: 'Alt', videoId: 'DyDfgMOUjCI' },
+  { title: 'Blinding Lights', artist: 'The Weeknd', genre: 'Synthpop', videoId: '4NRXx6U8ABQ' },
+  { title: 'Levitating', artist: 'Dua Lipa', genre: 'Pop', videoId: 'TUVcZfQe-Kw' },
+  { title: 'Believer', artist: 'Imagine Dragons', genre: 'Rock', videoId: '7wtfhZwyrcc' },
+  { title: 'Location', artist: 'Khalid', genre: 'R&B', videoId: 'by3yRdlQvB4' },
+  { title: 'Heat Waves', artist: 'Glass Animals', genre: 'Indie', videoId: 'mRD0-GxqHVo' },
+  { title: 'Say So', artist: 'Doja Cat', genre: 'Pop', videoId: 'pok8H_KF1G4' },
+  { title: 'Circles', artist: 'Post Malone', genre: 'Hip-hop', videoId: 'wXhTHyIgQ_U' },
+  { title: 'Easy On Me', artist: 'Adele', genre: 'Ballad', videoId: 'U3ASj1L6pYk' },
+  { title: 'Locked Out of Heaven', artist: 'Bruno Mars', genre: 'Funk', videoId: 'e-fA-gBCkj0' },
+  { title: 'Yellow', artist: 'Coldplay', genre: 'Rock', videoId: 'yKNxeF4KMsY' },
+  { title: 'Bohemian Rhapsody', artist: 'Queen', genre: 'Rock', videoId: 'fJ9rUzIMcZQ' },
 ];
 let userNotes = [];
 try {
@@ -608,11 +613,65 @@ function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-const noteState = { audio: null, uiReady: false, currentUrl: null, composerMusic: null, viewerIndex: -1, containers: new Set() };
+const noteState = { audio: null, uiReady: false, currentUrl: null, currentVideoId: null, composerMusic: null, viewerIndex: -1, containers: new Set(), ytPlayer: null, ytLoading: false, trackCache: {} };
 
-function notePlay(url, button) {
+function thumbFor(track) {
+  return `https://i.ytimg.com/vi/${track.videoId}/mqdefault.jpg`;
+}
+
+function ensureYtApi(cb) {
+  if (window.YT && window.YT.Player) { cb(); return; }
+  if (noteState.ytLoading) { return; }
+  noteState.ytLoading = true;
+  window.onYouTubeIframeAPIReady = () => cb();
+  const tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+}
+
+function ytLoad(videoId) {
+  ensureYtApi(() => {
+    if (noteState.ytPlayer) { noteState.ytPlayer.loadVideoById(videoId); return; }
+    const host = document.createElement('div');
+    host.id = 'yt-backdrop';
+    document.body.appendChild(host);
+    noteState.ytPlayer = new YT.Player('yt-backdrop', {
+      playerVars: { autoplay: 1, rel: 0, playsinline: 1 },
+      events: {
+        onReady: (e) => e.target.playVideo(),
+        onStateChange: (e) => {
+          if (e.data === YT.PlayerState.ENDED) {
+            noteState.currentUrl = null;
+            noteState.currentVideoId = null;
+            document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
+          } else if (e.data === YT.PlayerState.PLAYING) {
+            document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
+            const btn = document.querySelector(`[data-note-play][data-video="${noteState.currentVideoId}"]`);
+            if (btn) btn.textContent = '❚❚';
+          } else if (e.data === YT.PlayerState.PAUSED) {
+            document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
+          }
+        }
+      }
+    });
+  });
+}
+
+function findTrack(videoId) {
+  if (noteState.trackCache[videoId]) return noteState.trackCache[videoId];
+  return NOTE_MUSIC_LIBRARY.find((t) => t.videoId === videoId);
+}
+
+function notePlay(track, button) {
+  const url = track.videoId ? `yt:${track.videoId}` : track.url;
   if (noteState.currentUrl === url) {
-    if (noteState.audio.paused) {
+    if (track.videoId) {
+      if (noteState.ytPlayer && noteState.ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+        noteState.ytPlayer.pauseVideo();
+      } else if (noteState.ytPlayer) {
+        noteState.ytPlayer.playVideo();
+      }
+    } else if (noteState.audio.paused) {
       noteState.audio.play().catch(() => {});
       if (button) button.textContent = '❚❚';
     } else {
@@ -621,15 +680,25 @@ function notePlay(url, button) {
     }
     return;
   }
+  if (noteState.audio) noteState.audio.pause();
+  if (noteState.ytPlayer) noteState.ytPlayer.stopVideo();
   noteState.currentUrl = url;
-  noteState.audio.src = url;
-  noteState.audio.play().catch(() => {});
+  noteState.currentVideoId = track.videoId || null;
   document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
   if (button) button.textContent = '❚❚';
+  if (track.videoId) {
+    noteState.trackCache[track.videoId] = track;
+    ytLoad(track.videoId);
+  } else {
+    noteState.audio.src = track.url;
+    noteState.audio.play().catch(() => {});
+  }
 }
 function noteStop() {
   if (noteState.audio) noteState.audio.pause();
+  if (noteState.ytPlayer) noteState.ytPlayer.stopVideo();
   noteState.currentUrl = null;
+  noteState.currentVideoId = null;
   document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
 }
 
@@ -652,7 +721,7 @@ function buildNotesUi() {
   library.className = 'note-modal';
   library.id = 'music-library';
   library.hidden = true;
-  library.innerHTML = `<div class="note-modal-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><h3 class="music-title">Music library</h3><input class="music-search" id="music-search" placeholder="Search songs, artists, or genres..."><div class="music-list" id="music-list"></div></div>`;
+  library.innerHTML = `<div class="note-modal-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><h3 class="music-title">Music library</h3><div class="music-key-banner" id="music-key-banner" hidden><b>🔑 Live YouTube search</b><p>Type any song and GlitchIt will look it up on YouTube in the background and play it right here. Add your free YouTube Data API v3 key to enable it.</p><div class="music-key-row"><input id="music-key-input" placeholder="Paste YouTube Data API v3 key" aria-label="YouTube Data API key"><button type="button" id="music-key-save">Save</button></div></div><input class="music-search" id="music-search" placeholder="Search songs, artists, or genres..."><div class="music-list" id="music-list"></div></div>`;
   document.body.appendChild(library);
 
   const viewer = document.createElement('div');
@@ -672,13 +741,19 @@ function buildNotesUi() {
   });
 
   document.getElementById('note-add-music').addEventListener('click', () => { renderMusicLibrary(); document.getElementById('music-library').hidden = false; });
-  document.getElementById('note-music-play').addEventListener('click', (e) => { e.stopPropagation(); if (noteState.composerMusic) notePlay(noteState.composerMusic.url, e.currentTarget); });
+  document.getElementById('note-music-play').addEventListener('click', (e) => { e.stopPropagation(); if (noteState.composerMusic) notePlay(noteState.composerMusic, e.currentTarget); });
   document.getElementById('note-music-clear').addEventListener('click', () => { noteState.composerMusic = null; document.getElementById('note-music-row').hidden = true; noteStop(); });
+  document.getElementById('music-key-save').addEventListener('click', () => {
+    const key = document.getElementById('music-key-input').value.trim();
+    try { localStorage.setItem('glitchit.youtubeKey', key); } catch (err) { /* storage unavailable */ }
+    renderMusicLibrary();
+  });
   document.getElementById('note-post').addEventListener('click', () => {
     const textInput = composer.querySelector('.note-text');
     const text = textInput.value.trim();
     if (!text) { textInput.focus(); return; }
-    userNotes.unshift({ id: Date.now(), author: profile.username, avatar: profile.avatar, text, music: noteState.composerMusic ? { title: noteState.composerMusic.title, artist: noteState.composerMusic.artist, genre: noteState.composerMusic.genre, url: noteState.composerMusic.url } : null, createdAt: Date.now() });
+    const m = noteState.composerMusic;
+    userNotes.unshift({ id: Date.now(), author: profile.username, avatar: profile.avatar, text, music: m ? { title: m.title, artist: m.artist, genre: m.genre, videoId: m.videoId || null, url: m.url || null } : null, createdAt: Date.now() });
     saveNotes();
     noteState.composerMusic = null;
     textInput.value = '';
@@ -691,31 +766,77 @@ function buildNotesUi() {
   document.getElementById('viewer-play').addEventListener('click', (e) => {
     e.stopPropagation();
     const note = userNotes[noteState.viewerIndex];
-    if (note?.music) notePlay(note.music.url, e.currentTarget);
+    if (note?.music) notePlay(note.music, e.currentTarget);
   });
 }
 
-function renderMusicLibrary() {
-  const q = (document.getElementById('music-search').value || '').trim().toLowerCase();
-  const list = document.getElementById('music-list');
-  const rows = NOTE_MUSIC_LIBRARY.filter((t) => !q || t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q) || t.genre.toLowerCase().includes(q));
-  list.innerHTML = rows.length
-    ? rows.map((t) => `<button type="button" class="music-row" data-url="${t.url}"><span class="music-play" data-note-play aria-label="Preview">▶</span><span class="music-meta"><b>${escapeHtml(t.title)}</b><em>${escapeHtml(t.artist)} · ${escapeHtml(t.genre)}</em></span><span class="music-use">Use</span></button>`).join('')
-    : '<p class="music-empty">No tracks match your search.</p>';
+let ytSearchTimer = null;
+
+function renderTrackRows(tracks, list, emptyMsg) {
+  list.innerHTML = tracks.length
+    ? tracks.map((t) => `<button type="button" class="music-row" data-video="${t.videoId}"><img class="music-thumb" src="${thumbFor(t)}" alt="" loading="lazy"><span class="music-play" data-note-play data-video="${t.videoId}" aria-label="Preview">▶</span><span class="music-meta"><b>${escapeHtml(t.title)}</b><em>${escapeHtml(t.artist)} · ${escapeHtml(t.genre)}</em></span><span class="music-use">Use</span></button>`).join('')
+    : `<p class="music-empty">${escapeHtml(emptyMsg || 'No tracks match your search.')}</p>`;
   list.querySelectorAll('.music-row').forEach((row) => {
-    const url = row.dataset.url;
-    row.querySelector('.music-play').addEventListener('click', (e) => { e.stopPropagation(); notePlay(url, e.currentTarget); });
+    const videoId = row.dataset.video;
+    row.querySelector('.music-play').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const track = findTrack(videoId);
+      if (track) notePlay(track, e.currentTarget);
+    });
     row.addEventListener('click', () => {
-      const track = NOTE_MUSIC_LIBRARY.find((t) => t.url === url);
+      const track = findTrack(videoId);
       if (!track) return;
       noteState.composerMusic = track;
       document.getElementById('note-music-title').textContent = track.title;
       document.getElementById('note-music-artist').textContent = `${track.artist} · ${track.genre}`;
+      const chipBtn = document.getElementById('note-music-play');
+      chipBtn.dataset.video = track.videoId || '';
       document.getElementById('note-music-row').hidden = false;
       document.getElementById('music-library').hidden = true;
       noteStop();
     });
   });
+}
+
+function renderLocalLibrary(q, list) {
+  const query = (q || '').toLowerCase();
+  const tracks = NOTE_MUSIC_LIBRARY.filter((t) => !query || t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query) || t.genre.toLowerCase().includes(query));
+  renderTrackRows(tracks, list, 'No tracks match your search.');
+}
+
+async function searchYouTube(query, list) {
+  const key = localStorage.getItem('glitchit.youtubeKey') || YOUTUBE_API_KEY;
+  try {
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=20&q=${encodeURIComponent(query)}&key=${encodeURIComponent(key)}`);
+    if (!res.ok) throw new Error('YouTube search unavailable');
+    const data = await res.json();
+    const tracks = (data.items || []).map((it) => ({
+      title: it.snippet.title,
+      artist: it.snippet.channelTitle,
+      genre: 'YouTube',
+      videoId: it.id.videoId
+    })).filter((t) => t.videoId);
+    tracks.forEach((t) => { noteState.trackCache[t.videoId] = t; });
+    renderTrackRows(tracks, list, 'No YouTube results for that search.');
+  } catch (err) {
+    list.innerHTML = `<p class="music-empty">YouTube search isn't available right now — showing the built-in library.</p>`;
+    renderLocalLibrary('', list);
+  }
+}
+
+function renderMusicLibrary() {
+  const q = (document.getElementById('music-search').value || '').trim();
+  const list = document.getElementById('music-list');
+  const key = localStorage.getItem('glitchit.youtubeKey') || YOUTUBE_API_KEY;
+  const banner = document.getElementById('music-key-banner');
+  if (banner) banner.hidden = !!key;
+  if (key && q) {
+    clearTimeout(ytSearchTimer);
+    list.innerHTML = '<p class="music-empty">Searching YouTube…</p>';
+    ytSearchTimer = setTimeout(() => searchYouTube(q, list), 350);
+    return;
+  }
+  renderLocalLibrary(q, list);
 }
 
 function openNoteComposer() {
@@ -733,10 +854,11 @@ function openNoteViewer(index) {
   document.getElementById('viewer-author').textContent = note.author;
   document.getElementById('viewer-text').textContent = note.text;
   const musicRow = document.getElementById('viewer-music');
-  if (note.music) {
+  if (note.music && (note.music.videoId || note.music.url)) {
     document.getElementById('viewer-music-title').textContent = note.music.title;
     document.getElementById('viewer-music-artist').textContent = `${note.music.artist} · ${note.music.genre}`;
     document.getElementById('viewer-play').textContent = '▶';
+    document.getElementById('viewer-play').dataset.video = note.music.videoId || '';
     musicRow.hidden = false;
   } else {
     musicRow.hidden = true;
