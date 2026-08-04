@@ -557,8 +557,7 @@ try {
   }
 } catch (e) { /* sessionStorage unavailable — skip splash */ }
 
-// ---------- Auth gate + page dispatch ----------
-// Page hydration runs only after Firebase confirms this device is signed in.
+// ---------- Page dispatch ----------
 function runPage() {
   attachThemeToggle();
   attachEndOfPageDetection();
@@ -581,40 +580,4 @@ function runPage() {
   window.addEventListener('scroll', updateGlitchPlayback, { passive: true });
 }
 
-function attachAuthGate() {
-  const auth = window.glitchFirebase?.auth?.();
-  if (!auth) {
-    location.replace('login.html');
-    return;
-  }
-  const hydrate = (user) => {
-    const name = user.displayName || user.email?.split('@')[0] || 'creator';
-    profile.username = name;
-    document.body.dataset.authEmail = user.email || '';
-    document.body.dataset.authName = name;
-    document.querySelectorAll('[data-auth-name]').forEach((el) => { el.textContent = name; });
-    document.querySelectorAll('[data-auth-email]').forEach((el) => { el.textContent = user.email || name; });
-    document.getElementById('logout-btn')?.addEventListener('click', () => {
-      auth.signOut().then(() => location.replace('login.html'));
-    });
-    runPage();
-  };
-  // The saved session is usually available synchronously — use it immediately
-  // so a returning user never gets bounced back to the login screen.
-  const cachedUser = auth.currentUser;
-  if (cachedUser) {
-    hydrate(cachedUser);
-    return;
-  }
-  // Otherwise wait for Firebase to restore the session; a transient null from
-  // onAuthStateChanged must NOT redirect a signed-in user. Only redirect after
-  // a short grace period if no session actually exists.
-  const redirectTimer = setTimeout(() => location.replace('login.html'), 800);
-  auth.onAuthStateChanged((user) => {
-    if (!user) return; // session still restoring — the timer handles real sign-outs
-    clearTimeout(redirectTimer);
-    hydrate(user);
-  });
-}
-
-attachAuthGate();
+runPage();
