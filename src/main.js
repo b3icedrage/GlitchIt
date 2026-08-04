@@ -200,6 +200,9 @@ function route() {
   document.querySelectorAll('[data-page-link]').forEach((link) => {
     link.classList.toggle('active', link.dataset.pageLink === validPage);
   });
+  // Each screen is its own page: always start at the top of the active screen
+  document.querySelector('main')?.scrollTo?.(0, 0);
+  document.getElementById('glitches-reel')?.scrollTo?.(0, 0);
 }
 
 function attachShopFilters() {
