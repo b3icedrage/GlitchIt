@@ -1014,7 +1014,23 @@ function runPage() {
     attachGlitchAutoplay();
   }
   if (page === 'create') attachCreateStudio();
-  if (page === 'profile') attachSettingsDrawer();
+  if (page === 'profile') {
+    attachSettingsDrawer();
+    document.getElementById('share-song')?.addEventListener('click', () => openNoteComposer());
+    document.getElementById('share-profile')?.addEventListener('click', () => {
+      const url = location.href;
+      if (navigator.share) { navigator.share({ title: 'GlitchIt profile', url }).catch(() => {}); return; }
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+          const tip = document.createElement('div');
+          tip.className = 'end-toast show';
+          tip.textContent = 'Profile link copied';
+          document.body.appendChild(tip);
+          setTimeout(() => tip.remove(), 2000);
+        }).catch(() => {});
+      }
+    });
+  }
   if (page === 'shop') { attachShopTabs(); attachShopFilters(); attachStoryLinks(); attachGlitchAutoplay(); }
   if (page === 'search') attachSearchForm();
 

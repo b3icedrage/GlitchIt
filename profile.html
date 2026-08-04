@@ -35,24 +35,51 @@
 
         <section class="profile-panel page" id="profile" data-page="profile" aria-labelledby="profile-title">
           <div class="profile-content">
-            <div class="profile-topbar"><strong>b3ice_drage</strong><div class="profile-top-actions"><span class="icon" aria-hidden="true">＋</span><span class="icon" aria-hidden="true">☰</span></div></div>
+            <div class="profile-topbar"><strong>b3ice_drage</strong><span class="live-dot" aria-hidden="true"></span><div class="profile-top-actions"><a href="activity.html" aria-label="Activity"><span class="icon" aria-hidden="true">◎</span></a><a href="create.html" aria-label="Create" class="top-plus-badge"><span class="icon" aria-hidden="true">＋</span><b aria-hidden="true"></b></a><button type="button" class="settings-button top-menu-btn" aria-label="Settings"><span class="icon" aria-hidden="true">☰</span></button></div></div>
             <div class="profile-header">
               <div class="profile-photo-wrap">
+                <button type="button" class="share-song" id="share-song"><span>Share a song ♪</span></button>
                 <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=240&q=80" alt="b3ice_drage's profile picture">
-                <button type="button">Change profile photo</button>
+                <a class="avatar-plus" href="create.html" aria-label="Add to story">＋</a>
               </div>
               <div class="profile-summary">
-                <div class="profile-identity">
-                  <h2 id="profile-title">b3ice_drage</h2>
-                  <button type="button">Edit profile</button>
-                  <a class="settings-button" href="#settings">Settings</a>
-                </div>
-                <div class="profile-metrics"><span><b>0</b>posts</span><span><b>68</b>followers</span><span><b>120</b>following</span></div>
-                <strong class="profile-name">ßrįæñ</strong>
+                <div class="profile-metrics"><span><b>12</b>posts</span><span><b>57</b>followers</span><span><b>42</b>following</span></div>
               </div>
             </div>
-            <p class="profile-insights">0 views in the last 30 days. <a href="#settings">View insights</a></p>
-            <div class="profile-share-empty"><span class="icon" aria-hidden="true">▧</span><h3>Share Photos</h3><p>When you share photos, they will appear on your profile.</p></div>
+            <div class="profile-bio">
+              <strong class="profile-name">Ramona <span class="pronouns">she/her/hers</span></strong>
+              <span>Writer</span>
+              <p>Writer &amp; Marketer @hubspot @browngirlmag | Content Leader | Editor | Founder @bigdilproject | Advocate for DEI &amp; Representation 🇬🇾 🇮🇳 🇺🇸</p>
+              <a class="profile-link" href="https://blog.hubspot.com/marketing/" target="_blank" rel="noopener">🔗 blog.hubspot.com/marketing/author/ramo…</a>
+            </div>
+            <a class="pro-dashboard" href="activity.html"><span><b>Professional dashboard</b><em>New tools are now available.</em></span><i aria-hidden="true"></i></a>
+            <div class="profile-actions-row">
+              <button type="button" class="settings-button">Edit profile</button>
+              <button type="button" id="share-profile">Share profile</button>
+            </div>
+            <div class="highlights" aria-label="Story highlights">
+              <a class="highlight" href="#"><span><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=120&q=80" alt=""></span><em>Giggles</em></a>
+              <a class="highlight" href="#"><span><img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=120&q=80" alt=""></span><em>HubSpot 🧡</em></a>
+              <a class="highlight" href="#"><span><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt=""></span><em>BGM 💜</em></a>
+              <a class="highlight" href="#"><span><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80" alt=""></span><em>Articles</em></a>
+              <a class="highlight" href="#"><span><img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=120&q=80" alt=""></span><em>BTS</em></a>
+            </div>
+            <div class="profile-tabs" role="tablist" aria-label="Profile media">
+              <button type="button" class="profile-tab active" aria-label="Posts" aria-selected="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></button>
+              <button type="button" class="profile-tab" aria-label="Reels"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M7 2v5M12 2v5M17 2v5M2 12h20"/><path d="M10 15.5l5-3-5-3z"/></svg></button>
+              <button type="button" class="profile-tab" aria-label="Tagged"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="2"/></svg></button>
+            </div>
+            <div class="profile-grid" aria-label="Posts">
+              <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=400&q=80" alt="Post">
+              <img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=400&q=80" alt="Post">
+              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80" alt="Post">
+              <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=400&q=80" alt="Post">
+              <img src="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=400&q=80" alt="Post">
+              <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80" alt="Post">
+              <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80" alt="Post">
+              <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80" alt="Post">
+              <img src="https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=400&q=80" alt="Post">
+            </div>
 
             <div class="settings-backdrop"></div>
             <section class="settings-panel profile-settings" id="settings" aria-labelledby="settings-title">

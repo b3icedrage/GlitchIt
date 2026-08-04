@@ -719,3 +719,69 @@ a, .tag-row a, .comment-box button, .text-button a, .profile-insights a { color:
 :root[data-theme="dark"] .hero-splash .squiggle svg path { stroke: #f5f5f5; }
 :root[data-theme="dark"] .avatar-stack img { border-color: #000; }
 :root[data-theme="dark"] .mobile-top-plus { border-color: #f5f5f5; color: #f5f5f5; }
+
+/* ---------- IG profile page ---------- */
+.profile-panel .profile-content { padding: 0 16px 32px; }
+.profile-topbar { position: relative; display: flex; align-items: center; gap: 8px; padding: 14px 0 18px; font-size: 18px; font-weight: 700; }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff3040; box-shadow: 0 0 0 2px rgba(255, 48, 64, .25); }
+.profile-top-actions { display: flex; align-items: center; gap: 16px; margin-left: auto; }
+.profile-top-actions a, .top-menu-btn { position: relative; display: grid; place-items: center; border: 0; background: transparent; padding: 0; color: #262626; text-decoration: none; }
+.profile-top-actions .icon { width: auto; height: auto; font-size: 24px; color: #262626; }
+.top-plus-badge b { position: absolute; top: -2px; right: -4px; width: 9px; height: 9px; border: 2px solid #fff; border-radius: 50%; background: #ff3040; }
+.top-menu-btn { width: 30px; height: 30px; border-radius: 7px; }
+.top-menu-btn .icon { font-size: 20px; }
+.profile-panel .profile-header { grid-template-columns: 108px 1fr; gap: 26px; align-items: center; }
+.profile-photo-wrap { position: relative; justify-items: center; }
+.profile-photo-wrap > img { width: 96px; height: 96px; border: 2px solid #dbdbdb; }
+.avatar-plus { position: absolute; right: 4px; bottom: 0; display: grid; place-items: center; width: 30px; height: 30px; border: 3px solid #fff; border-radius: 50%; background: #0095f6; color: #fff; font-size: 16px; font-weight: 700; line-height: 1; text-decoration: none; box-shadow: 0 2px 8px rgba(0, 0, 0, .25); }
+.share-song { position: absolute; top: -34px; left: 50%; transform: translateX(-50%); border: 0; border-radius: 999px; padding: 7px 12px; background: #fff; color: #262626; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 6px 18px rgba(0, 0, 0, .18); cursor: pointer; z-index: 1; }
+.share-song::after { content: ''; position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); border: 7px solid transparent; border-top-color: #fff; border-bottom: 0; }
+.share-song:hover { background: #fafafa; }
+.profile-panel .profile-metrics { gap: 28px; }
+.profile-panel .profile-metrics span { font-size: 14px; color: #8e8e8e; }
+.profile-panel .profile-metrics b { font-size: 17px; }
+.profile-bio { margin-top: 18px; font-size: 14px; line-height: 1.45; }
+.profile-bio .profile-name { display: block; font-size: 15px; }
+.profile-bio .pronouns { color: #8e8e8e; font-weight: 400; }
+.profile-bio span { display: block; font-weight: 600; }
+.profile-bio p { margin: 6px 0 0; color: #262626; }
+.profile-link { display: inline-block; margin-top: 4px; color: #0095f6; font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.pro-dashboard { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: #262626; color: #fff; text-decoration: none; }
+.pro-dashboard b { display: block; font-size: 14px; }
+.pro-dashboard em { display: block; margin-top: 2px; color: rgba(255, 255, 255, .75); font-size: 12px; font-style: normal; }
+.pro-dashboard i { width: 9px; height: 9px; border-radius: 50%; background: #0095f6; flex: 0 0 auto; }
+.profile-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.profile-actions-row button { border: 1px solid #dbdbdb; border-radius: 8px; padding: 8px 12px; background: #fff; color: #262626; font-weight: 700; font-size: 14px; }
+.profile-actions-row button:active { background: #fafafa; }
+.highlights { display: flex; gap: 16px; overflow-x: auto; padding: 16px 2px 4px; scrollbar-width: thin; }
+.highlight { display: grid; justify-items: center; gap: 6px; text-decoration: none; color: inherit; flex: 0 0 auto; }
+.highlight span { padding: 2px; border: 1px solid #dbdbdb; border-radius: 50%; }
+.highlight img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; display: block; border: 2px solid #fff; }
+.highlight em { font-size: 11px; font-style: normal; color: #262626; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-tabs { display: flex; justify-content: center; gap: 44px; margin-top: 18px; border-top: 1px solid #dbdbdb; }
+.profile-tab { display: grid; place-items: center; border: 0; background: transparent; padding: 14px 6px 12px; color: #8e8e8e; }
+.profile-tab.active { color: #262626; border-top: 1px solid #262626; margin-top: -1px; }
+.profile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-top: 4px; }
+.profile-grid img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+:root[data-theme="dark"] .profile-top-actions .icon,
+:root[data-theme="dark"] .top-menu-btn .icon { color: #f5f5f5; }
+:root[data-theme="dark"] .top-plus-badge b { border-color: #000; }
+:root[data-theme="dark"] .profile-photo-wrap > img { border-color: #363636; }
+:root[data-theme="dark"] .avatar-plus { border-color: #000; }
+:root[data-theme="dark"] .share-song { background: #262626; color: #f5f5f5; }
+:root[data-theme="dark"] .share-song::after { border-top-color: #262626; }
+:root[data-theme="dark"] .profile-bio p { color: #f5f5f5; }
+:root[data-theme="dark"] .pro-dashboard { background: #262626; }
+:root[data-theme="dark"] .profile-actions-row button { border-color: #363636; background: #000; color: #f5f5f5; }
+:root[data-theme="dark"] .highlight span { border-color: #363636; }
+:root[data-theme="dark"] .highlight img { border-color: #000; }
+:root[data-theme="dark"] .highlight em { color: #f5f5f5; }
+:root[data-theme="dark"] .profile-tabs { border-top-color: #262626; }
+:root[data-theme="dark"] .profile-tab { color: #8e8e8e; }
+:root[data-theme="dark"] .profile-tab.active { color: #f5f5f5; border-top-color: #f5f5f5; }
+@media (max-width: 760px) {
+  .profile-panel .profile-header { grid-template-columns: 88px 1fr; gap: 16px; }
+  .profile-photo-wrap > img { width: 80px; height: 80px; }
+  .avatar-plus { width: 26px; height: 26px; right: 2px; }
+  .profile-panel .profile-metrics { justify-content: space-between; gap: 4px; }
+}
