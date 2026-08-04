@@ -1,10 +1,11 @@
 // GlitchIt — Supabase authentication (client-side, no build step).
 // Loaded from main.js via dynamic import, same pattern as db.js. When the
 // config is empty or the network fails, auth degrades gracefully (no gating).
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=3';
 
 let client = null;
 let clientPromise = null;
+let clientFailed = false;
 let handle = '';
 
 export function authAvailable() {
@@ -25,6 +26,7 @@ function getClient() {
       .catch((err) => {
         console.warn('GlitchIt: auth client failed to load', err);
         clientPromise = null;
+        clientFailed = true;
         return null;
       });
   }
@@ -67,7 +69,7 @@ export async function currentUser() {
 
 export async function signUp(email, password, username) {
   const sb = await getClient();
-  if (!sb) return { ok: false, error: 'Supabase is not configured yet (src/config.js).' };
+  if (!sb) return { ok: false, error: notReadyReason() };
   const { data, error } = await sb.auth.signUp({
     email,
     password,
@@ -84,7 +86,7 @@ export async function signUp(email, password, username) {
 
 export async function signIn(email, password) {
   const sb = await getClient();
-  if (!sb) return { ok: false, error: 'Supabase is not configured yet (src/config.js).' };
+  if (!sb) return { ok: false, error: notReadyReason() };
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) return { ok: false, error: error.message };
   handle = userHandle(data.user);
@@ -100,4 +102,12 @@ export async function signOut() {
   } catch (err) {
     console.warn('GlitchIt: sign out failed', err);
   }
+}
+
+// Distinguish "keys missing" from "client couldn't load" so the message
+// never points you at config.js when the keys are actually present.
+function notReadyReason() {
+  if (!authAvailable()) return 'Supabase is not configured yet (src/config.js).';
+  if (clientFailed) return 'Could not load the Supabase client (network or an ad-blocker may be blocking the CDN). Check your connection and refresh.';
+  return 'Supabase is not ready yet. Check your connection and refresh.';
 }
