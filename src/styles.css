@@ -359,3 +359,43 @@ main { height: 100vh; overflow-y: auto; padding: 28px 0 56px; scrollbar-width: t
   .profile-panel .profile-metrics b { display: block; margin: 0; }
   .profile-share-empty h3 { font-size: 24px; }
 }
+
+/* ---------- Splash screen ---------- */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 36%, #241c3f, #0f0f1b 72%);
+  color: #fff;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .55s ease, visibility .55s;
+}
+.splash.done { opacity: 0; visibility: hidden; pointer-events: none; }
+.splash-active { overflow: hidden; }
+.splash-inner { text-align: center; animation: splashIn .7s cubic-bezier(.2, .9, .3, 1.15) both; }
+.splash-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  font-size: 56px;
+  line-height: 1;
+  border-radius: 28px;
+  color: #fff;
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  box-shadow: 0 24px 60px rgba(214, 41, 118, .45), 0 0 90px rgba(79, 91, 213, .4);
+  animation: splashPulse 1.4s ease-in-out infinite;
+}
+.splash-title { margin: 22px 0 4px; font-family: Georgia, serif; font-size: 44px; font-weight: 800; letter-spacing: -1.5px; }
+.splash-tag { margin: 0; color: #b9b3ce; font-size: 13px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+.splash-bar { width: 170px; height: 3px; margin: 28px auto 0; border-radius: 999px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.splash-bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #d62976, #4f5bd5); animation: splashBar 1.35s ease forwards; }
+@keyframes splashIn { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes splashPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@keyframes splashBar { to { width: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .splash-inner, .splash-mark, .splash-bar i { animation: none; }
+}

@@ -302,6 +302,33 @@ function attachGlitchAutoplay() {
   updateGlitchPlayback();
 }
 
+// ---------- Splash screen (once per session) ----------
+const SPLASH_KEY = 'glitchit.splash.v1';
+
+function showSplashScreen() {
+  const splash = document.createElement('div');
+  splash.id = 'splash';
+  splash.className = 'splash';
+  splash.setAttribute('aria-hidden', 'true');
+  splash.innerHTML = `<div class="splash-inner"><span class="splash-mark">ϟ</span><h1 class="splash-title">GlitchIt</h1><p class="splash-tag">Create · Drop · Glitch</p><div class="splash-bar"><i></i></div></div>`;
+  document.body.prepend(splash);
+  document.body.classList.add('splash-active');
+  const dismiss = () => {
+    splash.classList.add('done');
+    document.body.classList.remove('splash-active');
+    splash.addEventListener('transitionend', () => splash.remove(), { once: true });
+    setTimeout(() => splash.remove(), 700); // fallback
+  };
+  setTimeout(dismiss, 1400);
+}
+
+try {
+  if (!sessionStorage.getItem(SPLASH_KEY)) {
+    sessionStorage.setItem(SPLASH_KEY, '1');
+    showSplashScreen();
+  }
+} catch (e) { /* sessionStorage unavailable — skip splash */ }
+
 // ---------- Page dispatch ----------
 attachThemeToggle();
 attachEndOfPageDetection();
