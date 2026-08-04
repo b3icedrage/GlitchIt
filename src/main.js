@@ -350,9 +350,11 @@ function attachCreateStudio() {
     saveUploads();
     if (DB) {
       DB.saveMedia({ ...item, file: file?.size ? file : null, user: profile.username, avatar: profile.avatar }).then((res) => {
-        if (status) status.textContent = res.ok
-          ? `Published to ${isVideo ? 'Glitches' : type} and saved to the database.`
-          : `Published to ${isVideo ? 'Glitches' : type} (local only — add Supabase keys to enable the database).`;
+        if (!status) return;
+        if (res.ok) { status.textContent = `Published to ${isVideo ? 'Glitches' : type} and saved to the database.`; return; }
+        if (res.reason === 'config') status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only — add Supabase keys in src/config.js).`;
+        else if (res.reason === 'table') status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — database needs setup: create the media & saved tables in the Supabase SQL Editor (I can re-send the script).`;
+        else status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — database error. Check that the tables and the glitchit-media bucket exist.`;
       });
     } else if (status) {
       status.textContent = `Published to ${isVideo ? 'Glitches' : type}. View it on ${isVideo ? 'the Glitches page' : 'the Home feed'}.`;
@@ -363,6 +365,19 @@ function attachCreateStudio() {
 
   window.addEventListener('pagehide', stopCamera);
   startCamera();
+
+  // Live database setup status so failures are self-explanatory.
+  if (DB) {
+    DB.checkSetup().then((s) => {
+      const el = document.getElementById('create-status');
+      if (!el) return;
+      if (!s.configured) el.textContent = 'Database: keys not set (src/config.js)';
+      else if (!s.mediaTable || !s.savedTable || !s.bucket) {
+        const missing = [!s.mediaTable && 'media table', !s.savedTable && 'saved table', !s.bucket && 'glitchit-media bucket'].filter(Boolean).join(', ');
+        el.textContent = `Database: almost ready — create the ${missing} in Supabase (SQL Editor + Storage), then refresh.`;
+      } else el.textContent = 'Database: connected ✓';
+    });
+  }
 }
 
 // ---------- Profile settings ----------

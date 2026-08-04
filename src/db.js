@@ -54,9 +54,10 @@ function isUuid(value) {
 
 // ---------- media table (videos + images) ----------
 export async function saveMedia(item) {
+  if (!dbAvailable()) return { ok: false, reason: 'config' };
   try {
     const sb = await getClient();
-    if (!sb) return { ok: false };
+    if (!sb) return { ok: false, reason: 'network' };
     const kind = item.type === 'video' ? 'video' : 'image';
     let url = item.preview || item.src || item.url || '';
     let poster = item.poster || null;
@@ -84,12 +85,33 @@ export async function saveMedia(item) {
       shares: item.shares || 0,
     };
     const { data, error } = await sb.from('media').insert(row).select('id').single();
-    if (error) throw error;
+    if (error) throw new Error(error.message || 'insert failed');
     return { ok: true, id: data.id };
   } catch (err) {
-    console.warn('GlitchIt: media save failed (table/bucket created?)', err);
-    return { ok: false };
+    const msg = String(err?.message || err);
+    const reason = /could not find the table|does not exist|PGRST205/i.test(msg) ? 'table' : 'error';
+    console.warn('GlitchIt: media save failed', err);
+    return { ok: false, reason };
   }
+}
+
+// Probe the project and report exactly which pieces are missing.
+export async function checkSetup() {
+  const out = { configured: dbAvailable(), mediaTable: false, savedTable: false, bucket: false };
+  if (!out.configured) return out;
+  try {
+    const sb = await getClient();
+    if (!sb) return out;
+    const [m, s, b] = await Promise.allSettled([
+      sb.from('media').select('id').limit(1),
+      sb.from('saved').select('id').limit(1),
+      sb.storage.from('glitchit-media').list('', { limit: 1 }),
+    ]);
+    out.mediaTable = m.status === 'fulfilled' && !m.value.error;
+    out.savedTable = s.status === 'fulfilled' && !s.value.error;
+    out.bucket = b.status === 'fulfilled' && !b.value.error;
+  } catch (e) { /* stays false */ }
+  return out;
 }
 
 export async function loadMedia(kind, limit = 50) {
