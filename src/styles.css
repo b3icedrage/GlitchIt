@@ -501,4 +501,51 @@ main { height: 100vh; overflow-y: auto; padding: 28px 0 56px; scrollbar-width: t
 :root[data-theme="dark"] .store-card { border-color: #29253a; background: #141321; }
 :root[data-theme="dark"] .store-card p { color: #b9b3ce; }
 
+/* ---------- Notes (Messages + home instants) with music ---------- */
+.notes-shelf { display: flex; gap: 16px; overflow-x: auto; padding: 4px 2px 14px; margin-bottom: 6px; scrollbar-width: thin; }
+.note-bubble { flex: 0 0 auto; display: grid; justify-items: center; gap: 6px; min-width: 64px; border: 0; background: transparent; color: inherit; font-size: 11px; cursor: pointer; }
+.note-ring { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 50%; background: #ddd; }
+.note-ring.live { background: conic-gradient(#feda75, #d62976, #4f5bd5, #feda75); }
+.note-ring img { width: 52px; height: 52px; object-fit: cover; border: 3px solid #fff; border-radius: 50%; }
+.note-add .note-ring { background: #f3f0fb; border: 2px dashed #c9c2e8; color: #4f5bd5; font-size: 22px; }
+.note-label { max-width: 66px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #737373; }
+.note-modal { position: fixed; inset: 0; z-index: 9500; display: grid; place-items: center; padding: 20px; background: rgba(10, 9, 20, .62); backdrop-filter: blur(8px); }
+.note-modal[hidden] { display: none; }
+.note-modal-card { position: relative; width: min(430px, 100%); padding: 24px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 24px; background: radial-gradient(circle at top right, #241c3f, #12101f 60%); color: #f6f3ff; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
+.note-modal-close { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .08); color: #f6f3ff; font-size: 18px; cursor: pointer; }
+.note-composer-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.note-avatar { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; }
+.note-text { width: 100%; min-height: 110px; border: 1px solid #322d45; border-radius: 16px; padding: 14px; background: #1b1929; color: #f6f3ff; resize: vertical; outline: none; }
+.note-text:focus { border-color: #d62976; }
+.note-music-row { margin-top: 12px; }
+.note-music-chip { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #322d45; border-radius: 999px; background: #1b1929; }
+.note-music-note { color: #d62976; font-size: 20px; }
+.note-music-chip > span:nth-child(2) { flex: 1; min-width: 0; }
+.note-music-chip b { display: block; font-size: 13px; }
+.note-music-chip em { display: block; color: #b9b3ce; font-size: 11px; font-style: normal; }
+.note-chip-btn { width: 30px; height: 30px; border: 0; border-radius: 50%; background: #26233a; color: #f6f3ff; font-size: 12px; cursor: pointer; }
+.note-composer-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.note-add-music { border: 1px solid #322d45; border-radius: 999px; padding: 11px 16px; background: #1b1929; color: #f6f3ff; font-weight: 800; cursor: pointer; }
+.note-add-music:hover { border-color: #d62976; color: #d62976; }
+.music-title { margin: 0 0 12px; font-size: 20px; }
+.music-search { width: 100%; border: 1px solid #322d45; border-radius: 14px; padding: 12px 14px; background: #1b1929; color: #f6f3ff; outline: none; }
+.music-search:focus { border-color: #d62976; }
+.music-list { display: grid; gap: 6px; max-height: 320px; margin-top: 12px; overflow-y: auto; }
+.music-row { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; border-radius: 14px; padding: 10px; background: transparent; color: #f6f3ff; text-align: left; cursor: pointer; }
+.music-row:hover { background: #1b1929; }
+.music-play { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #d62976, #4f5bd5); color: #fff; font-size: 12px; }
+.music-meta { flex: 1; min-width: 0; }
+.music-meta b { display: block; font-size: 14px; }
+.music-meta em { display: block; color: #b9b3ce; font-size: 12px; font-style: normal; }
+.music-use { color: #d62976; font-weight: 800; font-size: 13px; }
+.music-empty { margin: 0; padding: 20px; color: #b9b3ce; text-align: center; }
+.note-viewer-card { text-align: center; }
+.note-viewer-avatar { width: 72px; height: 72px; margin: 6px auto 10px; }
+.note-viewer-card h3 { margin: 0; font-size: 20px; }
+.note-viewer-card p { margin: 10px 0 14px; font-size: 15px; color: #e6e1f7; }
+@media (max-width: 760px) {
+  .note-modal { padding: 14px; }
+  .note-modal-card { padding: 20px; }
+}
+
 

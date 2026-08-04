@@ -576,6 +576,190 @@ try {
   }
 } catch (e) { /* sessionStorage unavailable — skip splash */ }
 
+// ---------- Notes (Messages + home instants) with music ----------
+const NOTES_KEY = 'glitchit.notes.v1';
+const NOTE_MUSIC_LIBRARY = [
+  { title: 'Neon Sky', artist: 'SoundHelix', genre: 'Synthwave', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+  { title: 'Afterglow', artist: 'SoundHelix', genre: 'Chill', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
+  { title: 'Midnight Drive', artist: 'SoundHelix', genre: 'Lo-fi', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' },
+  { title: 'Pulse', artist: 'SoundHelix', genre: 'House', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3' },
+  { title: 'Golden Hour', artist: 'SoundHelix', genre: 'Pop', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3' },
+  { title: 'Static Bloom', artist: 'SoundHelix', genre: 'Electronica', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3' },
+  { title: 'Daydream', artist: 'SoundHelix', genre: 'Ambient', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3' },
+  { title: 'City Lights', artist: 'SoundHelix', genre: 'Synthwave', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3' },
+  { title: 'Low Tide', artist: 'SoundHelix', genre: 'Chill', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3' },
+  { title: 'Velvet', artist: 'SoundHelix', genre: 'R&B', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3' },
+  { title: 'High Voltage', artist: 'SoundHelix', genre: 'House', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3' },
+  { title: 'Paper Planes', artist: 'SoundHelix', genre: 'Indie', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3' },
+  { title: 'Solar Flare', artist: 'SoundHelix', genre: 'Electronica', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3' },
+  { title: 'Blue Hour', artist: 'SoundHelix', genre: 'Ambient', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3' },
+  { title: 'Retrograde', artist: 'SoundHelix', genre: 'Lo-fi', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3' },
+  { title: 'Echoes', artist: 'SoundHelix', genre: 'Ambient', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3' },
+];
+let userNotes = [];
+try {
+  const savedNotes = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]');
+  if (Array.isArray(savedNotes)) userNotes = savedNotes;
+} catch (e) { /* corrupted storage */ }
+function saveNotes() {
+  try { localStorage.setItem(NOTES_KEY, JSON.stringify(userNotes)); } catch (e) { /* storage unavailable */ }
+}
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+const noteState = { audio: null, uiReady: false, currentUrl: null, composerMusic: null, viewerIndex: -1, containers: new Set() };
+
+function notePlay(url, button) {
+  if (noteState.currentUrl === url) {
+    if (noteState.audio.paused) {
+      noteState.audio.play().catch(() => {});
+      if (button) button.textContent = '❚❚';
+    } else {
+      noteState.audio.pause();
+      if (button) button.textContent = '▶';
+    }
+    return;
+  }
+  noteState.currentUrl = url;
+  noteState.audio.src = url;
+  noteState.audio.play().catch(() => {});
+  document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
+  if (button) button.textContent = '❚❚';
+}
+function noteStop() {
+  if (noteState.audio) noteState.audio.pause();
+  noteState.currentUrl = null;
+  document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; });
+}
+
+function buildNotesUi() {
+  if (noteState.uiReady) return;
+  noteState.uiReady = true;
+  noteState.audio = new Audio();
+  noteState.audio.preload = 'none';
+  noteState.audio.addEventListener('ended', () => { noteState.currentUrl = null; document.querySelectorAll('[data-note-play]').forEach((b) => { b.textContent = '▶'; }); });
+  document.body.appendChild(noteState.audio);
+
+  const composer = document.createElement('div');
+  composer.className = 'note-modal';
+  composer.id = 'note-composer';
+  composer.hidden = true;
+  composer.innerHTML = `<div class="note-modal-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><div class="note-composer-head"><img class="note-avatar" src="${profile.avatar}" alt=""><strong>${escapeHtml(profile.username)}</strong></div><textarea class="note-text" placeholder="Share a note with the people you know..."></textarea><div class="note-music-row" id="note-music-row" hidden><span class="note-music-chip"><span class="note-music-note">♪</span><span><b id="note-music-title"></b><em id="note-music-artist"></em></span><button type="button" class="note-chip-btn" id="note-music-play" data-note-play aria-label="Play preview">▶</button><button type="button" class="note-chip-btn" id="note-music-clear" aria-label="Remove music">×</button></span></div><div class="note-composer-actions"><button type="button" class="note-add-music" id="note-add-music">♪ Add music</button><button type="button" class="primary-action" id="note-post">Share</button></div></div>`;
+  document.body.appendChild(composer);
+
+  const library = document.createElement('div');
+  library.className = 'note-modal';
+  library.id = 'music-library';
+  library.hidden = true;
+  library.innerHTML = `<div class="note-modal-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><h3 class="music-title">Music library</h3><input class="music-search" id="music-search" placeholder="Search songs, artists, or genres..."><div class="music-list" id="music-list"></div></div>`;
+  document.body.appendChild(library);
+
+  const viewer = document.createElement('div');
+  viewer.className = 'note-modal';
+  viewer.id = 'note-viewer';
+  viewer.hidden = true;
+  viewer.innerHTML = `<div class="note-modal-card note-viewer-card"><button type="button" class="note-modal-close" data-close aria-label="Close">×</button><img class="note-avatar note-viewer-avatar" id="viewer-avatar" alt=""><h3 id="viewer-author"></h3><p id="viewer-text"></p><div class="note-music-row" id="viewer-music" hidden><span class="note-music-chip"><span class="note-music-note">♪</span><span><b id="viewer-music-title"></b><em id="viewer-music-artist"></em></span><button type="button" class="note-chip-btn" id="viewer-play" data-note-play aria-label="Play">▶</button></span></div></div>`;
+  document.body.appendChild(viewer);
+
+  document.querySelectorAll('.note-modal').forEach((modal) => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal || e.target.closest('[data-close]')) {
+        modal.hidden = true;
+        noteStop();
+      }
+    });
+  });
+
+  document.getElementById('note-add-music').addEventListener('click', () => { renderMusicLibrary(); document.getElementById('music-library').hidden = false; });
+  document.getElementById('note-music-play').addEventListener('click', (e) => { e.stopPropagation(); if (noteState.composerMusic) notePlay(noteState.composerMusic.url, e.currentTarget); });
+  document.getElementById('note-music-clear').addEventListener('click', () => { noteState.composerMusic = null; document.getElementById('note-music-row').hidden = true; noteStop(); });
+  document.getElementById('note-post').addEventListener('click', () => {
+    const textInput = composer.querySelector('.note-text');
+    const text = textInput.value.trim();
+    if (!text) { textInput.focus(); return; }
+    userNotes.unshift({ id: Date.now(), author: profile.username, avatar: profile.avatar, text, music: noteState.composerMusic ? { title: noteState.composerMusic.title, artist: noteState.composerMusic.artist, genre: noteState.composerMusic.genre, url: noteState.composerMusic.url } : null, createdAt: Date.now() });
+    saveNotes();
+    noteState.composerMusic = null;
+    textInput.value = '';
+    document.getElementById('note-music-row').hidden = true;
+    composer.hidden = true;
+    noteStop();
+    renderNoteShelves();
+  });
+  document.getElementById('music-search').addEventListener('input', renderMusicLibrary);
+  document.getElementById('viewer-play').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const note = userNotes[noteState.viewerIndex];
+    if (note?.music) notePlay(note.music.url, e.currentTarget);
+  });
+}
+
+function renderMusicLibrary() {
+  const q = (document.getElementById('music-search').value || '').trim().toLowerCase();
+  const list = document.getElementById('music-list');
+  const rows = NOTE_MUSIC_LIBRARY.filter((t) => !q || t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q) || t.genre.toLowerCase().includes(q));
+  list.innerHTML = rows.length
+    ? rows.map((t) => `<button type="button" class="music-row" data-url="${t.url}"><span class="music-play" data-note-play aria-label="Preview">▶</span><span class="music-meta"><b>${escapeHtml(t.title)}</b><em>${escapeHtml(t.artist)} · ${escapeHtml(t.genre)}</em></span><span class="music-use">Use</span></button>`).join('')
+    : '<p class="music-empty">No tracks match your search.</p>';
+  list.querySelectorAll('.music-row').forEach((row) => {
+    const url = row.dataset.url;
+    row.querySelector('.music-play').addEventListener('click', (e) => { e.stopPropagation(); notePlay(url, e.currentTarget); });
+    row.addEventListener('click', () => {
+      const track = NOTE_MUSIC_LIBRARY.find((t) => t.url === url);
+      if (!track) return;
+      noteState.composerMusic = track;
+      document.getElementById('note-music-title').textContent = track.title;
+      document.getElementById('note-music-artist').textContent = `${track.artist} · ${track.genre}`;
+      document.getElementById('note-music-row').hidden = false;
+      document.getElementById('music-library').hidden = true;
+      noteStop();
+    });
+  });
+}
+
+function openNoteComposer() {
+  buildNotesUi();
+  document.getElementById('note-composer').hidden = false;
+  document.querySelector('#note-composer .note-text').focus();
+}
+
+function openNoteViewer(index) {
+  buildNotesUi();
+  const note = userNotes[index];
+  if (!note) return;
+  noteState.viewerIndex = index;
+  document.getElementById('viewer-avatar').src = note.avatar;
+  document.getElementById('viewer-author').textContent = note.author;
+  document.getElementById('viewer-text').textContent = note.text;
+  const musicRow = document.getElementById('viewer-music');
+  if (note.music) {
+    document.getElementById('viewer-music-title').textContent = note.music.title;
+    document.getElementById('viewer-music-artist').textContent = `${note.music.artist} · ${note.music.genre}`;
+    document.getElementById('viewer-play').textContent = '▶';
+    musicRow.hidden = false;
+  } else {
+    musicRow.hidden = true;
+  }
+  document.getElementById('note-viewer').hidden = false;
+}
+
+function renderNoteShelves() {
+  noteState.containers.forEach((container) => {
+    container.innerHTML = `<button type="button" class="note-bubble note-add" aria-label="Create a note"><span class="note-ring"><b>＋</b></span><span class="note-label">Note</span></button>${userNotes.map((n, i) => `<button type="button" class="note-bubble" data-note-index="${i}" aria-label="Open ${escapeHtml(n.author)}'s note"><span class="note-ring ${n.music ? 'live' : ''}"><img src="${n.avatar}" alt="${escapeHtml(n.author)}"></span><span class="note-label">${escapeHtml(n.text.slice(0, 14))}</span></button>`).join('')}`;
+    container.querySelector('.note-add').addEventListener('click', openNoteComposer);
+    container.querySelectorAll('[data-note-index]').forEach((b) => b.addEventListener('click', () => openNoteViewer(Number(b.dataset.noteIndex))));
+  });
+}
+
+function attachNotes(containerId) {
+  buildNotesUi();
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  noteState.containers.add(container);
+  renderNoteShelves();
+}
+
 // ---------- Page dispatch ----------
 function runPage() {
   attachThemeToggle();
@@ -585,7 +769,9 @@ function runPage() {
     const feedTarget = document.getElementById('upload-feed');
     if (feedTarget) feedTarget.innerHTML = renderUploads('feed');
     hydrateStoryShelf();
+    attachNotes('home-notes');
   }
+  if (page === 'messages') attachNotes('messages-notes');
   if (page === 'glitches') {
     const videoTarget = document.getElementById('video-feed');
     if (videoTarget) videoTarget.innerHTML = renderUploads('videos');
