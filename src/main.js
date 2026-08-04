@@ -587,11 +587,7 @@ function attachAuthGate() {
     location.replace('login.html');
     return;
   }
-  auth.onAuthStateChanged((user) => {
-    if (!user) {
-      location.replace('login.html');
-      return;
-    }
+  const hydrate = (user) => {
     const name = user.displayName || user.email?.split('@')[0] || 'creator';
     profile.username = name;
     document.body.dataset.authEmail = user.email || '';
@@ -602,6 +598,22 @@ function attachAuthGate() {
       auth.signOut().then(() => location.replace('login.html'));
     });
     runPage();
+  };
+  // The saved session is usually available synchronously — use it immediately
+  // so a returning user never gets bounced back to the login screen.
+  const cachedUser = auth.currentUser;
+  if (cachedUser) {
+    hydrate(cachedUser);
+    return;
+  }
+  // Otherwise wait for Firebase to restore the session; a transient null from
+  // onAuthStateChanged must NOT redirect a signed-in user. Only redirect after
+  // a short grace period if no session actually exists.
+  const redirectTimer = setTimeout(() => location.replace('login.html'), 800);
+  auth.onAuthStateChanged((user) => {
+    if (!user) return; // session still restoring — the timer handles real sign-outs
+    clearTimeout(redirectTimer);
+    hydrate(user);
   });
 }
 
