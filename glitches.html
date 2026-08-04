@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glitches · GlitchIt</title>
     <link rel="stylesheet" href="src/styles.css" />
+    <link rel="stylesheet" href="src/reels.css" />
   </head>
   <body data-page="glitches">
     <div id="app">
@@ -24,13 +25,19 @@
       </aside>
 
       <main>
-        <div class="mobile-top">
-          <a class="mobile-top-plus" href="create.html" aria-label="Create">＋</a>
-          <a class="brand" href="index.html"><span class="icon" aria-hidden="true">ϟ</span>GlitchIt</a>
-          <div class="mobile-top-actions">
-            <a href="activity.html" class="top-activity-btn" aria-label="Activity"><span class="icon" aria-hidden="true">♡</span></a>
-            <a href="messages.html" class="top-dm-btn" aria-label="Messages"><span class="icon" aria-hidden="true">✉</span></a>
-          </div>
+        <div class="mobile-top reels-top">
+          <button type="button" class="reels-title" aria-haspopup="true">
+            Glitches
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <a class="reels-pill" href="activity.html" aria-label="Activity">
+            <span class="reels-pill-avatars" aria-hidden="true">
+              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=80&q=80" alt="" />
+              <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80" alt="" />
+              <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=80&q=80" alt="" />
+            </span>
+            <span class="reels-pill-heart" aria-hidden="true">♡<b></b></span>
+          </a>
         </div>
 
         <section class="page" id="glitches" data-page="glitches" aria-labelledby="glitches-title">
@@ -43,33 +50,63 @@
           <div class="video-grid" id="glitches-reel">
             <div id="video-feed"></div>
 
-            <article class="video-card">
-              <video class="glitch-video" playsinline loop preload="metadata" poster="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" aria-label="Marketplace fit check"></video>
-              <button type="button" class="video-toggle" aria-label="Pause Marketplace fit check"><span class="icon" aria-hidden="true">Ⅱ</span></button>
-              <button type="button" class="sound-toggle" aria-label="Mute Marketplace fit check"><span class="icon" aria-hidden="true">🔊</span></button>
-              <div class="video-overlay">
-                <div class="profile"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" alt="mira.motion avatar"><div><strong>mira.motion</strong><span>Marketplace fit check</span></div></div>
-                <p>Swipe-worthy styling loops from the creator feed.</p>
+            <article class="video-card reel-card">
+              <video class="glitch-video" playsinline loop preload="metadata" poster="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=600&h=1000&q=80" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" aria-label="Dusk drive"></video>
+              <button type="button" class="video-toggle" aria-label="Pause Dusk drive"><span class="icon" aria-hidden="true">Ⅱ</span></button>
+              <button type="button" class="sound-toggle" aria-label="Mute Dusk drive"><span class="icon" aria-hidden="true">🔊</span></button>
+              <div class="reel-rail">
+                <button type="button" class="reel-action reel-like" aria-label="Like, 22K likes"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><b>22K</b></button>
+                <button type="button" class="reel-action" aria-label="Comment, 652 comments"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><b>652</b></button>
+                <button type="button" class="reel-action" aria-label="Share, 15.1K shares"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 22-7z"/></svg><b>15.1K</b></button>
+                <span class="reel-disc" aria-hidden="true"><i>♪</i></span>
+              </div>
+              <div class="video-overlay reel-overlay">
+                <div class="reel-creator">
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" alt="mira.motion avatar">
+                  <div class="reel-meta"><strong>mira.motion</strong><p>The otherworldly feeling you get when you drive into the desert at dusk ✨</p></div>
+                  <button type="button" class="reel-follow">Follow</button>
+                </div>
+                <div class="reel-comment"><span>Reply to Kristine's Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div>
               </div>
             </article>
 
-            <article class="video-card">
-              <video class="glitch-video" playsinline loop preload="metadata" poster="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" aria-label="Neon drop preview"></video>
-              <button type="button" class="video-toggle" aria-label="Pause Neon drop preview"><span class="icon" aria-hidden="true">Ⅱ</span></button>
-              <button type="button" class="sound-toggle" aria-label="Mute Neon drop preview"><span class="icon" aria-hidden="true">🔊</span></button>
-              <div class="video-overlay">
-                <div class="profile"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80" alt="glitchwear avatar"><div><strong>glitchwear</strong><span>Neon drop preview</span></div></div>
-                <p>A quick look at tonight's creator-made hoodie launch.</p>
+            <article class="video-card reel-card">
+              <video class="glitch-video" playsinline loop preload="metadata" poster="https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=600&h=1000&q=80" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" aria-label="Taking flight"></video>
+              <button type="button" class="video-toggle" aria-label="Pause Taking flight"><span class="icon" aria-hidden="true">Ⅱ</span></button>
+              <button type="button" class="sound-toggle" aria-label="Mute Taking flight"><span class="icon" aria-hidden="true">🔊</span></button>
+              <div class="reel-rail">
+                <button type="button" class="reel-action reel-like" aria-label="Like, 3.1K likes"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><b>3.1K</b></button>
+                <button type="button" class="reel-action" aria-label="Comment, 702 comments"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><b>702</b></button>
+                <button type="button" class="reel-action" aria-label="Share, 4.1K shares"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 22-7z"/></svg><b>4.1K</b></button>
+                <span class="reel-disc" aria-hidden="true"><i>♪</i></span>
+              </div>
+              <div class="video-overlay reel-overlay">
+                <div class="reel-creator">
+                  <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80" alt="glitchwear avatar">
+                  <div class="reel-meta"><strong>glitchwear</strong><p>Taking flight all week long 🏀</p></div>
+                  <button type="button" class="reel-follow">Follow</button>
+                </div>
+                <div class="reel-comment"><span>Reply to Javon's Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div>
               </div>
             </article>
 
-            <article class="video-card">
-              <video class="glitch-video" playsinline loop preload="metadata" poster="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=900&q=80" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" aria-label="Desk setup loop"></video>
-              <button type="button" class="video-toggle" aria-label="Pause Desk setup loop"><span class="icon" aria-hidden="true">Ⅱ</span></button>
-              <button type="button" class="sound-toggle" aria-label="Mute Desk setup loop"><span class="icon" aria-hidden="true">🔊</span></button>
-              <div class="video-overlay">
-                <div class="profile"><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80" alt="pixelmakers avatar"><div><strong>pixelmakers</strong><span>Desk setup loop</span></div></div>
-                <p>Creator lamp details made for short-form browsing.</p>
+            <article class="video-card reel-card">
+              <video class="glitch-video" playsinline loop preload="metadata" poster="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=600&h=1000&q=80" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" aria-label="Sunrise desk setup"></video>
+              <button type="button" class="video-toggle" aria-label="Pause Sunrise desk setup"><span class="icon" aria-hidden="true">Ⅱ</span></button>
+              <button type="button" class="sound-toggle" aria-label="Mute Sunrise desk setup"><span class="icon" aria-hidden="true">🔊</span></button>
+              <div class="reel-rail">
+                <button type="button" class="reel-action reel-like" aria-label="Like, 18.9K likes"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><b>18.9K</b></button>
+                <button type="button" class="reel-action" aria-label="Comment, 1.2K comments"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><b>1.2K</b></button>
+                <button type="button" class="reel-action" aria-label="Share, 8.4K shares"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 22-7z"/></svg><b>8.4K</b></button>
+                <span class="reel-disc" aria-hidden="true"><i>♪</i></span>
+              </div>
+              <div class="video-overlay reel-overlay">
+                <div class="reel-creator">
+                  <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80" alt="pixelmakers avatar">
+                  <div class="reel-meta"><strong>pixelmakers</strong><p>Sunrise desk setup loops that hit different 🌅</p></div>
+                  <button type="button" class="reel-follow">Follow</button>
+                </div>
+                <div class="reel-comment"><span>Reply to Amara's Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div>
               </div>
             </article>
           </div>

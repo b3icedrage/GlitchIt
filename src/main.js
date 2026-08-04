@@ -6,6 +6,13 @@
 
 const icon = (name) => `<span class="icon" aria-hidden="true">${name}</span>`;
 
+// Instagram-Reels style line icons (heart / comment / send) used on glitch cards.
+const reelIcon = (kind) => kind === 'heart'
+  ? '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
+  : kind === 'comment'
+  ? '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'
+  : '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 22-7z"/></svg>';
+
 const profile = {
   username: 'b3ice_drage',
   name: 'ßrįæñ',
@@ -35,7 +42,11 @@ function uploadCard(item, type) {
 }
 
 function glitchVideoCard(video, uploaded = false) {
-  return `<article class="video-card ${uploaded ? 'upload-card' : ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="video-overlay"><div class="profile"><img src="${video.avatar}" alt="${video.user} avatar"><div><strong>${video.user}</strong><span>${video.title}</span></div></div><p>${video.caption}</p></div></article>`;
+  const likes = video.likes || '1.2K';
+  const comments = video.comments || '312';
+  const shares = video.shares || '8.1K';
+  const replyTo = video.replyTo || video.user;
+  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span></div><div class="video-overlay reel-overlay"><div class="reel-creator"><img src="${video.avatar}" alt="${video.user} avatar"><div class="reel-meta"><strong>${video.user}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
 }
 
 function renderUploads(type) {
@@ -549,6 +560,30 @@ function attachGlitchAutoplay() {
   updateGlitchPlayback();
 }
 
+// ---------- Reels interactions (like + follow toggles) ----------
+function attachReelsActions() {
+  document.querySelectorAll('.reel-like').forEach((btn) => {
+    if (btn.dataset.reelReady) return;
+    btn.dataset.reelReady = 'true';
+    btn.addEventListener('click', () => {
+      const on = btn.classList.toggle('liked');
+      const count = btn.querySelector('b');
+      if (!count) return;
+      const value = parseFloat(count.textContent) || 0;
+      const suffix = count.textContent.includes('K') ? 'K' : '';
+      count.textContent = Math.max(0, value + (on ? 1 : -1)) + suffix;
+    });
+  });
+  document.querySelectorAll('.reel-follow').forEach((btn) => {
+    if (btn.dataset.followReady) return;
+    btn.dataset.followReady = 'true';
+    btn.addEventListener('click', () => {
+      const on = btn.classList.toggle('following');
+      btn.textContent = on ? 'Following' : 'Follow';
+    });
+  });
+}
+
 // ---------- Splash screen (once per session) ----------
 const SPLASH_KEY = 'glitchit.splash.v1';
 
@@ -1012,6 +1047,7 @@ function runPage() {
     const videoTarget = document.getElementById('video-feed');
     if (videoTarget) videoTarget.innerHTML = renderUploads('videos');
     attachGlitchAutoplay();
+    attachReelsActions();
   }
   if (page === 'create') attachCreateStudio();
   if (page === 'profile') {
