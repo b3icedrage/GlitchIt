@@ -30,7 +30,7 @@ function saveUploads() {
 // ---------- Upload cards ----------
 function uploadCard(item, type) {
   const isVideo = type === 'videos' || item.type === 'video';
-  if (isVideo) return glitchVideoCard({ ...item, user: profile.username, avatar: profile.avatar, src: item.preview, caption: item.caption || item.title }, true);
+  if (isVideo) return glitchVideoCard({ ...item, user: profile.username, avatar: profile.avatar, src: item.src || item.preview, poster: item.preview, caption: item.caption || item.title }, true);
   return `<article class="post upload-card"><header><div class="profile"><img src="${profile.avatar}" alt="${profile.username} avatar"><div><strong>${profile.username}</strong><span>Fresh post</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${item.preview}" alt="${item.title}"><span class="shop-badge">${icon('＋')} ${item.type}</span></div><div class="actions"><div>${icon('♡')}${icon('◌')}${icon('↗')}</div>${icon('▱')}</div><strong>New upload</strong><p><b>${profile.username}</b> ${item.caption || item.title}</p></article>`;
 }
 
@@ -78,36 +78,236 @@ function hydrateStoryShelf() {
   attachStoryLinks();
 }
 
-// ---------- Create page ----------
-function attachCreateForm() {
+// ---------- Create page (Instagram-style studio) ----------
+const CREATE_SAMPLE_VIDEO = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
+const CREATE_SAMPLE_IMAGE = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1000&q=80';
+const CREATE_FILTERS = {
+  none: { filter: 'none', fx: '' },
+  clarendon: { filter: 'contrast(1.22) saturate(1.35)', fx: '' },
+  gingham: { filter: 'contrast(1.08) brightness(1.1) sepia(.16)', fx: '' },
+  moon: { filter: 'grayscale(1) contrast(1.14) brightness(.94)', fx: '' },
+  lark: { filter: 'brightness(1.09) contrast(.92) saturate(.9) sepia(.12)', fx: '' },
+  reyes: { filter: 'sepia(.24) brightness(1.06) contrast(.9) saturate(.72)', fx: '' },
+  juno: { filter: 'saturate(1.5) contrast(1.06) brightness(1.12)', fx: '' },
+  slumber: { filter: 'saturate(.78) brightness(1.12) contrast(.88) hue-rotate(-6deg)', fx: '' },
+  crema: { filter: 'sepia(.38) contrast(.94) brightness(1.06)', fx: '' },
+  ludwig: { filter: 'saturate(1.18) contrast(1.06) brightness(1.06)', fx: '' },
+  aden: { filter: 'brightness(1.1) saturate(.85) contrast(.94) hue-rotate(-10deg)', fx: '' },
+  perpetua: { filter: 'contrast(1.08) brightness(1.1) saturate(1.1)', fx: '' },
+  glitch: { filter: 'contrast(1.3) saturate(1.5) hue-rotate(-8deg)', fx: 'fx-glitch' },
+  vhs: { filter: 'saturate(1.35) contrast(1.15)', fx: 'fx-vhs' },
+  neon: { filter: 'saturate(1.9) contrast(1.25)', fx: 'fx-neon' },
+};
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+function attachCreateStudio() {
   const form = document.getElementById('create-form');
-  form?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const data = new FormData(form);
-    const type = data.get('post-type');
-    const file = data.get('media');
-    const isVideo = file?.type?.startsWith('video/');
-    const status = document.getElementById('create-status');
-    const fallback = isVideo ? 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4' : 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1000&q=80';
-    const publish = (preview) => {
-      const item = { title: data.get('title') || 'Untitled upload', caption: data.get('caption'), preview, type: isVideo || type === 'videos' ? 'video' : type };
-      userUploads[type].unshift(item);
-      saveUploads();
-      if (status) {
-        const target = type === 'videos' ? 'the Glitches page' : 'the Home feed';
-        status.textContent = `Published to ${type === 'videos' ? 'Glitches' : type}. View it on ${target}.`;
+  const stage = document.getElementById('create-stage');
+  if (!form || !stage) return;
+  const video = document.getElementById('camera-feed');
+  const photo = document.getElementById('stage-photo');
+  const fallback = document.getElementById('stage-fallback');
+  const fxLayer = document.getElementById('stage-fx');
+  const nextBtn = document.getElementById('create-next');
+  const backBtn = document.getElementById('create-back');
+  const status = document.getElementById('create-status');
+  const tabs = [...document.querySelectorAll('.create-tab')];
+  const chips = [...document.querySelectorAll('.filter-chip')];
+  const mediaTiles = [...document.querySelectorAll('.media-tile')];
+  const tools = document.querySelector('.create-tools');
+
+  const state = { type: 'feed', filter: 'none', captured: null, mode: 'camera', stream: null, hadCamera: false, facing: 'user', torch: false };
+
+  const setMode = (mode) => {
+    state.mode = mode;
+    video.hidden = mode !== 'camera';
+    photo.hidden = mode !== 'photo';
+    document.getElementById('flip-btn').hidden = mode !== 'camera';
+    document.getElementById('flash-btn').hidden = mode !== 'camera';
+    document.getElementById('capture-btn').hidden = mode !== 'camera';
+    nextBtn.hidden = mode !== 'photo';
+    applyFilter();
+  };
+
+  const stopCamera = () => {
+    state.stream?.getTracks().forEach((track) => track.stop());
+    state.stream = null;
+    video.srcObject = null;
+  };
+
+  const startCamera = async (facingMode = state.facing) => {
+    stopCamera();
+    if (!navigator.mediaDevices?.getUserMedia) {
+      fallback.hidden = false;
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode, width: { ideal: 1280 } }, audio: false });
+      state.stream = stream;
+      state.hadCamera = true;
+      video.srcObject = stream;
+      fallback.hidden = true;
+      setMode('camera');
+    } catch (err) {
+      fallback.hidden = false;
+      setMode('camera');
+    }
+  };
+
+  const setPhoto = (src) => {
+    photo.src = src;
+    fallback.hidden = true;
+    state.captured = src;
+    setMode('photo');
+  };
+
+  const applyFilter = () => {
+    const def = CREATE_FILTERS[state.filter] || CREATE_FILTERS.none;
+    [video, photo].forEach((el) => { if (!el.hidden) el.style.filter = def.filter; });
+    fxLayer.className = `stage-fx ${def.fx}`.trim();
+  };
+
+  const resetStudio = () => {
+    form.hidden = true;
+    stage.hidden = false;
+    tools.hidden = false;
+    tabs[0].parentElement.hidden = false;
+    state.captured = null;
+    document.getElementById('stage-captured').hidden = true;
+    setMode('camera');
+    if (state.hadCamera) startCamera();
+  };
+
+  // Tabs (Feed / Story / Video)
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      tabs.forEach((t) => { t.classList.toggle('active', t === tab); t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); });
+      state.type = tab.dataset.tab;
+      if (status) status.textContent = '';
+    });
+  });
+
+  // Filter chips — previews + live application
+  chips.forEach((chip) => {
+    chip.querySelector('.chip-thumb').style.filter = (CREATE_FILTERS[chip.dataset.filter] || CREATE_FILTERS.none).filter;
+    chip.addEventListener('click', () => {
+      chips.forEach((c) => c.classList.toggle('active', c === chip));
+      state.filter = chip.dataset.filter;
+      applyFilter();
+    });
+  });
+
+  // Media source tiles
+  document.getElementById('media-camera').addEventListener('click', () => {
+    mediaTiles.forEach((t) => t.classList.toggle('active', t.id === 'media-camera'));
+    startCamera();
+  });
+  document.querySelectorAll('.media-sample').forEach((tile) => {
+    tile.addEventListener('click', () => {
+      mediaTiles.forEach((t) => t.classList.toggle('active', t === tile));
+      setPhoto(tile.dataset.media);
+    });
+  });
+  const uploadInput = document.getElementById('media-upload-input');
+  uploadInput?.addEventListener('change', async () => {
+    const file = uploadInput.files?.[0];
+    if (!file) return;
+    const src = await readFileAsDataURL(file);
+    if (src) {
+      mediaTiles.forEach((t) => t.classList.remove('active'));
+      setPhoto(src);
+    }
+    uploadInput.value = '';
+  });
+
+  // Shutter: capture the camera frame
+  document.getElementById('capture-btn').addEventListener('click', () => {
+    if (!state.stream) { fallback.hidden = false; return; }
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.min(video.videoWidth || 1280, 1280);
+    canvas.height = Math.min(video.videoHeight || 960, 1280);
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    stopCamera();
+    setPhoto(dataUrl);
+    document.getElementById('stage-captured').hidden = false;
+  });
+
+  // Flip camera
+  document.getElementById('flip-btn').addEventListener('click', () => {
+    state.facing = state.facing === 'user' ? 'environment' : 'user';
+    startCamera();
+  });
+
+  // Flash: hardware torch where supported, white flash otherwise
+  document.getElementById('flash-btn').addEventListener('click', async () => {
+    const track = state.stream?.getVideoTracks?.()[0];
+    try {
+      if (track?.applyConstraints) {
+        state.torch = !state.torch;
+        await track.applyConstraints({ advanced: [{ torch: state.torch }] });
+      } else {
+        throw new Error('no torch');
       }
-      form.reset();
-    };
-    if (file?.size) {
-      const reader = new FileReader();
-      reader.onload = () => publish(reader.result);
-      reader.onerror = () => publish(fallback);
-      reader.readAsDataURL(file);
-    } else {
-      publish(fallback);
+    } catch (err) {
+      stage.classList.add('stage-flashing');
+      setTimeout(() => stage.classList.remove('stage-flashing'), 180);
     }
   });
+
+  // Next → caption form
+  nextBtn?.addEventListener('click', () => {
+    if (!state.captured) return;
+    document.getElementById('create-preview-thumb').src = state.captured;
+    document.getElementById('create-form-head-label').textContent = state.type === 'videos' ? 'New video' : state.type === 'stories' ? 'New story' : 'New post';
+    stage.hidden = true;
+    tools.hidden = true;
+    tabs[0].parentElement.hidden = true;
+    nextBtn.hidden = true;
+    form.hidden = false;
+    form.querySelector('[name="title"]').focus();
+  });
+
+  // Back to camera
+  backBtn?.addEventListener('click', () => {
+    stage.hidden = false;
+    tools.hidden = false;
+    tabs[0].parentElement.hidden = false;
+    form.hidden = true;
+    if (status) status.textContent = '';
+  });
+
+  // Publish
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const title = data.get('title') || 'Untitled upload';
+    const caption = data.get('caption');
+    const type = state.type;
+    const isVideo = type === 'videos';
+    let preview = state.captured;
+    const file = data.get('media');
+    if (!preview && file?.size) preview = await readFileAsDataURL(file);
+    if (!preview) preview = isVideo ? CREATE_SAMPLE_VIDEO : CREATE_SAMPLE_IMAGE;
+    const item = { title, caption, preview, type: isVideo ? 'video' : type };
+    if (isVideo && preview !== CREATE_SAMPLE_VIDEO) item.src = CREATE_SAMPLE_VIDEO;
+    userUploads[type].unshift(item);
+    saveUploads();
+    if (status) status.textContent = `Published to ${isVideo ? 'Glitches' : type}. View it on ${isVideo ? 'the Glitches page' : 'the Home feed'}.`;
+    form.reset();
+    resetStudio();
+  });
+
+  window.addEventListener('pagehide', stopCamera);
+  startCamera();
 }
 
 // ---------- Profile settings ----------
@@ -343,7 +543,7 @@ if (page === 'glitches') {
   if (videoTarget) videoTarget.innerHTML = renderUploads('videos');
   attachGlitchAutoplay();
 }
-if (page === 'create') attachCreateForm();
+if (page === 'create') attachCreateStudio();
 if (page === 'profile') attachSettingsDrawer();
 if (page === 'shop') attachShopFilters();
 if (page === 'search') attachSearchForm();
