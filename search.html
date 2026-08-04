@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Search · GlitchIt</title>
     <link rel="stylesheet" href="src/styles.css" />
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
+    <script src="src/firebase-init.js"></script>
   </head>
   <body data-page="search">
     <div id="app">
@@ -53,7 +57,7 @@
       </main>
 
       <aside class="right-rail">
-        <div class="me"><img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=240&q=80" alt="Your profile"><div><strong>b3ice_drage</strong><span>Build your vibe</span></div></div>
+        <div class="me"><img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=240&q=80" alt="Your profile"><div><strong data-auth-name>@glitchit</strong><span>Build your vibe</span></div></div>
         <div class="stats"><span><b>12.8k</b> followers</span><span><b>46</b> drops</span></div>
         <h3>Suggested sellers</h3>
         <div class="seller"><div><strong>@glitchwear</strong><span>Streetwear</span></div><button>Follow</button></div>

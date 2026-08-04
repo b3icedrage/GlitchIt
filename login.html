@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GlitchIt · Log in</title>
+    <link rel="stylesheet" href="src/styles.css" />
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
+    <script src="src/firebase-init.js"></script>
+  </head>
+  <body class="auth-body" data-page="login">
+    <div class="auth-shell">
+      <div class="auth-blob auth-blob-a" aria-hidden="true"></div>
+      <div class="auth-blob auth-blob-b" aria-hidden="true"></div>
+
+      <main class="auth-card">
+        <div class="auth-brand">
+          <span class="auth-mark">ϟ</span>
+          <h1>GlitchIt</h1>
+          <p>Create. Drop. Glitch.</p>
+        </div>
+
+        <div class="auth-tabs" role="tablist" aria-label="Account access">
+          <button type="button" class="auth-tab active" data-mode="login" role="tab" aria-selected="true">Log in</button>
+          <button type="button" class="auth-tab" data-mode="signup" role="tab" aria-selected="false">Sign up</button>
+        </div>
+
+        <form id="auth-form" novalidate>
+          <label class="auth-field" id="name-field" hidden>
+            <span>Full name</span>
+            <input name="name" type="text" placeholder="Your name" autocomplete="name">
+          </label>
+          <label class="auth-field">
+            <span>Email</span>
+            <input name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
+          </label>
+          <label class="auth-field">
+            <span>Password</span>
+            <span class="auth-input-wrap">
+              <input name="password" type="password" placeholder="••••••••" autocomplete="current-password" minlength="6" required>
+              <button type="button" class="auth-eye" id="auth-eye" aria-label="Show password" aria-pressed="false">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </span>
+          </label>
+          <p class="auth-error" id="auth-error" role="alert" hidden></p>
+          <button type="submit" class="auth-submit">Log in</button>
+        </form>
+
+        <p class="auth-hint" id="auth-hint">New here? Tap <strong>Sign up</strong> to create your creator profile.</p>
+      </main>
+    </div>
+    <script src="src/login.js" defer></script>
+  </body>
+</html>

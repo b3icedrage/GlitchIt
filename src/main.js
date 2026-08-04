@@ -557,23 +557,52 @@ try {
   }
 } catch (e) { /* sessionStorage unavailable — skip splash */ }
 
-// ---------- Page dispatch ----------
-attachThemeToggle();
-attachEndOfPageDetection();
+// ---------- Auth gate + page dispatch ----------
+// Page hydration runs only after Firebase confirms this device is signed in.
+function runPage() {
+  attachThemeToggle();
+  attachEndOfPageDetection();
 
-if (page === 'home') {
-  const feedTarget = document.getElementById('upload-feed');
-  if (feedTarget) feedTarget.innerHTML = renderUploads('feed');
-  hydrateStoryShelf();
-}
-if (page === 'glitches') {
-  const videoTarget = document.getElementById('video-feed');
-  if (videoTarget) videoTarget.innerHTML = renderUploads('videos');
-  attachGlitchAutoplay();
-}
-if (page === 'create') attachCreateStudio();
-if (page === 'profile') attachSettingsDrawer();
-if (page === 'shop') attachShopFilters();
-if (page === 'search') attachSearchForm();
+  if (page === 'home') {
+    const feedTarget = document.getElementById('upload-feed');
+    if (feedTarget) feedTarget.innerHTML = renderUploads('feed');
+    hydrateStoryShelf();
+  }
+  if (page === 'glitches') {
+    const videoTarget = document.getElementById('video-feed');
+    if (videoTarget) videoTarget.innerHTML = renderUploads('videos');
+    attachGlitchAutoplay();
+  }
+  if (page === 'create') attachCreateStudio();
+  if (page === 'profile') attachSettingsDrawer();
+  if (page === 'shop') attachShopFilters();
+  if (page === 'search') attachSearchForm();
 
-window.addEventListener('scroll', updateGlitchPlayback, { passive: true });
+  window.addEventListener('scroll', updateGlitchPlayback, { passive: true });
+}
+
+function attachAuthGate() {
+  const auth = window.glitchFirebase?.auth?.();
+  if (!auth) {
+    location.replace('login.html');
+    return;
+  }
+  auth.onAuthStateChanged((user) => {
+    if (!user) {
+      location.replace('login.html');
+      return;
+    }
+    const name = user.displayName || user.email?.split('@')[0] || 'creator';
+    profile.username = name;
+    document.body.dataset.authEmail = user.email || '';
+    document.body.dataset.authName = name;
+    document.querySelectorAll('[data-auth-name]').forEach((el) => { el.textContent = name; });
+    document.querySelectorAll('[data-auth-email]').forEach((el) => { el.textContent = user.email || name; });
+    document.getElementById('logout-btn')?.addEventListener('click', () => {
+      auth.signOut().then(() => location.replace('login.html'));
+    });
+    runPage();
+  });
+}
+
+attachAuthGate();
