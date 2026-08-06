@@ -435,6 +435,113 @@ main { height: 100vh; overflow-y: auto; padding: 28px 0 56px; scrollbar-width: t
 .stage-btn.mic-btn { top: auto; right: 14px; bottom: 18px; }
 .stage-captured { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; background: linear-gradient(135deg, #d62976, #4f5bd5); }
 .stage-flashing::after { content: ''; position: absolute; inset: 0; background: #fff; opacity: .85; pointer-events: none; }
+.stage-grid { position: absolute; inset: 0; z-index: 6; display: none; pointer-events: none; }
+.stage-grid.on {
+  display: block;
+  background:
+    linear-gradient(to right, rgba(255, 255, 255, .32) 1px, transparent 1px) 33.333% 0 / 1px 100%,
+    linear-gradient(to right, rgba(255, 255, 255, .32) 1px, transparent 1px) 66.667% 0 / 1px 100%,
+    linear-gradient(to bottom, rgba(255, 255, 255, .32) 1px, transparent 1px) 0 33.333% / 100% 1px,
+    linear-gradient(to bottom, rgba(255, 255, 255, .32) 1px, transparent 1px) 0 66.667% / 100% 1px;
+  background-repeat: no-repeat;
+}
+
+/* Active filter name pill (top center, under the top bar) */
+.filter-label {
+  position: absolute;
+  top: calc(64px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .45);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease;
+}
+.filter-label.show { opacity: 1; }
+
+/* Transient toast for rail-mode feedback / audience changes */
+.stage-toast {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(.96);
+  z-index: 9;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .62);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.stage-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+/* Grid rail button on-state */
+.rail-item.on { color: #fff; }
+.rail-item.on .rail-grid-icon { filter: drop-shadow(0 0 6px rgba(255, 255, 255, .8)); }
+
+/* Shutter press feedback */
+body[data-page="create"] .capture-btn.pressed { transform: scale(.9); }
+
+/* Story audience selection ring */
+.profile-avatar.active { transform: scale(1.08); }
+.profile-avatar.active img { border: 3px solid #fff; }
+
+/* Emoji quick-row + caption counter in the publish sheet */
+body[data-page="create"] .emoji-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
+body[data-page="create"] .emoji-row::-webkit-scrollbar { display: none; }
+body[data-page="create"] .emoji-row button {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #262626;
+  border-radius: 50%;
+  background: #121212;
+  font-size: 20px;
+  transition: transform .12s ease, background .12s ease;
+}
+body[data-page="create"] .emoji-row button:hover { transform: scale(1.14); background: #1c1c1c; }
+body[data-page="create"] .emoji-row button:active { transform: scale(.92); }
+body[data-page="create"] .caption-meta { display: flex; justify-content: flex-end; color: #8e8e8e; font-size: 12px; font-weight: 700; margin-top: -8px; }
+
+/* Publish success state */
+body[data-page="create"] .create-status.ok {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #30d158;
+  animation: okPop .4s cubic-bezier(.2, .9, .3, 1.3);
+}
+body[data-page="create"] .create-status.ok::before {
+  content: '✓';
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #30d158;
+  color: #000;
+  font-size: 12px;
+  font-weight: 900;
+}
+@keyframes okPop {
+  from { opacity: 0; transform: translateY(6px) scale(.96); }
+  to { opacity: 1; transform: none; }
+}
 .create-tools { display: grid; gap: 12px; margin-top: 14px; }
 .filter-strip { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 10px; scrollbar-width: thin; }
 .filter-chip { flex: 0 0 auto; display: grid; justify-items: center; gap: 5px; border: 0; background: transparent; padding: 0; color: #737373; font-size: 11px; font-weight: 700; }

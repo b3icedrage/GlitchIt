@@ -46,6 +46,9 @@
             </div>
             <img id="stage-photo" class="stage-photo" alt="Selected photo" hidden>
             <div class="stage-fx" id="stage-fx" aria-hidden="true"></div>
+            <div class="stage-grid" id="stage-grid" aria-hidden="true"></div>
+            <div class="filter-label" id="filter-label" aria-hidden="true">None</div>
+            <div class="stage-toast" id="stage-toast" role="status"></div>
 
             <!-- Top bar: settings (left) · flash (center) · close (right) -->
             <div class="ig-top">
@@ -74,6 +77,10 @@
               </button>
               <button type="button" class="rail-item" aria-label="More modes">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <button type="button" class="rail-item" id="grid-btn" aria-label="Toggle grid overlay">
+                <svg class="rail-grid-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                <span>Grid</span>
               </button>
             </div>
 
@@ -136,7 +143,7 @@
                 <button type="button" class="create-tab" data-tab="feed" role="tab" aria-selected="false">POST</button>
                 <button type="button" class="create-tab active" data-tab="stories" role="tab" aria-selected="true">STORY</button>
                 <button type="button" class="create-tab" data-tab="videos" role="tab" aria-selected="false">REEL</button>
-                <button type="button" class="create-tab" data-tab="feed" role="tab" aria-selected="false">LIVE</button>
+                <button type="button" class="create-tab" data-tab="live" role="tab" aria-selected="false">LIVE</button>
               </div>
               <button type="button" class="mode-icon" id="flip-btn" aria-label="Flip camera" title="Flip camera">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -156,6 +163,17 @@
               <input name="title" aria-label="Title" placeholder="Title or story headline" required>
             </div>
             <textarea name="caption" aria-label="Caption" placeholder="Write a caption..."></textarea>
+            <div class="emoji-row" id="caption-emojis" aria-label="Quick emojis">
+              <button type="button" data-emoji="😀" aria-label="Insert smiling face">😀</button>
+              <button type="button" data-emoji="😂" aria-label="Insert tears of joy">😂</button>
+              <button type="button" data-emoji="😍" aria-label="Insert heart eyes">😍</button>
+              <button type="button" data-emoji="🔥" aria-label="Insert fire">🔥</button>
+              <button type="button" data-emoji="✨" aria-label="Insert sparkles">✨</button>
+              <button type="button" data-emoji="👏" aria-label="Insert clapping hands">👏</button>
+              <button type="button" data-emoji="🛍️" aria-label="Insert shopping bag">🛍️</button>
+              <button type="button" data-emoji="💥" aria-label="Insert collision">💥</button>
+            </div>
+            <div class="caption-meta"><span id="caption-count">0/2200</span></div>
             <input type="file" id="media-upload-input" name="media" accept="image/*,video/*" hidden>
             <button type="submit" class="primary-action">Publish</button>
             <p class="create-status" id="create-status" role="status"></p>
@@ -184,6 +202,6 @@
         <a href="profile.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></a>
       </nav>
     </div>
-    <script src="src/main.js?v=3" defer></script>
+    <script src="src/main.js?v=4" defer></script>
   </body>
 </html>

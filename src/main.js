@@ -155,7 +155,7 @@ function attachCreateStudio() {
   const tools = document.querySelector('.create-tools');
 
   const micBtn = document.getElementById('mic-btn');
-  const state = { type: 'feed', filter: 'none', captured: null, mode: 'camera', stream: null, hadCamera: false, facing: 'user', torch: false, mic: false, hasMic: false };
+  const state = { type: 'feed', filter: 'none', captured: null, mode: 'camera', stream: null, hadCamera: false, facing: 'user', torch: false, mic: false, hasMic: false, grid: false, audience: 'you' };
 
   const updateMicButton = () => {
     if (!micBtn) return;
@@ -224,6 +224,12 @@ function attachCreateStudio() {
     const def = CREATE_FILTERS[state.filter] || CREATE_FILTERS.none;
     [video, photo].forEach((el) => { if (!el.hidden) el.style.filter = def.filter; });
     fxLayer.className = `stage-fx ${def.fx}`.trim();
+    const label = document.getElementById('filter-label');
+    if (label) {
+      const show = state.filter !== 'none';
+      label.textContent = state.filter;
+      label.classList.toggle('show', show);
+    }
   };
 
   const resetStudio = () => {
@@ -285,6 +291,12 @@ function attachCreateStudio() {
 
   // Shutter: capture the camera frame
   document.getElementById('capture-btn').addEventListener('click', () => {
+    // Shutter press feedback: ring squeeze + white flash
+    const shutter = document.getElementById('capture-btn');
+    shutter.classList.add('pressed');
+    setTimeout(() => shutter.classList.remove('pressed'), 160);
+    stage.classList.add('stage-flashing');
+    setTimeout(() => stage.classList.remove('stage-flashing'), 180);
     if (!state.stream) { fallback.hidden = false; return; }
     const canvas = document.createElement('canvas');
     canvas.width = Math.min(video.videoWidth || 1280, 1280);
@@ -382,18 +394,93 @@ function attachCreateStudio() {
     if (DB) {
       DB.saveMedia({ ...item, file: file?.size ? file : null, user: window.GLITCHIT_USER?.id || '', avatar: profile.avatar }).then((res) => {
         if (!status) return;
-        if (res.ok) { status.textContent = `Published to ${isVideo ? 'Glitches' : type} and saved to the database.`; return; }
-        if (res.reason === 'auth') { status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — sign in to publish to the database.`; return; }
-        if (res.reason === 'config') status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only — add Supabase keys in src/config.js).`;
-        else if (res.reason === 'table') status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — database needs setup: create the media & saved tables in the Supabase SQL Editor (I can re-send the script).`;
-        else status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — database error. Check that the tables and the glitchit-media bucket exist.`;
+        if (res.ok) { status.className = 'create-status ok'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} and saved to the database.`; return; }
+        if (res.reason === 'auth') { status.className = 'create-status'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — sign in to publish to the database.`; return; }
+        if (res.reason === 'config') { status.className = 'create-status'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only — add Supabase keys in src/config.js).`; }
+        else if (res.reason === 'table') { status.className = 'create-status'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — database needs setup: create the media & saved tables in the Supabase SQL Editor (I can re-send the script).`; }
+        else { status.className = 'create-status'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — database error. Check that the tables and the glitchit-media bucket exist.`; }
       });
     } else if (status) {
+      status.className = 'create-status ok';
       status.textContent = `Published to ${isVideo ? 'Glitches' : type}. View it on ${isVideo ? 'the Glitches page' : 'the Home feed'}.`;
     }
     form.reset();
     resetStudio();
   });
+
+  // ---------- Polish interactions ----------
+
+  // Grid overlay toggle (left rail)
+  const gridBtn = document.getElementById('grid-btn');
+  const stageGrid = document.getElementById('stage-grid');
+  gridBtn?.addEventListener('click', () => {
+    state.grid = !state.grid;
+    gridBtn.classList.toggle('on', state.grid);
+    if (stageGrid) stageGrid.classList.toggle('on', state.grid);
+  });
+
+  // Story audience selection (top-right avatars)
+  const showStageToast = (msg) => {
+    const toast = document.getElementById('stage-toast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showStageToast._t);
+    showStageToast._t = setTimeout(() => toast.classList.remove('show'), 1600);
+  };
+  document.querySelectorAll('.ig-profiles .profile-avatar').forEach((avatar) => {
+    avatar.addEventListener('click', () => {
+      document.querySelectorAll('.ig-profiles .profile-avatar').forEach((a) => a.classList.remove('active'));
+      avatar.classList.add('active');
+      state.audience = avatar.classList.contains('gray') ? 'close' : 'you';
+      showStageToast(avatar.classList.contains('gray') ? 'Close friends only' : 'Your story');
+    });
+  });
+
+  // Rail modes that aren't implemented yet give gentle feedback
+  document.querySelectorAll('.ig-rail .rail-item').forEach((item) => {
+    if (item.id === 'grid-btn' || item.querySelector('.rail-aa')) return;
+    item.addEventListener('click', () => showStageToast(`${item.querySelector('span')?.textContent || 'Mode'} — coming soon`));
+  });
+
+  // Keyboard shortcuts: space = shutter, arrows = filters, enter = next
+  window.addEventListener('keydown', (event) => {
+    if (stage.hidden || !form.hidden) return;
+    if (event.target.matches('input, textarea, select, button')) return;
+    if (event.code === 'Space') {
+      event.preventDefault();
+      document.getElementById('capture-btn')?.click();
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      const names = [...chips].map((c) => c.dataset.filter);
+      const idx = names.indexOf(state.filter);
+      const next = (idx + (event.key === 'ArrowRight' ? 1 : -1) + names.length) % names.length;
+      chips[next]?.click();
+    } else if (event.key === 'Enter' && state.mode === 'photo') {
+      event.preventDefault();
+      nextBtn?.click();
+    }
+  });
+
+  // Emoji quick-row inserts into the caption at the caret
+  const captionEl = form.querySelector('[name="caption"]');
+  const countEl = document.getElementById('caption-count');
+  const MAX_CAPTION = 2200;
+  const updateCount = () => {
+    if (countEl) countEl.textContent = `${captionEl?.value.length || 0}/${MAX_CAPTION}`;
+  };
+  captionEl?.addEventListener('input', updateCount);
+  document.querySelectorAll('#caption-emojis button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!captionEl) return;
+      const emoji = btn.dataset.emoji;
+      const start = captionEl.selectionStart ?? captionEl.value.length;
+      const end = captionEl.selectionEnd ?? start;
+      captionEl.setRangeText(emoji, start, end, 'end');
+      captionEl.focus();
+      updateCount();
+    });
+  });
+  updateCount();
 
   window.addEventListener('pagehide', stopCamera);
   startCamera();
