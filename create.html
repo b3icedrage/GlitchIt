@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Create · GlitchIt</title>
     <link rel="stylesheet" href="src/styles.css" />
+    <link rel="stylesheet" href="src/create.css" />
   </head>
   <body data-page="create">
     <div id="app">
@@ -37,7 +38,8 @@
         <section class="page create-studio" id="create" data-page="create" aria-labelledby="create-title">
           <h1 id="create-title" hidden>Create</h1>
 
-          <div class="create-tools ig-stage" id="create-stage">
+          <div class="create-tools ig-stage" id="create-stage" data-ratio="9:16">
+            <div class="stage-media" id="stage-media">
             <video id="camera-feed" autoplay playsinline aria-label="Camera preview"></video>
             <div class="stage-fallback" id="stage-fallback" hidden>
               <span class="stage-fallback-mark">ϟ</span>
@@ -45,18 +47,21 @@
               <small>Tap the photo thumbnail at the bottom to upload your own.</small>
             </div>
             <img id="stage-photo" class="stage-photo" alt="Selected photo" hidden>
+            <video id="stage-video" class="stage-photo" playsinline loop muted preload="auto" aria-label="Recorded video preview" hidden></video>
             <div class="stage-fx" id="stage-fx" aria-hidden="true"></div>
             <div class="stage-grid" id="stage-grid" aria-hidden="true"></div>
+            </div>
             <div class="filter-label" id="filter-label" aria-hidden="true">None</div>
             <div class="stage-toast" id="stage-toast" role="status"></div>
 
-            <!-- Top bar: settings (left) · flash (center) · close (right) -->
+            <!-- Top bar: settings (left) · flash (center) · drafts + close + next (right) -->
             <div class="ig-top">
               <button type="button" class="ig-top-btn" aria-label="Settings" title="Settings">⚙</button>
               <button type="button" class="ig-top-btn ig-flash-btn" id="flash-btn" aria-label="Toggle flash" title="Flash">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/><line x1="3" y1="3" x2="21" y2="21" stroke="#fff" stroke-width="1.6"/></svg>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/><line class="flash-strike" x1="3" y1="3" x2="21" y2="21" stroke="#fff" stroke-width="1.6"/></svg>
               </button>
               <div class="ig-top-right">
+                <button type="button" id="drafts-btn" class="drafts-btn" hidden title="Restore latest draft">Drafts <b id="drafts-count">0</b></button>
                 <a class="ig-top-btn" href="index.html" aria-label="Close">✕</a>
                 <button type="button" id="create-next" class="ig-next" hidden>Next</button>
               </div>
@@ -98,6 +103,14 @@
             <div class="stage-captured" id="stage-captured" hidden>✓</div>
 
             <!-- Bottom controls: recent strip + circular filters around the shutter -->
+            <!-- Zoom (left) + timer (right), flanking the shutter row -->
+            <button type="button" class="stage-tool zoom-tool" id="zoom-btn" aria-label="Zoom level 1x" title="Zoom">1x</button>
+            <button type="button" class="stage-tool timer-tool" id="timer-btn" aria-label="Timer off" title="Timer">⏱</button>
+            <button type="button" class="stage-tool ratio-tool" id="ratio-btn" aria-label="Aspect ratio 9:16" title="Aspect ratio">9:16</button>
+            <div class="stage-countdown" id="stage-countdown" aria-hidden="true"></div>
+            <div class="stage-hint" id="stage-hint" hidden>Tap photo to retake</div>
+            <div class="rec-pill" id="rec-pill" hidden><i aria-hidden="true"></i><span>REC</span><b id="rec-time" aria-hidden="true">0:00</b></div>
+
             <div class="ig-controls" id="ig-controls">
             <div class="media-strip" id="media-strip" aria-label="Media sources">
               <button type="button" class="media-tile media-camera active" id="media-camera" aria-label="Use camera"><span class="media-tile-icon">📷</span></button>
@@ -160,6 +173,7 @@
             </div>
             <div class="create-preview-row">
               <img id="create-preview-thumb" alt="Captured preview">
+              <video id="create-preview-video" class="create-preview-video" playsinline loop muted preload="metadata" aria-label="Recorded preview" hidden></video>
               <input name="title" aria-label="Title" placeholder="Title or story headline" required>
             </div>
             <textarea name="caption" aria-label="Caption" placeholder="Write a caption..."></textarea>
@@ -174,8 +188,19 @@
               <button type="button" data-emoji="💥" aria-label="Insert collision">💥</button>
             </div>
             <div class="caption-meta"><span id="caption-count">0/2200</span></div>
+            <div class="create-meta-row">
+              <span class="meta-icon" aria-hidden="true">📍</span>
+              <input type="text" id="location-input" name="location" placeholder="Add location" aria-label="Add location" autocomplete="off">
+            </div>
+            <div class="share-row" id="share-row" hidden>
+              <label for="share-to-feed">Also share to your feed</label>
+              <span class="switch"><input type="checkbox" id="share-to-feed"><i></i></span>
+            </div>
+            <div class="create-form-actions">
+              <button type="button" id="save-draft-btn" class="draft-save">Save draft</button>
+              <button type="submit" class="primary-action">Publish</button>
+            </div>
             <input type="file" id="media-upload-input" name="media" accept="image/*,video/*" hidden>
-            <button type="submit" class="primary-action">Publish</button>
             <p class="create-status" id="create-status" role="status"></p>
           </form>
         </section>
@@ -202,6 +227,6 @@
         <a href="profile.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></a>
       </nav>
     </div>
-    <script src="src/main.js?v=4" defer></script>
+    <script src="src/main.js?v=5" defer></script>
   </body>
 </html>

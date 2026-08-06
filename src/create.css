@@ -1,0 +1,229 @@
+/* ============ Create studio polish: zoom · timer · countdown · drafts · sheet ============ */
+
+/* Zoom / timer pill buttons flanking the shutter row */
+body[data-page="create"] .stage-tool {
+  position: absolute;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .38);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  backdrop-filter: blur(6px);
+  transition: background .15s ease, transform .15s ease;
+}
+body[data-page="create"] .stage-tool:hover { background: rgba(0, 0, 0, .62); transform: scale(1.07); }
+body[data-page="create"] .stage-tool:active { transform: scale(.93); }
+body[data-page="create"] .zoom-tool { left: 10px; bottom: calc(118px + env(safe-area-inset-bottom)); }
+body[data-page="create"] .timer-tool { right: 12px; bottom: calc(118px + env(safe-area-inset-bottom)); font-size: 19px; }
+body[data-page="create"] .timer-tool.on { color: #ffd60a; box-shadow: 0 0 0 2px rgba(255, 214, 10, .55), 0 4px 14px rgba(0, 0, 0, .35); }
+body[data-page="create"] .timer-tool.on::after {
+  content: attr(data-seconds) 's';
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #ffd60a;
+  color: #000;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+/* Clear the edge buttons so the filter carousel scrolls cleanly between them */
+body[data-page="create"] .filter-strip { padding: 0 max(54px, calc(50% - 172px)); }
+
+/* Big countdown overlay before capture */
+.stage-countdown {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, .28);
+  color: #fff;
+  font-size: 116px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 8px 34px rgba(0, 0, 0, .55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease;
+}
+.stage-countdown.show { opacity: 1; }
+.stage-countdown .num { animation: countPop .8s cubic-bezier(.2, .9, .3, 1.15) both; }
+@keyframes countPop {
+  0% { transform: scale(2.2); opacity: 0; }
+  32% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(.95); opacity: 1; }
+}
+
+/* "Tap photo to retake" hint (top-left, below the top bar) */
+.stage-hint {
+  position: absolute;
+  left: 16px;
+  top: calc(64px + env(safe-area-inset-top));
+  z-index: 8;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .4);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  backdrop-filter: blur(6px);
+  animation: hintIn .3s ease;
+}
+@keyframes hintIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Drafts pill in the top bar */
+.drafts-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .42);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  backdrop-filter: blur(6px);
+  transition: background .15s ease, transform .15s ease;
+}
+.drafts-btn:hover { background: rgba(0, 0, 0, .64); transform: scale(1.04); }
+.drafts-btn b {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  font-size: 10px;
+}
+
+/* Flash button on-state: strike line disappears + ring glows */
+.ig-flash-btn.on .flash-strike { display: none; }
+.ig-flash-btn.on { box-shadow: 0 0 0 2px rgba(255, 214, 10, .65), 0 4px 16px rgba(0, 0, 0, .4); }
+
+/* Caption sheet: location row, share toggle, actions */
+body[data-page="create"] .create-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #262626;
+  border-radius: 12px;
+  padding: 0 14px;
+  background: #121212;
+  transition: border-color .15s ease;
+}
+body[data-page="create"] .create-meta-row:focus-within { border-color: #4f5bd5; }
+body[data-page="create"] .create-meta-row .meta-icon { font-size: 15px; }
+body[data-page="create"] .create-meta-row input { flex: 1; min-width: 0; border: 0; background: transparent; color: #fff; padding: 13px 0; }
+body[data-page="create"] .create-meta-row input:focus { outline: none; }
+body[data-page="create"] .share-row { display: flex; align-items: center; justify-content: space-between; padding: 2px 0; }
+body[data-page="create"] .share-row label { font-size: 14px; color: #f1f1f1; font-weight: 600; }
+body[data-page="create"] .share-row .switch { position: relative; display: block; width: 52px; height: 30px; flex: 0 0 auto; }
+body[data-page="create"] .share-row .switch input { position: absolute; opacity: 0; pointer-events: none; }
+body[data-page="create"] .share-row .switch i { position: absolute; inset: 0; border-radius: 999px; background: #3a3a3a; transition: background .2s ease; }
+body[data-page="create"] .share-row .switch i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform .2s ease; }
+body[data-page="create"] .share-row .switch input:checked + i { background: linear-gradient(135deg, #d62976, #4f5bd5); }
+body[data-page="create"] .share-row .switch input:checked + i::after { transform: translateX(22px); }
+body[data-page="create"] .create-form-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; margin-top: 4px; }
+body[data-page="create"] .create-form-actions .primary-action { margin: 0; }
+body[data-page="create"] .draft-save {
+  border: 1px solid #262626;
+  border-radius: 999px;
+  background: #121212;
+  color: #f1f1f1;
+  font-weight: 800;
+  transition: background .15s ease, border-color .15s ease;
+}
+body[data-page="create"] .draft-save:hover { background: #1e1e1e; border-color: #3a3a3a; }
+
+/* Publish confetti burst (fixed, over the whole sheet) */
+.confetti-burst {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  overflow: hidden;
+}
+.confetti-burst i {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  width: 10px;
+  height: 14px;
+  border-radius: 3px;
+  animation: confettiFly .95s cubic-bezier(.2, .8, .3, 1) forwards;
+}
+@keyframes confettiFly {
+  0% { opacity: 1; transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)) scale(.55); }
+}
+
+/* ============ Aspect ratio frames + REEL video recording ============ */
+
+/* Media lives in a ratio frame centered on the black stage; letterbox shows stage bg */
+.stage-media { position: absolute; inset: 0; overflow: hidden; }
+.ig-stage[data-ratio="9:16"] .stage-media { inset: 0; }
+.ig-stage[data-ratio="1:1"] .stage-media,
+.ig-stage[data-ratio="4:5"] .stage-media,
+.ig-stage[data-ratio="16:9"] .stage-media { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.ig-stage[data-ratio="1:1"] .stage-media { width: min(100%, 100svh); aspect-ratio: 1 / 1; }
+.ig-stage[data-ratio="4:5"] .stage-media { width: min(100%, calc(100svh * 4 / 5)); aspect-ratio: 4 / 5; }
+.ig-stage[data-ratio="16:9"] .stage-media { width: min(100%, calc(100svh * 16 / 9)); aspect-ratio: 16 / 9; }
+.ig-stage[data-ratio="1:1"] .stage-media > *,
+.ig-stage[data-ratio="4:5"] .stage-media > *,
+.ig-stage[data-ratio="16:9"] .stage-media > * { position: absolute; inset: 0; width: 100%; height: 100%; }
+body[data-page="create"] .ig-stage .stage-photo { cursor: pointer; }
+
+/* Aspect ratio pill — sits above the timer, flanking the shutter row */
+body[data-page="create"] .ratio-tool { right: 12px; bottom: calc(170px + env(safe-area-inset-bottom)); }
+
+/* REC pill while recording */
+.rec-pill {
+  position: absolute;
+  top: calc(64px + env(safe-area-inset-top));
+  right: 16px;
+  z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .45);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  backdrop-filter: blur(6px);
+}
+.rec-pill i { width: 9px; height: 9px; border-radius: 50%; background: #ff3040; animation: recBlink 1s steps(2) infinite; }
+@keyframes recBlink { 50% { opacity: .3; } }
+
+/* Shutter in REEL mode: red dot when idle, pulsing rounded square while recording */
+body[data-page="create"] .capture-btn.record::after { inset: 22px; background: #ff3040; }
+body[data-page="create"] .capture-btn.recording { border-color: #ff3040; box-shadow: 0 0 0 5px rgba(255, 48, 64, .25), 0 6px 22px rgba(0, 0, 0, .5); }
+body[data-page="create"] .capture-btn.recording::after { inset: 0; border-radius: 26%; background: #ff3040; animation: recPulse .9s ease-in-out infinite; }
+@keyframes recPulse { 50% { opacity: .7; } }
+
+/* Recorded-video preview in the caption sheet (matches the photo thumb size) */
+body[data-page="create"] .create-preview-row video { width: 92px; height: 92px; border-radius: 14px; object-fit: cover; background: #000; }
