@@ -91,6 +91,17 @@ export async function currentUser() {
   }
 }
 
+// Supabase caps confirmation emails per address/hour; turn the cryptic
+// "Email rate limit exceeded" into an actionable message instead of
+// showing the raw error string.
+function friendlyError(error) {
+  const msg = String(error?.message || error || '');
+  if (/rate limit|over_email_send_rate_limit/i.test(msg)) {
+    return 'Too many emails were sent to this address recently. Wait about an hour or try a different email. (You can also raise the email limits in Supabase: Authentication → Rate Limits.)';
+  }
+  return msg;
+}
+
 export async function signUp(email, password, username) {
   const sb = await getClient();
   if (!sb) return { ok: false, error: notReadyReason() };
@@ -99,7 +110,7 @@ export async function signUp(email, password, username) {
     password,
     options: { data: { username: username || email.split('@')[0] } },
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyError(error) };
   if (data.user && !data.session) {
     // Email confirmation is enabled — the user must confirm before signing in.
     return { ok: false, error: 'Check your inbox to confirm your email, then log in.' };
@@ -112,7 +123,7 @@ export async function signIn(email, password) {
   const sb = await getClient();
   if (!sb) return { ok: false, error: notReadyReason() };
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: friendlyError(error) };
   handle = userHandle(data.user);
   return { ok: true, user: data.user };
 }
