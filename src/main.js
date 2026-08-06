@@ -1031,7 +1031,6 @@ function runPage() {
     hydrateStoryShelf();
     attachNotes('home-notes');
   }
-  if (page === 'messages') attachNotes('messages-notes');
   if (page === 'glitches') {
     const videoTarget = document.getElementById('video-feed');
     if (videoTarget) videoTarget.innerHTML = renderUploads('videos');

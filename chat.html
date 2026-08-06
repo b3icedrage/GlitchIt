@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Margot Schröder · Messages · GlitchIt</title>
+    <link rel="stylesheet" href="src/styles.css" />
+    <link rel="stylesheet" href="src/messages.css" />
+  </head>
+  <body data-page="chat">
+    <div id="app">
+      <aside class="sidebar">
+        <a class="brand" href="index.html"><span class="icon" aria-hidden="true">ϟ</span>GlitchIt</a>
+        <nav>
+          <a href="index.html"><span class="icon" aria-hidden="true">⌂</span><span>Home</span></a>
+          <a href="search.html"><span class="icon" aria-hidden="true">⌕</span><span>Search</span></a>
+          <a href="glitches.html"><span class="icon" aria-hidden="true">▣</span><span>Glitches</span></a>
+          <a class="active" href="messages.html"><span class="icon" aria-hidden="true">✉</span><span>Messages</span></a>
+          <a href="activity.html"><span class="icon" aria-hidden="true">♡</span><span>Activity</span></a>
+          <a href="create.html"><span class="icon" aria-hidden="true">＋</span><span>Create</span></a>
+          <a href="shop.html"><span class="icon" aria-hidden="true">◒</span><span>Shop</span></a>
+          <a href="profile.html"><span class="icon" aria-hidden="true">◎</span><span>Profile</span></a>
+        </nav>
+        <a class="post-button" href="create.html">Post</a>
+      </aside>
+
+      <main>
+        <section class="page" id="chat" data-page="chat" aria-labelledby="chat-name">
+          <div class="chat-screen">
+            <header class="chat-top">
+              <a class="chat-back" href="messages.html" aria-label="Back to messages">‹</a>
+              <a class="chat-user" href="profile.html">
+                <img class="chat-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="Margot Schröder avatar">
+                <span class="chat-id">
+                  <strong id="chat-name">
+                    Margot Schröder
+                    <svg class="chat-verified" viewBox="0 0 24 24" aria-label="Verified" role="img"><path fill="#0095f6" d="M12 2l2.4 2.4 3.3-.6 1 3.2 3.1 1.3-1 3.2 1 3.2-3.1 1.3-1 3.2-3.3-.6L12 22l-2.4-2.4-3.3.6-1-3.2-3.1-1.3 1-3.2-1-3.2 3.1-1.3 1-3.2 3.3.6z"/><path fill="#fff" d="M10.6 15.2l-2.8-2.8 1.4-1.4 1.4 1.4 3.9-3.9 1.4 1.4z"/></svg>
+                  </strong>
+                  <em>chantouflowergirl</em>
+                </span>
+              </a>
+              <div class="chat-actions">
+                <button type="button" class="chat-act" aria-label="Audio call">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                </button>
+                <button type="button" class="chat-act" aria-label="Video call">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                </button>
+              </div>
+            </header>
+
+            <div class="chat-body" id="chat-body">
+              <p class="msg in">Ooh, all of those sound incredible!</p>
+              <p class="msg in">But I think I'd love to do the city tour</p>
+              <span class="msg-time">11:37 AM</span>
+              <p class="msg out">Summer league signups are open!<span class="msg-react" aria-label="Reacted with heart">❤️</span></p>
+              <p class="msg in">Yaaas, I'm so down! 🏀</p>
+              <p class="msg out">I hope I make it!</p>
+              <p class="msg in">You're so in!</p>
+              <p class="msg in">Practice at the new courts tmr? 💪</p>
+              <p class="msg out">New courts? 😲 Where are those?</p>
+              <p class="msg in">On Maple Ave! Kinda tricky to find. I'll send you a vm</p>
+
+              <div class="msg in msg-voice" id="voice-msg">
+                <div class="voice-row">
+                  <button type="button" class="voice-play" id="voice-play" aria-label="Play voice message">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                  </button>
+                  <div class="voice-wave" aria-hidden="true">
+                    <i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i style="height:70%"></i><i style="height:34%"></i><i style="height:58%"></i><i style="height:46%"></i><i style="height:80%"></i><i style="height:42%"></i><i style="height:66%"></i><i style="height:38%"></i><i style="height:74%"></i><i style="height:50%"></i><i style="height:86%"></i><i style="height:44%"></i><i style="height:62%"></i><i style="height:36%"></i><i style="height:68%"></i><i style="height:48%"></i><i style="height:76%"></i><i style="height:40%"></i><i style="height:60%"></i><i style="height:52%"></i><i style="height:72%"></i><i style="height:46%"></i><i style="height:64%"></i>
+                  </div>
+                  <span class="voice-dur" id="voice-dur">4:18</span>
+                </div>
+                <button type="button" class="voice-trans" id="voice-trans">View transcription</button>
+                <div class="voice-transcript" id="voice-transcript">
+                  Hey, so the new courts are on Maple Ave. If you're coming<span class="voice-extra" id="voice-extra">, park behind the old gym and walk around to the glass doors — can't miss the brand-new hoops out back.</span>
+                  <button type="button" class="voice-more" id="voice-more">See more</button>
+                </div>
+              </div>
+            </div>
+
+            <footer class="chat-bar">
+              <button type="button" class="chat-cam" aria-label="Take a photo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </button>
+              <input class="chat-input" id="chat-input" type="text" placeholder="Message..." aria-label="Message" autocomplete="off" />
+              <button type="button" class="chat-icon" aria-label="Voice message">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              </button>
+              <button type="button" class="chat-icon" aria-label="Gallery">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              </button>
+              <button type="button" class="chat-icon" aria-label="Stickers and emoji">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              </button>
+              <button type="button" class="chat-icon" aria-label="More">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </footer>
+
+            <div class="home-indicator" aria-hidden="true"></div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="right-rail">
+        <div class="me"><img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=240&q=80" alt="Your profile"><div><strong>b3ice_drage</strong><span>Build your vibe</span></div></div>
+        <div class="stats"><span><b>12.8k</b> followers</span><span><b>46</b> drops</span></div>
+        <h3>Suggested sellers</h3>
+        <div class="seller"><div><strong>@glitchwear</strong><span>Streetwear</span></div><button>Follow</button></div>
+        <div class="seller"><div><strong>@kicksbyte</strong><span>Footwear</span></div><button>Follow</button></div>
+        <div class="seller"><div><strong>@pixelmakers</strong><span>Home studio</span></div><button>Follow</button></div>
+        <div class="seller"><div><strong>@craftloop</strong><span>Accessories</span></div><button>Follow</button></div>
+      </aside>
+
+      <nav class="bottom-bar" aria-label="Primary mobile navigation">
+        <a href="index.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1V10"/></svg><span>Home</span></a>
+        <a href="search.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><span>Search</span></a>
+        <a href="messages.html" class="active"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Messages</span></a>
+        <a href="glitches.html" class="glitch-nav-btn"><svg class="glitch-play-icon" viewBox="0 0 48 48" width="32" height="32"><defs><radialGradient id="glow-grad" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#d62976" stop-opacity="0.6"/><stop offset="100%" stop-color="#4f5bd5" stop-opacity="0"/></radialGradient><filter id="glow-filter"><feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#d62976" flood-opacity="0.8"/></filter></defs><circle cx="24" cy="24" r="22" fill="url(#glow-grad)" class="glow-pulse"/><circle cx="24" cy="24" r="21" fill="#1a1a2e" stroke="#d62976" stroke-width="1.5" filter="url(#glow-filter)"/><polygon points="19,14 19,34 35,24" fill="#fff" filter="url(#glow-filter)"/></svg><span>Glitches</span></a>
+        <a href="create.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Create</span></a>
+        <a href="shop.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Shop</span></a>
+        <a href="profile.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></a>
+      </nav>
+    </div>
+    <script src="src/main.js?v=3" defer></script>
+    <script>
+      // Chat page micro-interactions: transcription toggle + send-on-enter.
+      (function () {
+        var trans = document.getElementById('voice-trans');
+        var msg = document.getElementById('voice-msg');
+        var extra = document.getElementById('voice-extra');
+        var more = document.getElementById('voice-more');
+        if (trans) {
+          trans.addEventListener('click', function () {
+            var open = msg.classList.toggle('open');
+            trans.textContent = open ? 'Hide transcription' : 'View transcription';
+          });
+        }
+        if (more) {
+          more.addEventListener('click', function () {
+            extra.classList.add('show');
+            more.style.display = 'none';
+          });
+        }
+        var input = document.getElementById('chat-input');
+        var body = document.getElementById('chat-body');
+        if (input && body) {
+          input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && input.value.trim()) {
+              var p = document.createElement('p');
+              p.className = 'msg out';
+              p.textContent = input.value.trim();
+              body.appendChild(p);
+              input.value = '';
+              body.scrollTop = body.scrollHeight;
+            }
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

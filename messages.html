@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Messages · GlitchIt</title>
     <link rel="stylesheet" href="src/styles.css" />
+    <link rel="stylesheet" href="src/messages.css" />
   </head>
   <body data-page="messages">
     <div id="app">
@@ -24,28 +25,75 @@
       </aside>
 
       <main>
-        <div class="mobile-top">
-          <a class="mobile-top-plus" href="create.html" aria-label="Create">＋</a>
-          <a class="brand" href="index.html"><span class="icon" aria-hidden="true">ϟ</span>GlitchIt</a>
-          <div class="mobile-top-actions">
-            <a href="activity.html" class="top-activity-btn" aria-label="Activity"><span class="icon" aria-hidden="true">♡</span></a>
-            <a href="messages.html" class="top-dm-btn" aria-label="Messages"><span class="icon" aria-hidden="true">✉</span></a>
-          </div>
-        </div>
+        <section class="page" id="messages" data-page="messages" aria-labelledby="dm-title">
+          <div class="dm-inbox">
+            <header class="dm-top">
+              <a class="dm-back" href="index.html" aria-label="Back">‹</a>
+              <button type="button" class="dm-title" id="dm-title">
+                b3ice_drage
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <button type="button" class="dm-new" aria-label="New message">＋</button>
+            </header>
 
-        <section class="page" id="messages" data-page="messages" aria-labelledby="messages-title">
-          <div class="page-intro">
-            <span class="eyebrow">Messages</span>
-            <h1 id="messages-title">Messages</h1>
-            <p>Keep conversations with sellers, collaborators, and followers separated from the feed.</p>
-          </div>
+            <div class="dm-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <input id="dm-search-input" type="search" placeholder="Search" aria-label="Search conversations" autocomplete="off" />
+              <button type="button" class="dm-filter" aria-label="Filter">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>
+              </button>
+            </div>
 
-          <div class="notes-shelf" id="messages-notes" aria-label="Notes"></div>
+            <div class="dm-tabs" role="tablist" aria-label="Message inbox">
+              <button type="button" class="dm-tab" role="tab" aria-selected="false">Primary</button>
+              <button type="button" class="dm-tab active" role="tab" aria-selected="true">General</button>
+              <button type="button" class="dm-tab req" role="tab" aria-selected="false">1 request</button>
+            </div>
 
-          <div class="message-list">
-            <a class="message-card" href="messages.html"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80" alt="Nova avatar"><span><strong>Nova</strong><em>Sent a preview of tonight's neon hoodie drop.</em></span><small>2m</small></a>
-            <a class="message-card" href="messages.html"><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80" alt="PixelLab avatar"><span><strong>PixelLab</strong><em>Can you approve the creator lamp collab copy?</em></span><small>18m</small></a>
-            <a class="message-card" href="messages.html"><img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=200&q=80" alt="Kicks avatar"><span><strong>Kicks</strong><em>Your Signal Sneakers order is ready to ship.</em></span><small>1h</small></a>
+            <div class="dm-list" id="dm-list">
+              <a class="dm-row" href="chat.html">
+                <span class="dm-avatar"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80" alt="ANASTASIA AVERBUKH avatar" loading="lazy"></span>
+                <span class="dm-meta"><strong>ANASTASIA AVERBUKH</strong><em>hi😍 · 6w</em></span>
+                <span class="dm-side"><i class="unread" aria-label="Unread"></i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+              </a>
+              <a class="dm-row" href="chat.html">
+                <span class="dm-avatar"><img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=120&q=80" alt="Charlea N. Henley avatar" loading="lazy"><i class="dot" aria-label="Online"></i></span>
+                <span class="dm-meta"><strong>Charlea N. Henley</strong><em>Active now</em></span>
+                <span class="dm-side"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+              </a>
+              <a class="dm-row" href="chat.html">
+                <span class="dm-avatar"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="Анастасия avatar" loading="lazy"></span>
+                <span class="dm-meta"><strong>Анастасия</strong><em>Привет · 20w</em></span>
+                <span class="dm-side"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+              </a>
+              <a class="dm-row" href="chat.html">
+                <span class="dm-avatar"><span class="badge" aria-hidden="true"><i>Z</i></span></span>
+                <span class="dm-meta"><strong>comixzone.co</strong><em>Reacted to your story: 😍 · 22w</em></span>
+                <span class="dm-side"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+              </a>
+              <a class="dm-row" href="chat.html">
+                <span class="dm-avatar"><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80" alt="MARIA PIA LUCE avatar" loading="lazy"></span>
+                <span class="dm-meta"><strong>MARIA PIA LUCE</strong><em>Spliching glisc · 30w</em></span>
+                <span class="dm-side"><i class="unread" aria-label="Unread"></i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+              </a>
+              <a class="dm-row" href="chat.html">
+                <span class="dm-avatar"><img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=120&q=80" alt="honrmndan avatar" loading="lazy"></span>
+                <span class="dm-meta"><strong>honrmndan</strong><em>Liked a message · 30w</em></span>
+                <span class="dm-side"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+              </a>
+              <a class="dm-row" href="chat.html">
+                <span class="dm-avatar"><img src="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=120&q=80" alt="mira.motion avatar" loading="lazy"></span>
+                <span class="dm-meta"><strong>mira.motion</strong><em>Sent you a drop preview · 1d</em></span>
+                <span class="dm-side"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+              </a>
+            </div>
+
+            <div class="dm-camera-wrap">
+              <button type="button" class="dm-camera">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Camera
+              </button>
+            </div>
           </div>
         </section>
       </main>
@@ -71,5 +119,31 @@
       </nav>
     </div>
     <script src="src/main.js?v=3" defer></script>
+    <script>
+      // Inbox micro-interactions: tabs + live search filter.
+      (function () {
+        var tabs = document.querySelectorAll('.dm-tab');
+        tabs.forEach(function (tab) {
+          tab.addEventListener('click', function () {
+            tabs.forEach(function (t) {
+              t.classList.remove('active');
+              t.setAttribute('aria-selected', 'false');
+            });
+            tab.classList.add('active');
+            tab.setAttribute('aria-selected', 'true');
+          });
+        });
+        var search = document.getElementById('dm-search-input');
+        var rows = document.querySelectorAll('.dm-row');
+        if (search && rows.length) {
+          search.addEventListener('input', function () {
+            var q = search.value.trim().toLowerCase();
+            rows.forEach(function (row) {
+              row.classList.toggle('none', q.length > 0 && !row.textContent.toLowerCase().includes(q));
+            });
+          });
+        }
+      })();
+    </script>
   </body>
 </html>
