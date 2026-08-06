@@ -507,6 +507,7 @@ main { height: 100vh; overflow-y: auto; padding: 28px 0 56px; scrollbar-width: t
 
 /* ---------- Notes (Messages + home instants) with music ---------- */
 .notes-shelf { display: flex; gap: 16px; overflow-x: auto; padding: 4px 2px 14px; margin-bottom: 6px; scrollbar-width: thin; }
+/* T508 */
 .note-bubble { flex: 0 0 auto; display: grid; justify-items: center; gap: 6px; min-width: 64px; border: 0; background: transparent; color: inherit; font-size: 11px; cursor: pointer; }
 .note-ring { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 50%; background: #ddd; }
 .note-ring.live { background: conic-gradient(#feda75, #d62976, #4f5bd5, #feda75); }
@@ -533,6 +534,7 @@ main { height: 100vh; overflow-y: auto; padding: 28px 0 56px; scrollbar-width: t
 .note-add-music:hover { border-color: #d62976; color: #d62976; }
 .music-title { margin: 0 0 12px; font-size: 20px; }
 .music-search { width: 100%; border: 1px solid #322d45; border-radius: 14px; padding: 12px 14px; background: #1b1929; color: #f6f3ff; outline: none; }
+/* T530 */
 .music-search:focus { border-color: #d62976; }
 .music-list { display: grid; gap: 6px; max-height: 320px; margin-top: 12px; overflow-y: auto; }
 .music-row { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; border-radius: 14px; padding: 10px; background: transparent; color: #f6f3ff; text-align: left; cursor: pointer; }
