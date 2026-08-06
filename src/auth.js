@@ -8,6 +8,30 @@ let clientPromise = null;
 let clientFailed = false;
 let handle = '';
 
+// Try several CDNs so one blocked/unreachable mirror (ad-blocker, region, etc.)
+// doesn't take down auth. First one that loads wins.
+// Note: the bare jsDelivr URL serves a UMD build (no ESM exports), so we use
+// the /+esm variant — import() needs named exports like createClient.
+const SUPABASE_CDNS = [
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm',
+  'https://esm.sh/@supabase/supabase-js@2',
+  'https://unpkg.com/@supabase/supabase-js@2?module',
+  'https://cdn.skypack.dev/@supabase/supabase-js@2',
+];
+
+async function importSupabase() {
+  let lastErr = null;
+  for (const url of SUPABASE_CDNS) {
+    try {
+      return await import(url);
+    } catch (err) {
+      lastErr = err;
+      console.warn(`GlitchIt: supabase-js unavailable from ${url}`, err);
+    }
+  }
+  throw lastErr || new Error('All Supabase CDNs unreachable');
+}
+
 export function authAvailable() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
@@ -16,7 +40,7 @@ function getClient() {
   if (!authAvailable()) return Promise.resolve(null);
   if (client) return Promise.resolve(client);
   if (!clientPromise) {
-    clientPromise = import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2')
+    clientPromise = importSupabase()
       .then((mod) => {
         client = mod.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -24,7 +48,7 @@ function getClient() {
         return client;
       })
       .catch((err) => {
-        console.warn('GlitchIt: auth client failed to load', err);
+        console.warn('GlitchIt: auth client failed to load from all CDNs', err);
         clientPromise = null;
         clientFailed = true;
         return null;
@@ -108,6 +132,6 @@ export async function signOut() {
 // never points you at config.js when the keys are actually present.
 function notReadyReason() {
   if (!authAvailable()) return 'Supabase is not configured yet (src/config.js).';
-  if (clientFailed) return 'Could not load the Supabase client (network or an ad-blocker may be blocking the CDN). Check your connection and refresh.';
+  if (clientFailed) return 'Could not load the Supabase client from any CDN (network or an ad-blocker may be blocking them). Check your connection, disable ad-block for this site, and refresh.';
   return 'Supabase is not ready yet. Check your connection and refresh.';
 }

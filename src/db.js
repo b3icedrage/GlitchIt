@@ -10,6 +10,30 @@ let clientPromise = null;
 // Ownership is keyed to the signed-in user's auth UUID (never a spoofable handle).
 let currentOwner = '';
 
+// Try several CDNs so one blocked/unreachable mirror (ad-blocker, region, etc.)
+// doesn't take down the data layer. First one that loads wins.
+// Note: the bare jsDelivr URL serves a UMD build (no ESM exports), so we use
+// the /+esm variant — import() needs named exports like createClient.
+const SUPABASE_CDNS = [
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm',
+  'https://esm.sh/@supabase/supabase-js@2',
+  'https://unpkg.com/@supabase/supabase-js@2?module',
+  'https://cdn.skypack.dev/@supabase/supabase-js@2',
+];
+
+async function importSupabase() {
+  let lastErr = null;
+  for (const url of SUPABASE_CDNS) {
+    try {
+      return await import(url);
+    } catch (err) {
+      lastErr = err;
+      console.warn(`GlitchIt: supabase-js unavailable from ${url}`, err);
+    }
+  }
+  throw lastErr || new Error('All Supabase CDNs unreachable');
+}
+
 // Accept { id, username } (the signed-in Supabase user) so ownership = UUID.
 export function setCurrentUser(user) {
   if (user && typeof user === 'object') {
@@ -27,13 +51,13 @@ function getClient() {
   if (!dbAvailable()) return Promise.resolve(null);
   if (client) return Promise.resolve(client);
   if (!clientPromise) {
-    clientPromise = import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2')
+    clientPromise = importSupabase()
       .then((mod) => {
         client = mod.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         return client;
       })
       .catch((err) => {
-        console.warn('GlitchIt: Supabase client failed to load', err);
+        console.warn('GlitchIt: Supabase client failed to load from all CDNs', err);
         clientPromise = null;
         return null;
       });
