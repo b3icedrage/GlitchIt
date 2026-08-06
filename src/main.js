@@ -1012,6 +1012,117 @@ function attachProfileTabs() {
 }
 
 // ---------- Page dispatch ----------
+// Live viewing page: simulated chat stream, ticking viewer count, floating
+// heart reactions, comment posting, and badge purchases.
+function attachLive() {
+  const chat = document.getElementById('live-chat');
+  const hearts = document.getElementById('live-hearts');
+  const viewers = document.getElementById('live-viewers');
+  const form = document.getElementById('live-comment-form');
+  const buyBtn = document.getElementById('live-buy');
+  const heartBtn = document.getElementById('live-heart-btn');
+  const player = document.getElementById('live-player');
+
+  // ----- viewer count ticker -----
+  let viewersCount = 1537;
+  const fmtCount = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+  const renderViewers = () => {
+    if (!viewers) return;
+    viewers.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${fmtCount(viewersCount)}`;
+  };
+  renderViewers();
+  setInterval(() => {
+    viewersCount += Math.round(1 + Math.random() * 6);
+    renderViewers();
+  }, 5000);
+
+  // ----- floating hearts -----
+  const spawnHeart = (xPct) => {
+    if (!hearts) return;
+    const h = document.createElement('span');
+    h.className = 'live-heart';
+    h.textContent = '♡';
+    h.style.left = `${xPct}%`;
+    hearts.appendChild(h);
+    h.addEventListener('animationend', () => h.remove());
+  };
+  setInterval(() => spawnHeart(58 + Math.random() * 32), 1500);
+  heartBtn?.addEventListener('click', () => {
+    for (let i = 0; i < 4; i++) {
+      setTimeout(() => spawnHeart(60 + Math.random() * 28), i * 140);
+    }
+  });
+  // Double-tap the video to drop a heart at that spot (like an interaction).
+  player?.addEventListener('dblclick', (e) => {
+    if (isGuest()) { showGuestGate('Sign in to like'); return; }
+    const rect = player.getBoundingClientRect();
+    const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+    const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+    if (!hearts) return;
+    const h = document.createElement('span');
+    h.className = 'live-heart live-heart-tap';
+    h.textContent = '♡';
+    h.style.left = `${xPct}%`;
+    h.style.top = `${yPct}%`;
+    h.style.bottom = 'auto';
+    hearts.appendChild(h);
+    h.addEventListener('animationend', () => h.remove());
+  });
+
+  // ----- simulated chat stream -----
+  const names = ['mira.motion', 'kicksbyte', 'chantouflowergirl', 'glitchwear', 'pixelmakers', 'duskdrift'];
+  const lines = [
+    'this fit is everything 🔥',
+    'yasss queen 👏',
+    'just joined, hi everyone!',
+    'the vibes are immaculate',
+    'drop the link rn',
+    'LIVE is so good today',
+    'hello from Toronto 🇨🇦',
+    'can we get a wave? 🙌',
+  ];
+  const avatars = [
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=80&q=80',
+    'https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=80&q=80',
+    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=80&q=80',
+    'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=80&q=80',
+    'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=80&q=80',
+  ];
+  const addMsg = (name, text) => {
+    if (!chat) return;
+    const row = document.createElement('div');
+    row.className = 'live-msg';
+    row.innerHTML = `<img src="${avatars[Math.floor(Math.random() * avatars.length)]}" alt="" loading="lazy"><span><b>${escapeHtml(name)}</b> ${escapeHtml(text)}</span>`;
+    chat.appendChild(row);
+    while (chat.children.length > 4) chat.removeChild(chat.firstChild);
+  };
+  setInterval(() => {
+    addMsg(names[Math.floor(Math.random() * names.length)], lines[Math.floor(Math.random() * lines.length)]);
+  }, 5200);
+
+  // ----- comment posting -----
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById('live-comment-input');
+    const text = (input?.value || '').trim();
+    if (!text) return;
+    const user = window.GLITCHIT_USER;
+    const me = (user && !user.guest && user.user_metadata?.username) || user?.email?.split('@')[0] || 'you';
+    addMsg(me, text);
+    if (input) input.value = '';
+  });
+
+  // ----- badge purchase -----
+  buyBtn?.addEventListener('click', () => {
+    const tip = document.createElement('div');
+    tip.className = 'end-toast show';
+    tip.innerHTML = `<span class="end-toast-mark">${icon('🏆')}</span><span class="end-toast-text">Badge purchased — thanks for supporting charleeatkins!</span>`;
+    document.body.appendChild(tip);
+    setTimeout(() => tip.remove(), 2200);
+  });
+}
+
 function runPage() {
   attachThemeToggle();
   attachEndOfPageDetection();
@@ -1046,6 +1157,7 @@ function runPage() {
     markSavedReels();
   }
   if (page === 'create') attachCreateStudio();
+  if (page === 'live') attachLive();
   if (page === 'profile') {
     attachSettingsDrawer();
     attachProfileTabs();
@@ -1083,6 +1195,7 @@ const GUEST_GATED_SELECTOR = [
   '.seller button',
   '.note-add',
   '#create-form', '#capture-btn',
+  '.live-comment-form', '.live-buy', '.live-heart-btn',
 ].join(',');
 
 let guestGateToast = null;
