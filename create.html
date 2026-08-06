@@ -42,7 +42,7 @@
             <div class="stage-fallback" id="stage-fallback" hidden>
               <span class="stage-fallback-mark">ϟ</span>
               <p>Camera preview unavailable</p>
-              <small>Pick a photo below or upload your own to start creating.</small>
+              <small>Tap the photo thumbnail at the bottom to upload your own.</small>
             </div>
             <img id="stage-photo" class="stage-photo" alt="Selected photo" hidden>
             <div class="stage-fx" id="stage-fx" aria-hidden="true"></div>
@@ -90,7 +90,8 @@
             <button type="button" class="stage-btn mic-btn" id="mic-btn" aria-label="Mute microphone" hidden>🎤</button>
             <div class="stage-captured" id="stage-captured" hidden>✓</div>
 
-            <!-- Media sources (toggled via the gallery thumbnail) -->
+            <!-- Bottom controls: recent strip + circular filters around the shutter -->
+            <div class="ig-controls" id="ig-controls">
             <div class="media-strip" id="media-strip" aria-label="Media sources">
               <button type="button" class="media-tile media-camera active" id="media-camera" aria-label="Use camera"><span class="media-tile-icon">📷</span></button>
               <label class="media-tile media-upload" for="media-upload-input" aria-label="Upload"><span class="media-tile-icon">＋</span></label>
@@ -108,6 +109,10 @@
               <button type="button" class="filter-chip" data-filter="clarendon" aria-label="Clarendon"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
               <button type="button" class="filter-chip" data-filter="gingham" aria-label="Gingham"><img class="chip-thumb" src="https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
               <button type="button" class="filter-chip" data-filter="moon" aria-label="Moon"><img class="chip-thumb" src="https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+
+              <!-- Shutter: large white circle splitting the filter carousel -->
+              <button type="button" class="capture-btn" id="capture-btn" aria-label="Capture photo"></button>
+
               <button type="button" class="filter-chip" data-filter="lark" aria-label="Lark"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
               <button type="button" class="filter-chip" data-filter="reyes" aria-label="Reyes"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
               <button type="button" class="filter-chip" data-filter="juno" aria-label="Juno"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
@@ -120,9 +125,7 @@
               <button type="button" class="filter-chip" data-filter="vhs" aria-label="VHS"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
               <button type="button" class="filter-chip" data-filter="neon" aria-label="Neon"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
             </div>
-
-            <!-- Shutter: large white circle, centered -->
-            <button type="button" class="capture-btn" id="capture-btn" aria-label="Capture photo"></button>
+            </div>
 
             <!-- Bottom bar: thumbnail · POST/STORY/REEL/LIVE · flip -->
             <div class="ig-modebar">

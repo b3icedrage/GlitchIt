@@ -237,9 +237,13 @@ function attachCreateStudio() {
     if (state.hadCamera) startCamera();
   };
 
-  // Tabs (Feed / Story / Video)
+  // Tabs (POST / STORY / REEL / LIVE)
   tabs.forEach((tab) => {
     tab.addEventListener('click', () => {
+      if (tab.dataset.tab === 'live') {
+        location.href = 'live.html';
+        return;
+      }
       tabs.forEach((t) => { t.classList.toggle('active', t === tab); t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); });
       state.type = tab.dataset.tab;
       if (status) status.textContent = '';
@@ -296,6 +300,22 @@ function attachCreateStudio() {
   document.getElementById('flip-btn').addEventListener('click', () => {
     state.facing = state.facing === 'user' ? 'environment' : 'user';
     startCamera();
+  });
+
+  // Bottom-left gallery thumbnail: opens the upload picker (Instagram behavior)
+  document.getElementById('mode-thumb')?.addEventListener('click', () => uploadInput?.click());
+
+  // Tap the captured photo to retake
+  photo.addEventListener('click', () => {
+    if (state.mode === 'photo') startCamera();
+  });
+
+  // Settings gear: toggles the app theme (light/dark)
+  document.querySelector('.ig-top .ig-top-btn')?.addEventListener('click', () => {
+    const root = document.documentElement;
+    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    root.dataset.theme = next;
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* ignore */ }
   });
 
   // Microphone preview toggle

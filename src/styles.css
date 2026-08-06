@@ -869,3 +869,40 @@ body[data-page="create"] .create-form input::placeholder,
 body[data-page="create"] .create-form textarea::placeholder { color: #8e8e8e; }
 body[data-page="create"] .create-form .primary-action { margin-top: 4px; }
 body[data-page="create"] .create-status { margin: 0; color: #8e8e8e; font-size: 13px; }
+
+
+/* ---- Create camera refinements (Instagram-style, matching the mockup) ---- */
+body[data-page="create"] .ig-controls { position: absolute; left: 0; right: 0; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 7; display: grid; gap: 12px; }
+body[data-page="create"] .ig-controls .media-strip { display: flex; gap: 12px; overflow-x: auto; padding: 0 14px; scrollbar-width: none; justify-content: center; }
+body[data-page="create"] .ig-controls .media-strip::-webkit-scrollbar { display: none; }
+body[data-page="create"] .filter-strip { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 0 max(12px, calc(50% - 172px)); }
+body[data-page="create"] .filter-strip::-webkit-scrollbar { display: none; }
+body[data-page="create"] .capture-btn { position: relative; flex: 0 0 auto; width: 76px; height: 76px; margin: 0 10px; border: 4px solid #fff; border-radius: 50%; background: transparent; box-shadow: 0 6px 22px rgba(0,0,0,.5); transition: transform .15s ease, background .15s ease; }
+body[data-page="create"] .capture-btn:hover { transform: scale(1.07); background: rgba(255,255,255,.14); }
+body[data-page="create"] .capture-btn::after { content: ''; position: absolute; inset: 6px; border-radius: 50%; background: #fff; }
+body[data-page="create"] .capture-btn:active::after { background: #e6e6e6; }
+
+/* story audience circles (upper-right) */
+.ig-profiles { position: absolute; right: 14px; top: calc(62px + env(safe-area-inset-top)); z-index: 7; display: flex; gap: 10px; }
+.profile-avatar { width: 48px; height: 48px; border: 0; border-radius: 50%; padding: 3px; background: conic-gradient(#feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5, #feda75); cursor: pointer; transition: transform .15s ease; }
+.profile-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; border: 2.5px solid #0a0a0a; border-radius: 50%; }
+.profile-avatar:hover { transform: scale(1.06); }
+.profile-avatar.gray { background: #8e8e8e; }
+
+/* "Aa" create badge in the left rail */
+.rail-aa { display: grid; place-items: center; width: 30px; height: 30px; border: 1.5px solid rgba(255,255,255,.9); border-radius: 9px; font-size: 14px; font-weight: 800; filter: drop-shadow(0 1px 3px rgba(0,0,0,.55)); }
+
+/* bottom-left gallery thumbnail */
+body[data-page="create"] .mode-thumb { flex: 0 0 auto; width: 42px; height: 42px; border: 0; border-radius: 8px; padding: 0; overflow: hidden; background: #1a1a1a; cursor: pointer; transition: transform .15s ease; }
+body[data-page="create"] .mode-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+body[data-page="create"] .mode-thumb:hover { transform: scale(1.06); }
+
+/* mic button sits above the controls cluster */
+body[data-page="create"] .mic-btn { top: auto; right: 14px; bottom: calc(232px + env(safe-area-inset-bottom)); }
+
+/* rail: white selection bar */
+.rail-item.active::before { content: ''; position: absolute; left: -8px; top: 50%; transform: translateY(-50%); width: 3px; height: 22px; border-radius: 3px; background: #fff; }
+
+/* ---- Create camera: match the mockup exactly ---- */
+body[data-page="create"] .ig-controls .media-strip { display: none; }
+.ig-profiles { position: absolute; right: 14px; top: 44%; transform: translateY(-50%); z-index: 7; display: flex; gap: 10px; }
