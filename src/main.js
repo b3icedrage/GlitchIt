@@ -458,16 +458,6 @@ function attachShopFilters() {
   }
 }
 
-// ---------- Search page ----------
-function attachSearchForm() {
-  const form = document.getElementById('search-form');
-  form?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const term = document.getElementById('search-input').value.trim();
-    if (term) location.href = `shop.html?q=${encodeURIComponent(term)}`;
-  });
-}
-
 // ---------- End-of-page animated toast ----------
 let endToastTimer = null;
 let lastEndToastAt = 0;
@@ -1068,7 +1058,6 @@ function runPage() {
     });
   }
   if (page === 'shop') { attachShopTabs(); attachShopFilters(); attachStoryLinks(); attachGlitchAutoplay(); }
-  if (page === 'search') attachSearchForm();
 
   window.addEventListener('scroll', updateGlitchPlayback, { passive: true });
 }
