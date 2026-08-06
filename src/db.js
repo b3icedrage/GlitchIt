@@ -7,11 +7,16 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=3';
 const SAVED_KEY = 'glitchit.saved.v1';
 let client = null;
 let clientPromise = null;
-let currentHandle = '';
+// Ownership is keyed to the signed-in user's auth UUID (never a spoofable handle).
+let currentOwner = '';
 
-// Tie posts/saves to the signed-in account (empty = demo/guest mode).
-export function setCurrentUser(handle) {
-  currentHandle = handle || '';
+// Accept { id, username } (the signed-in Supabase user) so ownership = UUID.
+export function setCurrentUser(user) {
+  if (user && typeof user === 'object') {
+    currentOwner = user.id || '';
+  } else {
+    currentOwner = user || '';
+  }
 }
 
 export function dbAvailable() {
@@ -65,6 +70,8 @@ export async function saveMedia(item) {
     const sb = await getClient();
     if (!sb) return { ok: false, reason: 'network' };
     const kind = item.type === 'video' ? 'video' : 'image';
+    const owner = item.user || currentOwner;
+    if (!owner) return { ok: false, reason: 'auth' };
     let url = item.preview || item.src || item.url || '';
     let poster = item.poster || null;
     const blob = toBlob(item.file) || toBlob(item.preview);
@@ -84,7 +91,7 @@ export async function saveMedia(item) {
       caption: item.caption || '',
       url,
       poster,
-      user: item.user || currentHandle || 'b3ice_drage',
+      user: owner,
       avatar: item.avatar || '',
       likes: item.likes || 0,
       comments: item.comments || 0,
@@ -161,13 +168,13 @@ export async function saveVideo(video) {
   }
   try {
     const sb = await getClient();
-    if (!sb) return { ok: false };
+    if (!sb || !currentOwner) return { ok: false }; // local mirror only when signed out
     const row = {
       media_id: isUuid(video.id) ? video.id : null,
       url: video.src || video.url,
       poster: video.poster,
       title: video.title,
-      user: currentHandle || 'b3ice_drage',
+      user: currentOwner,
     };
     const { error } = await sb.from('saved').insert(row);
     if (error) throw error;
@@ -185,7 +192,7 @@ export async function unsaveVideo(video) {
     const sb = await getClient();
     if (!sb) return;
     let q = sb.from('saved').delete().eq('url', url);
-    if (currentHandle) q = q.eq('user', currentHandle);
+    if (currentOwner) q = q.eq('user', currentOwner);
     const { error } = await q;
     if (error) throw error;
   } catch (err) {
@@ -197,10 +204,9 @@ export async function loadSaved() {
   const merged = [...localSaved()];
   try {
     const sb = await getClient();
-    if (sb) {
-      let q = sb.from('saved').select('*').order('created_at', { ascending: false });
-      if (currentHandle) q = q.eq('user', currentHandle);
-      const { data, error } = await q;
+    // Guests (no owner UUID) never see other users' saved rows — local mirror only.
+    if (sb && currentOwner) {
+      const { data, error } = await sb.from('saved').select('*').order('created_at', { ascending: false }).eq('user', currentOwner);
       if (!error && data && data.length) {
         data.forEach((row) => {
           if (!merged.some((s) => s.url === row.url)) {

@@ -21,6 +21,13 @@ const profile = {
   avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=240&q=80',
 };
 
+// Map a stored owner UUID back to a friendly handle for display.
+function displayUser(owner) {
+  const u = window.GLITCHIT_USER;
+  if (u && owner === u.id) return u.user_metadata?.username || u.email?.split('@')[0] || owner;
+  return owner || '';
+}
+
 const page = document.body.dataset.page || 'home';
 
 function returnToPage() {
@@ -353,9 +360,10 @@ function attachCreateStudio() {
     userUploads[type].unshift(item);
     saveUploads();
     if (DB) {
-      DB.saveMedia({ ...item, file: file?.size ? file : null, user: window.GLITCHIT_USER?.user_metadata?.username || window.GLITCHIT_USER?.email?.split('@')[0] || profile.username, avatar: profile.avatar }).then((res) => {
+      DB.saveMedia({ ...item, file: file?.size ? file : null, user: window.GLITCHIT_USER?.id || '', avatar: profile.avatar }).then((res) => {
         if (!status) return;
         if (res.ok) { status.textContent = `Published to ${isVideo ? 'Glitches' : type} and saved to the database.`; return; }
+        if (res.reason === 'auth') { status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — sign in to publish to the database.`; return; }
         if (res.reason === 'config') status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only — add Supabase keys in src/config.js).`;
         else if (res.reason === 'table') status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — database needs setup: create the media & saved tables in the Supabase SQL Editor (I can re-send the script).`;
         else status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — database error. Check that the tables and the glitchit-media bucket exist.`;
@@ -1014,7 +1022,7 @@ function runPage() {
     if (DB) {
       DB.loadMedia('image').then((rows) => {
         if (!rows.length || !feedTarget) return;
-        const cards = rows.map((r) => uploadCard({ preview: r.url, title: r.title, caption: r.caption, type: 'image', user: r.user, avatar: r.avatar }, 'feed')).join('');
+        const cards = rows.map((r) => uploadCard({ preview: r.url, title: r.title, caption: r.caption, type: 'image', user: displayUser(r.user), avatar: r.avatar }, 'feed')).join('');
         feedTarget.insertAdjacentHTML('afterbegin', cards);
       });
     }
@@ -1027,7 +1035,7 @@ function runPage() {
     if (DB) {
       DB.loadMedia('video').then((rows) => {
         if (!rows.length || !videoTarget) return;
-        const cards = rows.map((r) => glitchVideoCard({ id: r.id, title: r.title, caption: r.caption, src: r.url, poster: r.poster || r.url, user: r.user, avatar: r.avatar, likes: String(r.likes || 0), comments: String(r.comments || 0), shares: String(r.shares || 0) })).join('');
+        const cards = rows.map((r) => glitchVideoCard({ id: r.id, title: r.title, caption: r.caption, src: r.url, poster: r.poster || r.url, user: displayUser(r.user), avatar: r.avatar, likes: String(r.likes || 0), comments: String(r.comments || 0), shares: String(r.shares || 0) })).join('');
         videoTarget.insertAdjacentHTML('afterbegin', cards);
         attachReelsActions();
         attachGlitchAutoplay();
@@ -1059,13 +1067,75 @@ function runPage() {
   }
   if (page === 'shop') { attachShopTabs(); attachShopFilters(); attachStoryLinks(); attachGlitchAutoplay(); }
 
+  attachGuestGuards();
   window.addEventListener('scroll', updateGlitchPlayback, { passive: true });
 }
 
 // ---------- Supabase auth bootstrap ----------
-const GUEST_KEY = 'glitchit.auth.guest.v1';
+const GUEST_KEY = 'glitchit.auth.guest.v1'; // guest browsing flag
+const ACCOUNT_PAGES = ['messages', 'chat', 'profile', 'create', 'shop'];
 
-// Auth page (auth.html): login / signup form with show-password + guest mode.
+// Interactions guests cannot perform on browsable pages.
+const GUEST_GATED_SELECTOR = [
+  '.reel-like', '.reel-follow', '.reel-save', '.reel-action',
+  '.comment-box', '.text-button',
+  '.post .actions',
+  '.seller button',
+  '.note-add',
+  '#create-form', '#capture-btn',
+].join(',');
+
+let guestGateToast = null;
+
+function isGuest() {
+  return Boolean(window.GLITCHIT_USER && window.GLITCHIT_USER.guest);
+}
+
+// Show a "sign in" toast, then route the guest to the auth page.
+function showGuestGate(msg) {
+  if (!guestGateToast) {
+    guestGateToast = document.createElement('div');
+    guestGateToast.className = 'end-toast show';
+    guestGateToast.setAttribute('role', 'status');
+    document.body.appendChild(guestGateToast);
+  }
+  guestGateToast.innerHTML = `<span class="end-toast-mark">${icon('ϟ')}</span><span class="end-toast-text">${escapeHtml(msg)}</span>`;
+  clearTimeout(showGuestGate._t);
+  showGuestGate._t = setTimeout(() => {
+    location.href = `auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`;
+  }, 1400);
+}
+
+// Block account-only interactions for guests: like, comment, share, follow,
+// save, and posting; plus navigation into account-only pages.
+function attachGuestGuards() {
+  if (!isGuest()) return;
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href$=".html"]');
+    if (link) {
+      const href = link.getAttribute('href') || '';
+      if (ACCOUNT_PAGES.some((p) => href === `${p}.html`)) {
+        event.preventDefault();
+        showGuestGate('Sign in to open this page');
+        return;
+      }
+    }
+    const locked = event.target.closest(GUEST_GATED_SELECTOR);
+    if (!locked) return;
+    event.preventDefault();
+    event.stopPropagation();
+    showGuestGate('Sign in to like, comment, follow, share & post');
+  }, true);
+  document.addEventListener('submit', (event) => {
+    if (event.target.closest('.comment-box') || event.target.closest('#create-form')) {
+      event.preventDefault();
+      showGuestGate('Sign in to comment & post');
+    }
+  }, true);
+}
+
+// Guests may browse read-only, but every account action (follow, like,
+// comment, share, post, messages, profile, create, shop) requires sign-in.
 function attachAuthPage(auth) {
   const form = document.getElementById('auth-form');
   if (!form || !auth) return;
@@ -1114,7 +1184,7 @@ function attachAuthPage(auth) {
     try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
     window.GLITCHIT_USER = res.user;
     auth.setHandle(auth.userHandle(res.user));
-    import('./db.js?v=3').then((db) => db.setCurrentUser?.(auth.userHandle(res.user))).catch(() => {});
+    import('./db.js?v=3').then((db) => db.setCurrentUser?.({ id: res.user.id, username: auth.userHandle(res.user) })).catch(() => {});
     location.href = returnToPage() || 'index.html';
   });
 }
@@ -1160,31 +1230,37 @@ async function boot() {
   if (auth && auth.authAvailable()) {
     if (isAuthPage) {
       // Already signed in? Skip the form and go straight to the app.
-      if (!guest) {
-        const user = await auth.currentUser();
-        if (user) {
-          auth.setHandle(auth.userHandle(user));
-          const db = await dbReady();
-          db?.setCurrentUser?.(auth.userHandle(user));
-          location.replace(returnToPage() || 'index.html');
-          return;
-        }
+      const user = await auth.currentUser();
+      if (user) {
+        window.GLITCHIT_USER = user;
+        auth.setHandle(auth.userHandle(user));
+        const db = await dbReady();
+        db?.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) });
+        location.replace(returnToPage() || 'index.html');
+        return;
       }
       attachAuthPage(auth);
-    } else if (!guest) {
+    } else {
       const user = await auth.currentUser();
-      if (!user) {
+      if (user) {
+        // Signed in — full access.
+        window.GLITCHIT_USER = user;
+        auth.setHandle(auth.userHandle(user));
+        const db = await dbReady();
+        db?.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) });
+      } else if (guest) {
+        // Guest browsing: view-only. Account-only pages redirect to sign-in.
+        window.GLITCHIT_USER = { guest: true };
+        if (ACCOUNT_PAGES.includes(page)) {
+          location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
+          return;
+        }
+        const db = await dbReady();
+        db?.setCurrentUser?.('');
+      } else {
         location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
         return;
       }
-      window.GLITCHIT_USER = user;
-      auth.setHandle(auth.userHandle(user));
-      const db = await dbReady();
-      db?.setCurrentUser?.(auth.userHandle(user));
-    } else {
-      window.GLITCHIT_USER = { guest: true };
-      const db = await dbReady();
-      db?.setCurrentUser?.('');
     }
   }
   runPage();
