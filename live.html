@@ -51,8 +51,10 @@
               </a>
               <span class="live-pill">LIVE</span>
               <span class="live-viewers" id="live-viewers" aria-label="1.5k viewers"></span>
+              <button type="button" class="live-camera-toggle" id="live-camera-toggle" aria-pressed="false" aria-label="Enable your camera">Enable camera</button>
               <a class="live-close" href="index.html" aria-label="Close live">✕</a>
             </div>
+            <div class="live-camera-status" id="live-camera-status" role="status" aria-live="polite">Camera is off · tap Enable camera to preview yourself</div>
 
             <!-- Chat stream (bottom-left) -->
             <div class="live-chat" id="live-chat" aria-live="polite">
@@ -114,5 +116,6 @@
       </nav>
     </div>
     <script src="src/main.js?v=4" defer></script>
+    <script src="src/live-camera.js" defer></script>
   </body>
 </html>

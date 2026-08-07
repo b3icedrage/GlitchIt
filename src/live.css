@@ -140,6 +140,42 @@
 .live-close:hover { background: rgba(255, 255, 255, .22); }
 .live-close:active { transform: scale(.92); }
 
+/* ---------- Camera preview controls ---------- */
+.live-camera-toggle {
+  border: 1px solid rgba(255, 255, 255, .34);
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: rgba(18, 18, 18, .58);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.live-camera-toggle:hover { background: rgba(255, 255, 255, .2); border-color: rgba(255, 255, 255, .65); }
+.live-camera-toggle:active { transform: scale(.95); }
+.live-camera-toggle[aria-pressed="true"] { background: #ff2d7c; border-color: #ff2d7c; }
+.live-camera-toggle:disabled { cursor: wait; opacity: .65; }
+.live-camera-status {
+  position: absolute;
+  top: 66px;
+  left: 14px;
+  z-index: 3;
+  max-width: min(78%, 330px);
+  padding: 7px 11px;
+  border-radius: 10px;
+  background: rgba(18, 18, 18, .54);
+  backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, .82);
+  font-size: 11px;
+  line-height: 1.35;
+  transition: color .15s ease, background .15s ease;
+}
+.live-camera-status[data-tone="ok"] { color: #d7ffdf; background: rgba(19, 91, 44, .55); }
+.live-camera-status[data-tone="error"] { color: #ffd9e7; background: rgba(112, 24, 57, .62); }
+
 /* ---------- Chat stream (bottom-left) ---------- */
 .live-chat {
   position: absolute;
@@ -368,4 +404,6 @@
     margin: 0;
     box-shadow: none;
   }
+  .live-camera-toggle { padding: 6px 9px; font-size: 11px; }
+  .live-camera-status { top: 62px; left: 10px; max-width: calc(100% - 20px); }
 }
