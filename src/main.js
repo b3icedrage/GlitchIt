@@ -260,6 +260,7 @@ function attachCreateStudio() {
   const cameraStatusTitle = document.getElementById('camera-status-title');
   const cameraStatusDetail = document.getElementById('camera-status-detail');
   const cameraRetry = document.getElementById('camera-retry');
+  const liveChip = document.getElementById('camera-live-chip');
   const fxLayer = document.getElementById('stage-fx');
   const nextBtn = document.getElementById('create-next');
   const backBtn = document.getElementById('create-back');
@@ -297,6 +298,20 @@ function attachCreateStudio() {
   const RATIO_ORDER = ['9:16', '1:1', '4:5', '16:9'];
   const state = { type: 'feed', filter: 'none', captured: null, mode: 'camera', stream: null, hadCamera: false, facing: 'user', torch: false, mic: false, hasMic: false, grid: false, audience: 'you', zoom: 1, timer: 0, counting: false, editingDraft: -1, ratio: '9:16', canRecord: typeof MediaRecorder !== 'undefined', recording: false, recorder: null, chunks: [], recTimer: null, recStart: 0, recordedUrl: '', recordedBlob: null, keepUrl: false, edit: { brightness: 100, contrast: 100, saturation: 100, warmth: 0, rotate: 0, flipH: false, flipV: false, texts: [], emojis: [], trimStart: 0, trimEnd: Infinity, trimSet: false } };
 
+  // Mirror the front camera so users see themselves like a mirror (selfie view).
+  // The rear camera stays un-mirrored; zoom is combined into the same transform.
+  const applyVideoTransform = () => {
+    const mirror = state.facing === 'user' ? 'scaleX(-1)' : '';
+    const zoom = state.zoom && state.zoom > 1 ? ` scale(${state.zoom})` : '';
+    video.style.transform = `${mirror}${zoom}`.trim();
+  };
+
+  // Small "you're on camera" chip shown while the live self-view is visible.
+  const updateLiveChip = () => {
+    if (!liveChip) return;
+    liveChip.hidden = !(state.stream && state.mode === 'camera' && fallback.hidden);
+  };
+
   const updateMicButton = () => {
     if (!micBtn) return;
     micBtn.textContent = state.mic ? '🎤' : '🔇';
@@ -329,6 +344,7 @@ function attachCreateStudio() {
       hint.hidden = mode !== 'photo' && mode !== 'video';
       hint.textContent = mode === 'video' ? 'Tap video to retake' : 'Tap photo to retake';
     }
+    updateLiveChip();
     updateDraftsBadge();
     applyFilter();
   };
@@ -337,6 +353,7 @@ function attachCreateStudio() {
     state.stream?.getTracks().forEach((track) => track.stop());
     state.stream = null;
     video.srcObject = null;
+    updateLiveChip();
   };
 
   const showCameraFallback = (title, detail, retryLabel = 'Enable camera') => {
@@ -344,6 +361,7 @@ function attachCreateStudio() {
     if (cameraStatusDetail) cameraStatusDetail.textContent = detail;
     if (cameraRetry) cameraRetry.textContent = retryLabel;
     fallback.hidden = false;
+    updateLiveChip();
   };
 
   const startCamera = async (facingMode = state.facing) => {
@@ -385,6 +403,7 @@ function attachCreateStudio() {
     const revealPreview = () => {
       video.removeAttribute('aria-busy');
       fallback.hidden = true;
+      updateLiveChip();
     };
     video.addEventListener('loadedmetadata', revealPreview, { once: true });
     video.addEventListener('playing', revealPreview, { once: true });
@@ -397,7 +416,7 @@ function attachCreateStudio() {
     }
     // Reset zoom and restore the gallery thumbnail when returning to the camera.
     state.zoom = 1;
-    video.style.transform = '';
+    applyVideoTransform();
     if (zoomBtn) zoomBtn.textContent = '1x';
     if (thumb && state.mode !== 'camera') thumb.querySelector('img').src = thumbOriginal;
     if (ratioBtn) ratioBtn.hidden = false;
@@ -676,7 +695,18 @@ function attachCreateStudio() {
     tick();
   };
 
-  const shutterPress = () => {
+  // Turn the camera on first (so the user can see themselves) whenever the
+  // shutter is pressed but no live feed is available yet.
+  const ensureCameraForShutter = async () => {
+    if (state.stream) return true;
+    showStageToast('Turning on your camera…');
+    try {
+      await startCamera();
+    } catch (err) { /* the fallback panel already explains what to do */ }
+    return Boolean(state.stream);
+  };
+
+  const shutterPress = async () => {
     // A second tap during the countdown cancels it
     if (state.counting) {
       state.counting = false;
@@ -686,10 +716,13 @@ function attachCreateStudio() {
     }
     // REEL tab: tap to start/stop a video recording
     if (state.type === 'videos' && state.canRecord) {
-      if (state.recording) stopRecording();
-      else startRecording();
+      if (state.recording) { stopRecording(); return; }
+      if (!(await ensureCameraForShutter())) return;
+      startRecording();
       return;
     }
+    // Photo capture: make sure the live self-view is on before taking the shot.
+    if (!(await ensureCameraForShutter())) return;
     // Shutter press feedback: ring squeeze + white flash
     const shutter = document.getElementById('capture-btn');
     shutter.classList.add('pressed');
@@ -960,15 +993,15 @@ function attachCreateStudio() {
         try {
           const zoom = Math.min(caps.zoom.max, Math.max(caps.zoom.min, level));
           await track.applyConstraints({ advanced: [{ zoom }] });
-          video.style.transform = '';
           state.zoom = zoom > 1.1 ? Math.round(zoom) : 1;
+          applyVideoTransform();
           usedHardware = true;
         } catch (e) { /* fall through to CSS scale */ }
       }
     }
     if (!usedHardware) {
-      video.style.transform = `scale(${level})`;
       state.zoom = level;
+      applyVideoTransform();
     }
     if (zoomBtn) zoomBtn.textContent = `${state.zoom}x`;
   };

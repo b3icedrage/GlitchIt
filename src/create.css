@@ -219,6 +219,34 @@ body[data-page="create"] .ratio-tool { right: 12px; bottom: calc(170px + env(saf
 .rec-pill i { width: 9px; height: 9px; border-radius: 50%; background: #ff3040; animation: recBlink 1s steps(2) infinite; }
 @keyframes recBlink { 50% { opacity: .3; } }
 
+/* Live self-view chip: shown while the camera feed is on screen */
+.camera-live-chip {
+  position: absolute;
+  left: 16px;
+  top: calc(64px + env(safe-area-inset-top));
+  z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(20, 3, 8, .52);
+  border: 1px solid rgba(255, 255, 255, .14);
+  color: var(--camera-muted, rgba(255, 239, 241, .72));
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .03em;
+  backdrop-filter: blur(14px);
+  animation: hintIn .3s ease;
+}
+.camera-live-chip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--camera-red, #f04b57);
+  animation: recBlink 1.4s steps(2) infinite;
+}
+
 /* Shutter in REEL mode: red dot when idle, pulsing rounded square while recording */
 body[data-page="create"] .capture-btn.record::after { inset: 22px; background: #ff3040; }
 body[data-page="create"] .capture-btn.recording { border-color: #ff3040; box-shadow: 0 0 0 5px rgba(255, 48, 64, .25), 0 6px 22px rgba(0, 0, 0, .5); }
