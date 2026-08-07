@@ -129,6 +129,12 @@ const CREATE_FILTERS = {
   neon: { filter: 'saturate(1.9) contrast(1.25)', fx: 'fx-neon' },
 };
 
+// Edit-screen constants (adjustments, sticker emojis, text colors).
+const ADJUST_KEYS = ['brightness', 'contrast', 'saturation', 'warmth'];
+const ADJUST_LABELS = { brightness: 'Brightness', contrast: 'Contrast', saturation: 'Saturation', warmth: 'Warmth' };
+const EMOJI_CHOICES = ['😀', '😂', '😍', '🔥', '✨', '👏', '🛍️', '💥', '😎', '🥰', '🤩', '🤯', '🎉', '💯', '🙌', '❤️', '💜', '💙', '⚡', '🌟', '🎧', '👟', '🧢', '📸'];
+const TEXT_COLORS = ['#ffffff', '#ffd60a', '#ff3040', '#d62976', '#4f5bd5', '#30d158', '#000000'];
+
 function readFileAsDataURL(file) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -180,7 +186,7 @@ function attachCreateStudio() {
   // Aspect ratios keyed to height/width (capture canvas height = width * ratio).
   const RATIOS = { '9:16': 16 / 9, '1:1': 1, '4:5': 5 / 4, '16:9': 9 / 16 };
   const RATIO_ORDER = ['9:16', '1:1', '4:5', '16:9'];
-  const state = { type: 'feed', filter: 'none', captured: null, mode: 'camera', stream: null, hadCamera: false, facing: 'user', torch: false, mic: false, hasMic: false, grid: false, audience: 'you', zoom: 1, timer: 0, counting: false, editingDraft: -1, ratio: '9:16', canRecord: typeof MediaRecorder !== 'undefined', recording: false, recorder: null, chunks: [], recTimer: null, recStart: 0, recordedUrl: '', recordedBlob: null, keepUrl: false };
+  const state = { type: 'feed', filter: 'none', captured: null, mode: 'camera', stream: null, hadCamera: false, facing: 'user', torch: false, mic: false, hasMic: false, grid: false, audience: 'you', zoom: 1, timer: 0, counting: false, editingDraft: -1, ratio: '9:16', canRecord: typeof MediaRecorder !== 'undefined', recording: false, recorder: null, chunks: [], recTimer: null, recStart: 0, recordedUrl: '', recordedBlob: null, keepUrl: false, edit: { brightness: 100, contrast: 100, saturation: 100, warmth: 0, rotate: 0, flipH: false, flipV: false, texts: [], emojis: [], trimStart: 0, trimEnd: Infinity, trimSet: false } };
 
   const updateMicButton = () => {
     if (!micBtn) return;
@@ -344,17 +350,26 @@ function attachCreateStudio() {
     const file = uploadInput.files?.[0];
     if (!file) return;
     if (file.type.startsWith('video/')) {
-      // Uploaded videos preview through the same REEL path as recordings.
+      // Uploaded videos use the same editor/publisher path as camera reels.
+      // Switch the post type here too, otherwise a video uploaded from POST
+      // would be treated as a photo when the user taps Next.
       if (state.recordedUrl) URL.revokeObjectURL(state.recordedUrl);
       const url = URL.createObjectURL(file);
       state.recordedUrl = url;
       state.recordedBlob = file;
       state.keepUrl = false;
-      state.captured = CREATE_SAMPLE_IMAGE; // placeholder poster until the first frame loads
+      state.captured = CREATE_SAMPLE_IMAGE; // replaced with the first video frame below
       if (stageVideo) {
         stageVideo.onloadeddata = grabUploadedPoster;
         stageVideo.src = url;
+        stageVideo.load();
       }
+      tabs.forEach((tab) => {
+        const active = tab.dataset.tab === 'videos';
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      state.type = 'videos';
       mediaTiles.forEach((t) => t.classList.remove('active'));
       setMode('video');
       document.getElementById('stage-captured').hidden = false;
@@ -428,14 +443,18 @@ function attachCreateStudio() {
     recTime.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   };
 
+  const pickRecorderMime = () => {
+    const candidates = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+    for (const m of candidates) {
+      try { if (MediaRecorder.isTypeSupported(m)) return m; } catch (e) { /* keep trying */ }
+    }
+    return '';
+  };
+
   const startRecording = () => {
     if (!state.stream) { fallback.hidden = false; showStageToast('Camera is off — pick a photo instead'); return; }
     if (!state.canRecord) return;
-    let mimeType = '';
-    const candidates = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
-    for (const m of candidates) {
-      try { if (MediaRecorder.isTypeSupported(m)) { mimeType = m; break; } } catch (e) { /* keep trying */ }
-    }
+    const mimeType = pickRecorderMime();
     try {
       const recorder = new MediaRecorder(state.stream, { mimeType: mimeType || undefined, videoBitsPerSecond: 4e6 });
       state.recorder = recorder;
@@ -612,8 +631,7 @@ function attachCreateStudio() {
     if (!shareRow) return;
     shareRow.hidden = state.type !== 'stories';
   };
-  nextBtn?.addEventListener('click', () => {
-    if (!state.captured && !(state.type === 'videos' && state.recordedUrl)) return;
+  const openCaptionForm = () => {
     const isVideo = state.type === 'videos' && state.recordedUrl;
     if (previewImg) previewImg.hidden = isVideo;
     if (previewVideo) {
@@ -637,6 +655,10 @@ function attachCreateStudio() {
     nextBtn.hidden = true;
     form.hidden = false;
     form.querySelector('[name="title"]').focus();
+  };
+  nextBtn?.addEventListener('click', () => {
+    if (!state.captured && !(state.type === 'videos' && state.recordedUrl)) return;
+    openEditScreen();
   });
 
   // Back to camera
@@ -680,7 +702,16 @@ function attachCreateStudio() {
     if (DB) {
       DB.saveMedia({ ...item, file: isVideo && state.recordedBlob ? state.recordedBlob : (file?.size ? file : null), user: window.GLITCHIT_USER?.id || '', avatar: profile.avatar }).then((res) => {
         if (!status) return;
-        if (res.ok) { status.className = 'create-status ok'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} and saved to the database.`; return; }
+        if (res.ok) {
+          // Replace short-lived blob URLs with the durable public storage URL
+          // so the local feed still works after a page refresh.
+          if (res.url) {
+            item.preview = isVideo ? (res.poster || item.poster || item.preview) : res.url;
+            if (isVideo) item.src = res.url;
+            saveUploads();
+          }
+          status.className = 'create-status ok'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} and saved to the database.`; return;
+        }
         if (res.reason === 'auth') { status.className = 'create-status'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — sign in to publish to the database.`; return; }
         if (res.reason === 'config') { status.className = 'create-status'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only — add Supabase keys in src/config.js).`; }
         else if (res.reason === 'table') { status.className = 'create-status'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — database needs setup: create the media & saved tables in the Supabase SQL Editor (I can re-send the script).`; }
@@ -937,6 +968,554 @@ function attachCreateStudio() {
     document.body.appendChild(burst);
     setTimeout(() => burst.remove(), 1100);
   };
+
+  // ---------- Edit screen (adjust · filters · rotate · text · emoji · trim) ----------
+  const editScreen = document.getElementById('edit-screen');
+  const editPhotoEl = document.getElementById('edit-photo');
+  const editVideoEl = document.getElementById('edit-video');
+  const editMedia = document.getElementById('edit-media');
+  const editOverlay = document.getElementById('edit-overlay');
+  const editPanel = document.getElementById('edit-panel');
+  const editNextBtn = document.getElementById('edit-next');
+  const editBackBtn = document.getElementById('edit-back');
+  const editTools = [...document.querySelectorAll('.edit-tool')];
+  let editorKind = 'photo';
+  const DEFAULT_EDIT = { brightness: 100, contrast: 100, saturation: 100, warmth: 0, rotate: 0, flipH: false, flipV: false, texts: [], emojis: [], trimStart: 0, trimEnd: Infinity, trimSet: false };
+  state.edit = { ...DEFAULT_EDIT };
+
+  const editFilterString = () => {
+    const base = (CREATE_FILTERS[state.filter] || CREATE_FILTERS.none).filter;
+    const e = state.edit;
+    const parts = [`brightness(${e.brightness / 100})`, `contrast(${e.contrast / 100})`, `saturate(${e.saturation / 100})`];
+    if (e.warmth > 0) parts.push(`sepia(${e.warmth / 200})`);
+    else if (e.warmth < 0) parts.push(`hue-rotate(${Math.round(e.warmth * 0.9)}deg)`);
+    return [base, parts.join(' ')].filter(Boolean).join(' ');
+  };
+
+  const editHasChanges = () => {
+    const e = state.edit;
+    return state.filter !== 'none' || e.brightness !== 100 || e.contrast !== 100 || e.saturation !== 100 || e.warmth !== 0 ||
+      e.rotate !== 0 || e.flipH || e.flipV || e.texts.length > 0 || e.emojis.length > 0 || e.trimSet;
+  };
+
+  const resetEdit = () => {
+    state.edit = { ...DEFAULT_EDIT, texts: [], emojis: [] };
+  };
+
+  const showEditToast = (msg) => {
+    const toast = document.getElementById('edit-toast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showEditToast._t);
+    showEditToast._t = setTimeout(() => toast.classList.remove('show'), 1600);
+  };
+
+  // The preview box keeps the media's (post-rotation) aspect, so overlay
+  // percentages map 1:1 onto the baked canvas coordinates.
+  const sizeEditMedia = () => {
+    const e = state.edit;
+    const swap = e.rotate % 180 !== 0;
+    const natW = editorKind === 'video' ? (editVideoEl.videoWidth || 9) : (editPhotoEl.naturalWidth || 9);
+    const natH = editorKind === 'video' ? (editVideoEl.videoHeight || 16) : (editPhotoEl.naturalHeight || 16);
+    const stageRect = editScreen.getBoundingClientRect();
+    const w = swap ? natH : natW;
+    const h = swap ? natW : natH;
+    const scale = Math.min((stageRect.width - 12) / w, (stageRect.height - 150) / h, 1.5);
+    editMedia.style.width = `${Math.max(40, Math.round(w * scale))}px`;
+    editMedia.style.height = `${Math.max(40, Math.round(h * scale))}px`;
+  };
+
+  const renderEditOverlay = () => {
+    const k = (editMedia.getBoundingClientRect().width || 1080) / 1080;
+    const items = [
+      ...state.edit.texts.map((t) => `<span class="edit-item edit-item-text" data-kind="text" data-id="${t.id}" style="left:${t.x}%;top:${t.y}%;color:${t.color};font-size:${Math.max(12, Math.round(t.size * k))}px">${escapeHtml(t.text)}</span>`),
+      ...state.edit.emojis.map((m) => `<span class="edit-item edit-item-emoji" data-kind="emoji" data-id="${m.id}" style="left:${m.x}%;top:${m.y}%;font-size:${Math.max(16, Math.round(m.size * k))}px">${m.emoji}</span>`),
+    ].join('');
+    editOverlay.innerHTML = items;
+  };
+
+  const applyEditPreview = () => {
+    const el = editorKind === 'video' ? editVideoEl : editPhotoEl;
+    if (!el) return;
+    el.style.filter = editFilterString();
+    const e = state.edit;
+    el.style.transform = `rotate(${e.rotate}deg) scale(${e.flipH ? -1 : 1}, ${e.flipV ? -1 : 1})`;
+    sizeEditMedia();
+    renderEditOverlay();
+  };
+
+  // Drag text/stickers on the preview (pointer events cover mouse + touch).
+  editOverlay.addEventListener('pointerdown', (event) => {
+    const item = event.target.closest('.edit-item');
+    if (!item) return;
+    event.preventDefault();
+    const kind = item.dataset.kind;
+    const id = item.dataset.id;
+    const rect = editMedia.getBoundingClientRect();
+    const moveAt = (clientX, clientY) => {
+      const x = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+      const y = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100));
+      item.style.left = `${x}%`;
+      item.style.top = `${y}%`;
+      item.dataset.x = x;
+      item.dataset.y = y;
+    };
+    moveAt(event.clientX, event.clientY);
+    const onMove = (ev) => moveAt(ev.clientX, ev.clientY);
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      const list = kind === 'text' ? state.edit.texts : state.edit.emojis;
+      const entry = list.find((i) => i.id === id);
+      if (entry) { entry.x = parseFloat(item.dataset.x); entry.y = parseFloat(item.dataset.y); }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  });
+  editOverlay.addEventListener('dblclick', (event) => {
+    const item = event.target.closest('.edit-item');
+    if (!item) return;
+    const kind = item.dataset.kind;
+    state.edit[kind === 'text' ? 'texts' : 'emojis'] = (kind === 'text' ? state.edit.texts : state.edit.emojis).filter((i) => i.id !== item.dataset.id);
+    renderEditOverlay();
+    showEditToast('Removed');
+  });
+
+  // ----- Tool panels -----
+  const buildAdjustPanel = () => {
+    const e = state.edit;
+    editPanel.innerHTML = `<div class="edit-sliders">
+      ${ADJUST_KEYS.map((k) => `<label class="edit-slider"><span>${ADJUST_LABELS[k]}</span><input type="range" data-adjust="${k}" min="${k === 'warmth' ? -50 : 50}" max="${k === 'warmth' ? 50 : 150}" value="${e[k]}"><b>${e[k]}</b></label>`).join('')}
+      <button type="button" class="edit-reset" data-reset="adjust">Reset</button>
+    </div>`;
+    editPanel.querySelectorAll('input[data-adjust]').forEach((input) => {
+      input.addEventListener('input', () => {
+        state.edit[input.dataset.adjust] = parseFloat(input.value);
+        input.nextElementSibling.textContent = input.value;
+        applyEditPreview();
+      });
+    });
+    editPanel.querySelector('[data-reset="adjust"]').addEventListener('click', () => {
+      ADJUST_KEYS.forEach((k) => { state.edit[k] = DEFAULT_EDIT[k]; });
+      applyEditPreview();
+      openEditTool('adjust');
+    });
+  };
+
+  const buildFiltersPanel = () => {
+    const thumb = state.captured || CREATE_SAMPLE_IMAGE;
+    const chips = Object.keys(CREATE_FILTERS).map((name) => {
+      const active = state.filter === name ? ' active' : '';
+      return `<button type="button" class="filter-chip edit-filter-chip${active}" data-filter="${name}" aria-label="${name}"><img class="chip-thumb" src="${thumb}" alt="" loading="lazy"></button>`;
+    }).join('');
+    editPanel.innerHTML = `<div class="edit-filter-strip" id="edit-filter-strip">${chips}</div>`;
+    editPanel.querySelectorAll('.edit-filter-chip').forEach((chip) => {
+      chip.querySelector('.chip-thumb').style.filter = (CREATE_FILTERS[chip.dataset.filter] || CREATE_FILTERS.none).filter;
+      chip.addEventListener('click', () => {
+        editPanel.querySelectorAll('.edit-filter-chip').forEach((c) => c.classList.toggle('active', c === chip));
+        state.filter = chip.dataset.filter;
+        applyFilter();
+        applyEditPreview();
+      });
+    });
+  };
+
+  const buildRotatePanel = () => {
+    const e = state.edit;
+    editPanel.innerHTML = `<div class="edit-rotate-row">
+      <button type="button" class="edit-rotate-btn" data-rot="-90" aria-label="Rotate left">↺</button>
+      <button type="button" class="edit-rotate-btn" data-rot="90" aria-label="Rotate right">↻</button>
+      <button type="button" class="edit-rotate-btn${e.flipH ? ' on' : ''}" data-flip="h" aria-label="Flip horizontally">⇋</button>
+      <button type="button" class="edit-rotate-btn${e.flipV ? ' on' : ''}" data-flip="v" aria-label="Flip vertically">⇅</button>
+      <button type="button" class="edit-reset" data-reset="rotate">Reset</button>
+    </div>`;
+    editPanel.querySelectorAll('[data-rot]').forEach((btn) => btn.addEventListener('click', () => {
+      state.edit.rotate = (state.edit.rotate + parseInt(btn.dataset.rot, 10) + 360) % 360;
+      applyEditPreview();
+    }));
+    editPanel.querySelectorAll('[data-flip]').forEach((btn) => btn.addEventListener('click', () => {
+      const key = btn.dataset.flip === 'h' ? 'flipH' : 'flipV';
+      state.edit[key] = !state.edit[key];
+      applyEditPreview();
+      btn.classList.toggle('on', state.edit[key]);
+    }));
+    editPanel.querySelector('[data-reset="rotate"]').addEventListener('click', () => {
+      state.edit.rotate = 0; state.edit.flipH = false; state.edit.flipV = false;
+      applyEditPreview();
+      openEditTool('rotate');
+    });
+  };
+
+  const buildTextPanel = () => {
+    editPanel.innerHTML = `<div class="edit-text-tools">
+      <div class="edit-text-input-row">
+        <input type="text" id="edit-text-input" placeholder="Type something…" maxlength="80" aria-label="Text to add">
+        <button type="button" class="edit-add-btn" id="edit-add-text">Add</button>
+      </div>
+      <div class="edit-swatch-row" role="group" aria-label="Text color">
+        ${TEXT_COLORS.map((c) => `<button type="button" class="edit-swatch" data-color="${c}" style="--swatch:${c}" aria-label="Color ${c}"></button>`).join('')}
+      </div>
+      <label class="edit-slider"><span>Size</span><input type="range" id="edit-text-size" min="18" max="96" value="46"><b>46</b></label>
+      <p class="edit-tip">Drag text on the preview to move it · double-tap to delete</p>
+    </div>`;
+    let color = '#ffffff';
+    editPanel.querySelectorAll('.edit-swatch').forEach((sw) => sw.addEventListener('click', () => {
+      editPanel.querySelectorAll('.edit-swatch').forEach((s) => s.classList.toggle('active', s === sw));
+      color = sw.dataset.color;
+    }));
+    const sizeInput = editPanel.querySelector('#edit-text-size');
+    sizeInput.addEventListener('input', () => { sizeInput.nextElementSibling.textContent = sizeInput.value; });
+    const addText = () => {
+      const input = editPanel.querySelector('#edit-text-input');
+      const text = (input.value || '').trim();
+      if (!text) { showEditToast('Type some text first'); return; }
+      state.edit.texts.push({ id: `t${Date.now()}`, text, color, size: parseFloat(sizeInput.value), x: 50, y: 26 });
+      renderEditOverlay();
+      input.value = '';
+      showEditToast('Text added — drag to place it');
+    };
+    editPanel.querySelector('#edit-add-text').addEventListener('click', addText);
+    editPanel.querySelector('#edit-text-input').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') addText(); });
+  };
+
+  const buildEmojiPanel = () => {
+    editPanel.innerHTML = `<div class="edit-emoji-grid" aria-label="Stickers">${EMOJI_CHOICES.map((m) => `<button type="button" class="edit-emoji-btn" data-emoji="${m}" aria-label="Add ${m}">${m}</button>`).join('')}</div>
+    <p class="edit-tip">Tap a sticker to add it · drag to move · double-tap to delete</p>`;
+    editPanel.querySelectorAll('.edit-emoji-btn').forEach((btn) => btn.addEventListener('click', () => {
+      state.edit.emojis.push({ id: `e${Date.now()}`, emoji: btn.dataset.emoji, size: 58, x: 50, y: 62 });
+      renderEditOverlay();
+      showEditToast('Sticker added');
+    }));
+  };
+
+  const buildTrimPanel = () => {
+    const dur = editVideoEl.duration || 0;
+    if (!dur) { editPanel.innerHTML = '<p class="edit-tip">Loading clip…</p>'; return; }
+    const e = state.edit;
+    const start = e.trimSet ? e.trimStart : 0;
+    const end = e.trimSet ? Math.min(e.trimEnd, dur) : dur;
+    editPanel.innerHTML = `<div class="edit-trim">
+      <div class="edit-trim-labels"><span>Start <b id="trim-start-label">${start.toFixed(1)}s</b></span><span>End <b id="trim-end-label">${end.toFixed(1)}s</b></span></div>
+      <label class="edit-slider"><span>Start</span><input type="range" id="trim-start" min="0" max="${Math.max(0.1, dur - 0.05).toFixed(2)}" step="0.05" value="${start.toFixed(2)}"><b></b></label>
+      <label class="edit-slider"><span>End</span><input type="range" id="trim-end" min="0.05" max="${dur.toFixed(2)}" step="0.05" value="${Math.max(0.05, end).toFixed(2)}"><b></b></label>
+      <div class="edit-trim-actions"><button type="button" class="edit-reset" data-reset="trim">Reset to full clip</button></div>
+    </div>`;
+    const startInput = editPanel.querySelector('#trim-start');
+    const endInput = editPanel.querySelector('#trim-end');
+    const sync = () => {
+      let s = parseFloat(startInput.value);
+      let en = parseFloat(endInput.value);
+      if (s >= en) {
+        if (document.activeElement === startInput) s = Math.max(0, en - 0.05);
+        else en = s + 0.05;
+        startInput.value = s.toFixed(2);
+        endInput.value = en.toFixed(2);
+      }
+      state.edit.trimStart = s;
+      state.edit.trimEnd = en;
+      state.edit.trimSet = true;
+      editPanel.querySelector('#trim-start-label').textContent = `${s.toFixed(1)}s`;
+      editPanel.querySelector('#trim-end-label').textContent = `${en.toFixed(1)}s`;
+      if (editVideoEl.currentTime < s || editVideoEl.currentTime > en) editVideoEl.currentTime = s;
+    };
+    startInput.addEventListener('input', () => { endInput.min = (parseFloat(startInput.value) + 0.05).toFixed(2); sync(); });
+    endInput.addEventListener('input', () => { startInput.max = (parseFloat(endInput.value) - 0.05).toFixed(2); sync(); });
+    editPanel.querySelector('[data-reset="trim"]').addEventListener('click', () => {
+      state.edit.trimSet = false;
+      state.edit.trimStart = 0;
+      state.edit.trimEnd = dur;
+      openEditTool('trim');
+    });
+  };
+
+  const openEditTool = (name) => {
+    editTools.forEach((t) => t.classList.toggle('active', t.dataset.editTool === name));
+    editPanel.hidden = false;
+    ({ adjust: buildAdjustPanel, filters: buildFiltersPanel, rotate: buildRotatePanel, text: buildTextPanel, emoji: buildEmojiPanel, trim: buildTrimPanel })[name]?.();
+  };
+  editTools.forEach((t) => t.addEventListener('click', () => openEditTool(t.dataset.editTool)));
+
+  // Keep video preview playback inside the trimmed window.
+  editVideoEl?.addEventListener('timeupdate', () => {
+    const e = state.edit;
+    if (!e.trimSet) return;
+    if (editVideoEl.currentTime >= e.trimEnd - 0.03 || editVideoEl.currentTime < e.trimStart) {
+      editVideoEl.currentTime = e.trimStart;
+    }
+  });
+
+  const openEditScreen = () => {
+    const isVideo = state.type === 'videos' && state.recordedUrl;
+    editorKind = isVideo ? 'video' : 'photo';
+    resetEdit();
+    form.hidden = true;
+    stage.hidden = true;
+    tools.hidden = true;
+    tabs[0].parentElement.hidden = true;
+    nextBtn.hidden = true;
+    editScreen.hidden = false;
+    editTools.forEach((t) => { t.hidden = t.dataset.editTool === 'trim' && editorKind !== 'video'; });
+    if (editorKind === 'video') {
+      editPhotoEl.hidden = true;
+      editVideoEl.hidden = false;
+      editVideoEl.src = state.recordedUrl;
+      editVideoEl.poster = state.captured || '';
+      const onMeta = () => {
+        if (!state.edit.trimSet) state.edit.trimEnd = editVideoEl.duration || Infinity;
+        applyEditPreview();
+        editVideoEl.play().catch(() => { /* preview paused until user interacts */ });
+      };
+      if (editVideoEl.readyState >= 1) onMeta();
+      else editVideoEl.onloadedmetadata = onMeta;
+    } else {
+      editVideoEl.hidden = true;
+      editVideoEl.pause();
+      editPhotoEl.hidden = false;
+      editPhotoEl.src = state.captured || CREATE_SAMPLE_IMAGE;
+      applyEditPreview();
+    }
+    openEditTool('adjust');
+  };
+
+  editBackBtn?.addEventListener('click', () => {
+    editScreen.hidden = true;
+    editPanel.hidden = true;
+    editVideoEl.pause();
+    editVideoEl.removeAttribute('src');
+    editVideoEl.load();
+    editOverlay.innerHTML = '';
+    stage.hidden = false;
+    tools.hidden = false;
+    tabs[0].parentElement.hidden = false;
+    if (state.hadCamera) startCamera();
+    else setMode('camera');
+  });
+
+  // ----- Bake edits into the posted media -----
+  const loadEditImage = (src) => new Promise((resolve) => {
+    if (src.startsWith('data:')) {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src;
+      return;
+    }
+    fetch(src)
+      .then((res) => (res.ok ? res.blob() : Promise.reject(new Error('fetch failed'))))
+      .then((blob) => new Promise((resolveBlob) => {
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolveBlob(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); resolveBlob(null); };
+        img.src = url;
+      }))
+      .catch(() => resolve(null));
+  });
+
+  const drawOverlays = (ctx, W, H) => {
+    const k = W / 1080;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    state.edit.texts.forEach((t) => {
+      const size = Math.max(12, Math.round(t.size * k));
+      ctx.font = `900 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
+      ctx.strokeStyle = 'rgba(0,0,0,.55)';
+      ctx.lineWidth = Math.max(3, size / 7);
+      const x = (t.x / 100) * W;
+      const y = (t.y / 100) * H;
+      ctx.strokeText(t.text, x, y);
+      ctx.fillStyle = t.color;
+      ctx.fillText(t.text, x, y);
+    });
+    state.edit.emojis.forEach((m) => {
+      const size = Math.max(16, Math.round(m.size * k));
+      ctx.font = `${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
+      ctx.fillText(m.emoji, (m.x / 100) * W, (m.y / 100) * H);
+    });
+  };
+
+  const bakeEditedImage = async (src) => {
+    const img = await loadEditImage(src);
+    if (!img) return src;
+    const e = state.edit;
+    try {
+      const swap = e.rotate % 180 !== 0;
+      let W = swap ? img.naturalHeight : img.naturalWidth;
+      let H = swap ? img.naturalWidth : img.naturalHeight;
+      const cap = Math.min(1, 2160 / Math.max(W, H));
+      W = Math.round(W * cap);
+      H = Math.round(H * cap);
+      const c = document.createElement('canvas');
+      c.width = W;
+      c.height = H;
+      const ctx = c.getContext('2d');
+      ctx.filter = editFilterString() || 'none';
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(cap, cap);
+      ctx.rotate((e.rotate * Math.PI) / 180);
+      ctx.scale(e.flipH ? -1 : 1, e.flipV ? -1 : 1);
+      ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      drawOverlays(ctx, W, H);
+      return c.toDataURL('image/jpeg', 0.92);
+    } catch (err) {
+      console.warn('GlitchIt: image bake failed', err);
+      return src;
+    }
+  };
+
+  // Re-encode an edited clip through a canvas: filters/adjustments/rotate/
+  // text/stickers are drawn per frame; audio is preserved via Web Audio.
+  const bakeEditedVideo = async () => {
+    const srcV = document.createElement('video');
+    srcV.src = state.recordedUrl;
+    srcV.preload = 'auto';
+    srcV.playsInline = true;
+    await new Promise((resolve) => {
+      if (srcV.readyState >= 1) { resolve(); return; }
+      srcV.onloadedmetadata = () => resolve();
+      srcV.onerror = () => resolve();
+      srcV.load();
+    });
+    const dur = srcV.duration || 0;
+    if (!dur || !srcV.videoWidth) return { blob: null };
+    const e = state.edit;
+    const start = e.trimSet ? Math.max(0, Math.min(e.trimStart, dur - 0.1)) : 0;
+    const end = e.trimSet ? Math.min(e.trimEnd, dur) : dur;
+    const clipDur = Math.max(0.15, end - start);
+    const swap = e.rotate % 180 !== 0;
+    let W = swap ? srcV.videoHeight : srcV.videoWidth;
+    let H = swap ? srcV.videoWidth : srcV.videoHeight;
+    const cap = Math.min(1, 1920 / Math.max(W, H));
+    W = Math.round(W * cap);
+    H = Math.round(H * cap);
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    const captureStream = canvas.captureStream || canvas.mozCaptureStream || canvas.webkitCaptureStream;
+    if (typeof captureStream !== 'function') return { blob: null, unsupported: true };
+    let audioTracks = [];
+    let ac = null;
+    try {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      await ac.resume();
+      const srcNode = ac.createMediaElementSource(srcV);
+      const dest = ac.createMediaStreamDestination();
+      srcNode.connect(dest);
+      audioTracks = dest.stream.getAudioTracks();
+    } catch (err) { ac = null; audioTracks = []; }
+    const stream = captureStream.call(canvas, 30);
+    const mixed = new MediaStream([...stream.getVideoTracks(), ...audioTracks]);
+    const mimeType = pickRecorderMime();
+    let recorder;
+    try {
+      recorder = new MediaRecorder(mixed, { mimeType: mimeType || undefined, videoBitsPerSecond: 6e6 });
+    } catch (err) {
+      if (ac) { try { ac.close(); } catch (e) { /* ignore */ } }
+      return { blob: null, unsupported: true };
+    }
+    const chunks = [];
+    recorder.ondataavailable = (ev) => { if (ev.data && ev.data.size) chunks.push(ev.data); };
+    const stopped = new Promise((resolve) => {
+      recorder.onstop = () => resolve(new Blob(chunks, { type: chunks[0]?.type || 'video/webm' }));
+    });
+    const drawFrame = () => {
+      ctx.filter = editFilterString() || 'none';
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(cap, cap);
+      ctx.rotate((e.rotate * Math.PI) / 180);
+      ctx.scale(e.flipH ? -1 : 1, e.flipV ? -1 : 1);
+      ctx.drawImage(srcV, -srcV.videoWidth / 2, -srcV.videoHeight / 2);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      drawOverlays(ctx, W, H);
+    };
+    await new Promise((resolve) => {
+      const onSeeked = () => { srcV.removeEventListener('seeked', onSeeked); resolve(); };
+      srcV.addEventListener('seeked', onSeeked);
+      srcV.currentTime = start;
+    });
+    drawFrame();
+    let poster = '';
+    try { poster = canvas.toDataURL('image/jpeg', 0.85); } catch (err) { poster = ''; }
+    try { recorder.start(200); } catch (err) {
+      if (ac) { try { ac.close(); } catch (e) { /* ignore */ } }
+      return { blob: null, unsupported: true };
+    }
+    const t0 = performance.now();
+    let playing = false;
+    try { await srcV.play(); playing = true; } catch (err) {
+      try { srcV.muted = true; await srcV.play(); playing = true; } catch (err2) { playing = false; }
+    }
+    await new Promise((resolve) => {
+      const stopAll = () => {
+        clearTimeout(timer);
+        try { srcV.pause(); } catch (err) { /* ignore */ }
+        try { recorder.stop(); } catch (err) { /* ignore */ }
+        resolve();
+      };
+      const timer = setTimeout(() => stopAll(), clipDur * 1000 + 4000);
+      const loop = () => {
+        const elapsed = (performance.now() - t0) / 1000;
+        if (recorder.state !== 'recording' || elapsed >= clipDur || srcV.currentTime >= end - 0.04 || srcV.ended) { stopAll(); return; }
+        if (!playing) srcV.currentTime = Math.min(end, start + elapsed);
+        drawFrame();
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+    });
+    const blob = await stopped;
+    if (ac) { try { ac.close(); } catch (err) { /* ignore */ } }
+    return { blob, poster };
+  };
+
+  editNextBtn?.addEventListener('click', async () => {
+    const processing = document.getElementById('edit-processing');
+    if (processing) processing.hidden = false;
+    try {
+      if (editorKind === 'video') {
+        editVideoEl.pause();
+        if (editHasChanges()) {
+          const res = await bakeEditedVideo();
+          if (res.blob) {
+            const editedUrl = URL.createObjectURL(res.blob);
+            const oldUrl = state.recordedUrl;
+            state.recordedUrl = editedUrl;
+            state.recordedBlob = res.blob;
+            state.keepUrl = false;
+            if (oldUrl && oldUrl !== editedUrl) URL.revokeObjectURL(oldUrl);
+            if (res.poster) state.captured = res.poster;
+          } else if (res.unsupported) {
+            showEditToast('This browser can\u2019t re-encode — posting the original clip with the edited cover');
+          }
+        }
+      } else if (editHasChanges()) {
+        const src = state.captured || CREATE_SAMPLE_IMAGE;
+        const baked = await bakeEditedImage(src);
+        if (baked && baked !== src) state.captured = baked;
+      }
+    } catch (err) {
+      console.warn('GlitchIt: edit bake failed', err);
+      showEditToast('Couldn\u2019t apply edits — posting the original');
+    }
+    if (processing) processing.hidden = true;
+    editScreen.hidden = true;
+    editOverlay.innerHTML = '';
+    openCaptionForm();
+  });
+
+  // Enter on the edit screen advances; Escape goes back to the camera.
+  window.addEventListener('keydown', (event) => {
+    if (editScreen.hidden) return;
+    if (event.key === 'Enter' && !event.target.matches('input, textarea, select, button')) {
+      event.preventDefault();
+      editNextBtn?.click();
+    } else if (event.key === 'Escape') {
+      editBackBtn?.click();
+    }
+  });
 
   window.addEventListener('pagehide', () => {
     clearRecordingState();

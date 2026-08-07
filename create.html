@@ -165,6 +165,36 @@
             <div class="home-indicator" aria-hidden="true"></div>
           </div>
 
+          <!-- Edit screen: preview + tools (adjust · filters · rotate · text · emoji · trim) -->
+          <div class="edit-screen" id="edit-screen" hidden>
+            <div class="edit-top">
+              <button type="button" class="edit-back" id="edit-back" aria-label="Back to camera">←</button>
+              <strong>Edit</strong>
+              <button type="button" class="ig-next" id="edit-next">Next</button>
+            </div>
+
+            <div class="edit-stage" id="edit-stage">
+              <div class="edit-media" id="edit-media">
+                <img id="edit-photo" alt="Photo being edited" hidden>
+                <video id="edit-video" playsinline loop muted preload="auto" aria-label="Video being edited" hidden></video>
+                <div class="edit-overlay" id="edit-overlay" aria-label="Text and sticker layer"></div>
+              </div>
+              <div class="edit-toast" id="edit-toast" role="status"></div>
+              <div class="edit-processing" id="edit-processing" hidden><i class="edit-spinner" aria-hidden="true"></i><span>Applying edits…</span></div>
+            </div>
+
+            <div class="edit-rail" role="tablist" aria-label="Edit tools">
+              <button type="button" class="edit-tool" data-edit-tool="adjust" role="tab">Adjust</button>
+              <button type="button" class="edit-tool" data-edit-tool="filters" role="tab">Filters</button>
+              <button type="button" class="edit-tool" data-edit-tool="rotate" role="tab">Rotate</button>
+              <button type="button" class="edit-tool" data-edit-tool="text" role="tab">Text</button>
+              <button type="button" class="edit-tool" data-edit-tool="emoji" role="tab">Emoji</button>
+              <button type="button" class="edit-tool" data-edit-tool="trim" role="tab" hidden>Trim</button>
+            </div>
+            <div class="edit-panel" id="edit-panel" hidden></div>
+            <div class="home-indicator" aria-hidden="true"></div>
+          </div>
+
           <form class="create-form" id="create-form" hidden>
             <div class="create-form-head">
               <button type="button" id="create-back" aria-label="Back to camera">←</button>
@@ -227,6 +257,6 @@
         <a href="profile.html"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></a>
       </nav>
     </div>
-    <script src="src/main.js?v=5" defer></script>
+    <script src="src/main.js?v=6" defer></script>
   </body>
 </html>

@@ -100,13 +100,12 @@ export async function saveMedia(item) {
     let poster = item.poster || null;
     const blob = toBlob(item.file) || toBlob(item.preview);
     if (blob && url.startsWith('data:')) {
-      const ext = kind === 'video' ? 'mp4' : (blob.type.split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '');
+      const ext = (blob.type.split('/')[1] || (kind === 'video' ? 'webm' : 'jpg')).replace(/[^a-z0-9]/gi, '');
       const path = `${kind}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const { error: upErr } = await sb.storage.from('glitchit-media').upload(path, blob, { upsert: false });
       if (!upErr) {
         const { data } = sb.storage.from('glitchit-media').getPublicUrl(path);
         url = data.publicUrl;
-        if (kind === 'video') poster = url;
       }
     }
     const row = {
@@ -123,7 +122,7 @@ export async function saveMedia(item) {
     };
     const { data, error } = await sb.from('media').insert(row).select('id').single();
     if (error) throw new Error(error.message || 'insert failed');
-    return { ok: true, id: data.id };
+    return { ok: true, id: data.id, url, poster };
   } catch (err) {
     const msg = String(err?.message || err);
     const reason = /could not find the table|does not exist|PGRST205/i.test(msg) ? 'table' : 'error';
