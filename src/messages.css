@@ -1,4 +1,24 @@
 /* ============ DIRECT MESSAGES (messages.html + chat.html) ============ */
+
+/* Notes shelf sits between search and inbox tabs on Messages. */
+.messages-notes {
+  margin: 4px 14px 12px;
+  padding: 14px 14px 2px;
+  border: 1px solid #eee;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(214, 41, 118, .06), rgba(79, 91, 213, .08));
+}
+.messages-notes-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.messages-kicker { display: block; color: #8e8e8e; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.messages-notes h2 { margin: 2px 0 0; font-size: 18px; line-height: 1.1; }
+.messages-note-add { flex: 0 0 auto; border: 0; border-radius: 999px; padding: 9px 12px; background: linear-gradient(135deg, #d62976, #4f5bd5); color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 8px 18px rgba(79, 91, 213, .18); transition: transform .15s ease, filter .15s ease; }
+.messages-note-add:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.messages-note-add:active { transform: scale(.96); }
+.messages-notes-shelf { padding-top: 2px; }
+
+:root[data-theme="dark"] .messages-notes { border-color: #322d45; background: linear-gradient(135deg, rgba(214, 41, 118, .13), rgba(79, 91, 213, .15)); }
+:root[data-theme="dark"] .messages-kicker { color: #9b96b5; }
+
 /* Instagram Direct-style inbox and conversation thread, matching the app's
    card language (#dbdbdb borders, 18px radius) plus the saved dark theme. */
 
@@ -552,6 +572,9 @@
 }
 
 @media (max-width: 760px) {
+  .messages-notes { margin: 4px 10px 10px; padding: 12px 10px 0; }
+  .messages-notes-head { align-items: flex-start; }
+  .messages-note-add { padding: 8px 10px; font-size: 11px; }
   body[data-page="messages"] main,
   body[data-page="chat"] main {
     height: calc(100vh - 76px);

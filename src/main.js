@@ -41,6 +41,7 @@ import('./db.js?v=3').then((mod) => { DB = mod; }).catch(() => { DB = null; });
 
 // ---------- Shared state (persisted across pages) ----------
 const UPLOADS_KEY = 'glitchit.uploads.v1';
+
 const THEME_KEY = 'glitchit.theme';
 let userUploads = { feed: [], stories: [], videos: [] };
 try {
@@ -75,26 +76,49 @@ function renderUploads(type) {
 // ---------- Stories ----------
 function attachStoryLinks() {
   document.querySelectorAll('.story[data-story-name]').forEach((storyLink) => {
+    if (storyLink.dataset.storyReady) return;
+    storyLink.dataset.storyReady = 'true';
     storyLink.addEventListener('click', (event) => {
       event.preventDefault();
       const name = storyLink.dataset.storyName;
       const image = storyLink.dataset.storyImage;
       const live = storyLink.dataset.storyLive === 'true';
+      const ownStory = storyLink.dataset.storyOwn === 'true';
       document.getElementById('story-viewer')?.remove();
-      document.body.insertAdjacentHTML('beforeend', `<div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="${name} story"><button type="button" class="story-close" aria-label="Close story">×</button><div><img src="${image}" alt="${name} story"><span>${live ? 'Live now' : 'Story'}</span><h2>${name}</h2><p>Tap through creator updates, product teasers, and behind-the-scenes moments.</p><a class="primary-action" href="profile.html">View profile</a></div></div>`);
+      const editAction = ownStory ? '<a class="story-edit-action" href="create.html?editStory=latest">✎ Change story</a>' : '';
+      document.body.insertAdjacentHTML('beforeend', `<div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="${escapeHtml(name)} story"><button type="button" class="story-close" aria-label="Close story">×</button><div><img src="${image}" alt="${escapeHtml(name)} story"><span>${live ? 'Live now' : 'Story'}</span><h2>${escapeHtml(name)}</h2><p>${ownStory ? 'Your latest story is live. Change the photo, video, caption, or audience whenever you like.' : 'Tap through creator updates, product teasers, and behind-the-scenes moments.'}</p>${editAction}<a class="primary-action" href="profile.html">View profile</a></div></div>`);
       document.querySelector('.story-close')?.focus();
     });
   });
-  document.addEventListener('click', (event) => {
-    if (event.target.matches('.story-viewer, .story-close')) document.getElementById('story-viewer')?.remove();
-  });
+  if (!document.body.dataset.storyDismissReady) {
+    document.body.dataset.storyDismissReady = 'true';
+    document.addEventListener('click', (event) => {
+      if (event.target.matches('.story-viewer, .story-close')) document.getElementById('story-viewer')?.remove();
+    });
+  }
 }
 
 function hydrateStoryShelf() {
   const shelf = document.querySelector('.stories');
   if (!shelf) return;
+  const own = userUploads.stories[0];
+  const ownerLink = shelf.querySelector('.story-create');
+  if (ownerLink && own) {
+    ownerLink.href = '#';
+    ownerLink.dataset.storyName = own.title || 'Your story';
+    ownerLink.dataset.storyImage = own.preview;
+    ownerLink.dataset.storyLive = 'true';
+    ownerLink.dataset.storyOwn = 'true';
+    ownerLink.setAttribute('aria-label', 'Open your story');
+    const image = ownerLink.querySelector('img');
+    if (image) { image.src = own.preview; image.alt = 'Your story'; }
+    const label = ownerLink.querySelector('.story-owner-label');
+    if (label) label.textContent = own.title || 'Your story';
+    const plus = ownerLink.querySelector('b');
+    if (plus) plus.textContent = '✎';
+  }
   const insertPoint = shelf.children[1] || null;
-  [...userUploads.stories].reverse().forEach((story) => {
+  [...userUploads.stories].slice(1).reverse().forEach((story) => {
     const link = document.createElement('a');
     link.className = 'story';
     link.href = '#';
@@ -102,7 +126,7 @@ function hydrateStoryShelf() {
     link.dataset.storyImage = story.preview;
     link.dataset.storyLive = 'true';
     link.setAttribute('aria-label', `Open ${story.title}'s story`);
-    link.innerHTML = `<span class="story-ring live"><img src="${story.preview}" alt="${story.title} avatar"></span><span>${story.title}</span>`;
+    link.innerHTML = `<span class="story-ring live"><img src="${story.preview}" alt="${escapeHtml(story.title)} avatar"></span><span>${escapeHtml(story.title)}</span>`;
     shelf.insertBefore(link, insertPoint);
   });
   attachStoryLinks();
@@ -678,15 +702,20 @@ function attachCreateStudio() {
     const data = new FormData(form);
     const title = data.get('title') || 'Untitled upload';
     const caption = data.get('caption');
-    const type = state.type;
-    const isVideo = type === 'videos';
+    const editingStory = new URLSearchParams(window.location.search).get('editStory') === 'latest' && userUploads.stories.length > 0;
+    const type = editingStory ? 'stories' : state.type;
+    const isVideo = state.type === 'videos';
     let preview = state.captured;
     const file = data.get('media');
     if (!preview && file?.size) preview = await readFileAsDataURL(file);
     if (!preview) preview = isVideo ? CREATE_SAMPLE_VIDEO : CREATE_SAMPLE_IMAGE;
-    const location = data.get('location') || '';
-    const item = { title, caption, preview, type: isVideo ? 'video' : type };
-    if (location) item.location = location;
+    const locationName = data.get('location') || '';
+    const item = { ...(editingStory ? userUploads.stories[0] : {}), title, caption, preview, type: isVideo ? 'video' : type };
+    if (!isVideo) {
+      delete item.src;
+      delete item.poster;
+    }
+    if (locationName) item.location = locationName;
     if (isVideo && state.recordedUrl) {
       item.src = state.recordedUrl;
       item.poster = state.captured || preview;
@@ -694,7 +723,11 @@ function attachCreateStudio() {
     } else if (isVideo && preview !== CREATE_SAMPLE_VIDEO) {
       item.src = CREATE_SAMPLE_VIDEO;
     }
-    userUploads[type].unshift(item);
+    if (editingStory) {
+      userUploads.stories[0] = item;
+    } else {
+      userUploads[type].unshift(item);
+    }
     if (type === 'stories' && shareFeed?.checked) userUploads.feed.unshift({ ...item, type: 'feed' });
     saveUploads();
     removeDraft(state.editingDraft);

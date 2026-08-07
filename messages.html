@@ -45,6 +45,11 @@
               </button>
             </div>
 
+            <section class="messages-notes" aria-labelledby="messages-notes-title">
+              <div class="messages-notes-head"><div><span class="messages-kicker">Share a little signal</span><h2 id="messages-notes-title">Notes</h2></div><button type="button" class="messages-note-add" id="messages-note-add">＋ New note</button></div>
+              <div class="notes-shelf messages-notes-shelf" id="messages-notes-shelf" aria-label="Notes from your circle"></div>
+            </section>
+
             <div class="dm-tabs" role="tablist" aria-label="Message inbox">
               <button type="button" class="dm-tab" role="tab" aria-selected="false">Primary</button>
               <button type="button" class="dm-tab active" role="tab" aria-selected="true">General</button>
@@ -121,6 +126,7 @@
       </nav>
     </div>
     <script src="src/main.js?v=4" defer></script>
+    <script src="src/notes-story-enhancements.js" defer></script>
     <script>
       // Inbox micro-interactions: tabs + live search filter.
       (function () {
