@@ -576,3 +576,150 @@ body[data-page="create"] .edit-trim-actions { display: flex; justify-content: fl
   body[data-page="create"] .edit-emoji-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
   body[data-page="create"] .edit-emoji-btn { font-size: 21px; }
 }
+
+/* ============ Reference camera skin: deep wine / quiet chrome ============ */
+body[data-page="create"] {
+  --camera-ink: #090305;
+  --camera-wine: #260a12;
+  --camera-red: #f04b57;
+  --camera-muted: rgba(255, 239, 241, .72);
+  background: var(--camera-ink);
+  color: #fff;
+}
+
+body[data-page="create"] main,
+body[data-page="create"] .create-studio,
+body[data-page="create"] .create-tools {
+  background: var(--camera-ink);
+}
+
+body[data-page="create"] .ig-stage {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(117, 20, 35, .5) 0%, rgba(38, 10, 18, .9) 47%, #090305 100%),
+    linear-gradient(160deg, #17060b 0%, #35101a 48%, #080204 100%);
+}
+
+body[data-page="create"] .stage-media { background: transparent; }
+body[data-page="create"] .stage-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(7, 2, 4, .2), transparent 32%, transparent 68%, rgba(7, 2, 4, .32));
+}
+body[data-page="create"] .ig-stage video,
+body[data-page="create"] .ig-stage .stage-photo { z-index: 0; filter: saturate(.88) contrast(1.04); }
+body[data-page="create"] .stage-fallback {
+  z-index: 2;
+  background: radial-gradient(circle at center, rgba(111, 25, 41, .42), transparent 68%);
+  color: var(--camera-muted);
+}
+body[data-page="create"] .stage-fallback-mark {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: rgba(240, 75, 87, .14);
+  border: 1px solid rgba(255, 255, 255, .55);
+  box-shadow: 0 0 36px rgba(240, 75, 87, .25);
+  font-size: 34px;
+}
+body[data-page="create"] .stage-fallback p { color: #fff; }
+body[data-page="create"] .stage-fallback small { color: var(--camera-muted); }
+
+body[data-page="create"] .ig-top {
+  padding: calc(18px + env(safe-area-inset-top)) 20px 14px;
+  background: linear-gradient(180deg, rgba(5, 1, 3, .48), transparent);
+}
+body[data-page="create"] .ig-top-btn,
+body[data-page="create"] .drafts-btn {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(15, 3, 7, .2);
+  color: rgba(255, 255, 255, .9);
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+}
+body[data-page="create"] .ig-top-btn:hover,
+body[data-page="create"] .drafts-btn:hover {
+  background: rgba(240, 75, 87, .18);
+  border-color: rgba(255, 255, 255, .38);
+  transform: scale(1.05);
+}
+body[data-page="create"] .ig-top-right { gap: 8px; }
+body[data-page="create"] .drafts-btn { width: auto; padding: 0 12px; color: #fff; }
+body[data-page="create"] .drafts-btn b { background: var(--camera-red); }
+body[data-page="create"] .ig-next { padding: 9px 4px 9px 10px; color: #fff; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+
+body[data-page="create"] .ig-rail { left: 18px; gap: 18px; opacity: .86; }
+body[data-page="create"] .rail-item { color: rgba(255, 239, 241, .72); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
+body[data-page="create"] .rail-item svg { width: 22px; height: 22px; }
+body[data-page="create"] .rail-item.active,
+body[data-page="create"] .rail-item:hover { color: #fff; }
+body[data-page="create"] .rail-item.active::before { background: var(--camera-red); }
+body[data-page="create"] .rail-aa { width: 28px; height: 28px; border-color: rgba(255, 255, 255, .72); border-radius: 50%; }
+
+body[data-page="create"] .ig-profiles { right: 20px; top: 50%; transform: translateY(-50%); display: grid; gap: 9px; opacity: .9; }
+body[data-page="create"] .profile-avatar { width: 42px; height: 42px; padding: 2px; box-shadow: 0 5px 18px rgba(0, 0, 0, .28); }
+body[data-page="create"] .profile-avatar img { border-width: 2px; }
+
+body[data-page="create"] .stage-tool { min-width: 38px; width: 38px; height: 38px; padding: 0; border: 1px solid rgba(255, 255, 255, .14); background: rgba(13, 2, 6, .28); color: rgba(255, 255, 255, .82); backdrop-filter: blur(12px); }
+body[data-page="create"] .zoom-tool { left: 18px; bottom: calc(154px + env(safe-area-inset-bottom)); }
+body[data-page="create"] .timer-tool { right: 18px; bottom: calc(154px + env(safe-area-inset-bottom)); }
+body[data-page="create"] .ratio-tool { right: 18px; bottom: calc(202px + env(safe-area-inset-bottom)); }
+body[data-page="create"] .stage-tool:hover { background: rgba(240, 75, 87, .2); border-color: rgba(255, 255, 255, .36); }
+body[data-page="create"] .timer-tool.on { color: #ffd6d9; box-shadow: 0 0 0 2px rgba(240, 75, 87, .55); }
+body[data-page="create"] .timer-tool.on::after { background: var(--camera-red); color: #fff; }
+
+body[data-page="create"] .ig-controls { bottom: calc(72px + env(safe-area-inset-bottom)); gap: 8px; }
+body[data-page="create"] .filter-strip { justify-content: center; gap: 7px; padding: 0 max(16px, calc(50% - 170px)) 4px; mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+body[data-page="create"] .filter-chip { opacity: .7; }
+body[data-page="create"] .filter-chip .chip-thumb { width: 48px; height: 48px; border-color: transparent; filter: saturate(.78) brightness(.78); }
+body[data-page="create"] .filter-chip.active { opacity: 1; }
+body[data-page="create"] .filter-chip.active .chip-thumb { border-color: #fff; box-shadow: 0 0 0 2px var(--camera-red), 0 5px 18px rgba(240, 75, 87, .3); filter: none; }
+
+body[data-page="create"] .capture-btn { width: 82px; height: 82px; margin: 0 12px; border: 3px solid rgba(255, 255, 255, .96); background: rgba(255, 255, 255, .08); box-shadow: 0 0 0 5px rgba(255, 255, 255, .1), 0 10px 34px rgba(0, 0, 0, .52); }
+body[data-page="create"] .capture-btn::after { inset: 7px; background: var(--camera-red); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .2), 0 3px 14px rgba(240, 75, 87, .45); }
+body[data-page="create"] .capture-btn:hover { background: rgba(255, 255, 255, .16); box-shadow: 0 0 0 6px rgba(240, 75, 87, .18), 0 12px 38px rgba(0, 0, 0, .58); }
+body[data-page="create"] .capture-btn:active { transform: scale(.94); }
+body[data-page="create"] .capture-btn.record::after { inset: 22px; background: var(--camera-red); }
+body[data-page="create"] .capture-btn.recording::after { inset: 0; background: var(--camera-red); }
+
+body[data-page="create"] .ig-modebar { min-height: 64px; padding: 7px 18px calc(9px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(9, 3, 5, .86), #090305 38%); border-top: 1px solid rgba(255, 255, 255, .09); }
+body[data-page="create"] .mode-thumb { width: 38px; height: 38px; border: 1px solid rgba(255, 255, 255, .3); border-radius: 50%; box-shadow: 0 4px 16px rgba(0, 0, 0, .35); }
+body[data-page="create"] .mode-icon { width: 38px; height: 38px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .14); }
+body[data-page="create"] .create-tabs { gap: 13px; }
+body[data-page="create"] .create-tab { padding: 9px 1px; color: rgba(255, 239, 241, .45); font-size: 11px; letter-spacing: .1em; }
+body[data-page="create"] .create-tab.active { color: #fff; text-shadow: 0 0 12px rgba(240, 75, 87, .56); }
+body[data-page="create"] .home-indicator { background: rgba(255, 235, 237, .84); }
+
+body[data-page="create"] .filter-label,
+body[data-page="create"] .stage-hint,
+body[data-page="create"] .rec-pill { background: rgba(20, 3, 8, .52); border: 1px solid rgba(255, 255, 255, .14); backdrop-filter: blur(14px); }
+body[data-page="create"] .rec-pill i { background: var(--camera-red); }
+
+@media (max-width: 600px) {
+  body[data-page="create"] .ig-top { padding-inline: 14px; }
+  body[data-page="create"] .ig-rail { left: 10px; gap: 14px; }
+  body[data-page="create"] .ig-profiles { right: 12px; }
+  body[data-page="create"] .profile-avatar { width: 36px; height: 36px; }
+  body[data-page="create"] .filter-chip .chip-thumb { width: 42px; height: 42px; }
+  body[data-page="create"] .capture-btn { width: 74px; height: 74px; margin-inline: 8px; }
+  body[data-page="create"] .create-tabs { gap: 8px; }
+  body[data-page="create"] .create-tab { font-size: 10px; }
+  body[data-page="create"] .mode-thumb,
+  body[data-page="create"] .mode-icon { width: 34px; height: 34px; }
+  body[data-page="create"] .zoom-tool { left: 12px; }
+  body[data-page="create"] .timer-tool,
+  body[data-page="create"] .ratio-tool { right: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-page="create"] .capture-btn,
+  body[data-page="create"] .stage-tool,
+  body[data-page="create"] .mode-icon { transition: none; }
+}
