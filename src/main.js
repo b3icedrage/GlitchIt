@@ -15,11 +15,65 @@ const reelIcon = (kind) => kind === 'heart'
   ? '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
   : '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 22-7z"/></svg>';
 
+function fallbackAvatar(label = 'GlitchIt') {
+  const initials = String(label).trim().split(/[^a-z0-9]+/i).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('') || 'G';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d62976"/><stop offset="1" stop-color="#4f5bd5"/></linearGradient></defs><rect width="120" height="120" rx="60" fill="url(#g)"/><text x="60" y="67" fill="white" font-family="Arial,sans-serif" font-size="38" font-weight="700" text-anchor="middle">${initials}</text></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function safeAvatar(value) {
+  const url = String(value || '').trim();
+  if (!url || /[<>"']/.test(url) || !/^(?:https?:\/\/|data:image\/|blob:)/i.test(url)) return '';
+  return url;
+}
+
+function userAvatar(user, handle = '') {
+  const metadata = user?.user_metadata || {};
+  const identity = user?.identities?.[0]?.identity_data || {};
+  return [metadata.avatar_url, metadata.picture, metadata.avatar, metadata.image, identity.avatar_url, identity.picture]
+    .map(safeAvatar)
+    .find(Boolean) || fallbackAvatar(handle || user?.email?.split('@')[0] || 'GlitchIt');
+}
+
 const profile = {
   username: 'b3ice_drage',
   name: 'ßrįæñ',
-  avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=240&q=80',
+  avatar: fallbackAvatar('b3ice_drage'),
 };
+
+function syncProfileFromUser(user) {
+  if (!user || user.guest) return;
+  const metadata = user.user_metadata || {};
+  const handle = metadata.username || user.email?.split('@')[0] || user.id || profile.username;
+  profile.username = handle;
+  profile.name = metadata.full_name || metadata.name || handle;
+  profile.avatar = userAvatar(user, handle);
+}
+
+function applyProfileAvatarUi() {
+  const handle = profile.username || 'your account';
+  const avatar = profile.avatar || fallbackAvatar(handle);
+  document.querySelectorAll('.me img, .profile-photo-wrap > img, .story-create img, .ig-profiles .profile-avatar:not(.gray) img').forEach((image) => {
+    image.src = avatar;
+    image.alt = `${handle} profile picture`;
+  });
+
+  document.querySelectorAll('a[href="profile.html"]').forEach((link) => {
+    if (!link.closest('.bottom-bar, .sidebar nav')) return;
+    const oldIcon = link.querySelector('.icon, svg');
+    if (!oldIcon) return;
+    const image = document.createElement('img');
+    image.className = 'profile-nav-avatar';
+    image.src = avatar;
+    image.alt = `${handle} profile`;
+    oldIcon.replaceWith(image);
+  });
+}
+
+function applyCurrentUserProfile() {
+  syncProfileFromUser(window.GLITCHIT_USER);
+  applyProfileAvatarUi();
+}
 
 // Map a stored owner UUID back to a friendly handle for display.
 function displayUser(owner) {

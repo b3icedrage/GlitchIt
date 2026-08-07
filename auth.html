@@ -22,16 +22,16 @@
         <form id="auth-form" novalidate>
           <div class="auth-field" id="auth-username-field" hidden>
             <label for="auth-username">Username</label>
-            <input id="auth-username" name="username" autocomplete="username" placeholder="glitchy" />
+            <input id="auth-username" name="username" autocomplete="username" />
           </div>
           <div class="auth-field">
             <label for="auth-email">Email</label>
-            <input id="auth-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+            <input id="auth-email" name="email" type="email" autocomplete="email" required />
           </div>
           <div class="auth-field">
             <label for="auth-password">Password</label>
             <div class="auth-password">
-              <input id="auth-password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+              <input id="auth-password" name="password" type="password" autocomplete="current-password" required />
               <button type="button" id="auth-toggle-password" aria-label="Show password">👁</button>
             </div>
           </div>
@@ -47,5 +47,6 @@
       <p class="auth-foot">Guests can browse read-only. Sign in to follow, like, comment, share, post, message, and shop.</p>
     </div>
     <script src="src/main.js?v=4" defer></script>
+    <script src="src/profile-avatar.js" defer></script>
   </body>
 </html>
