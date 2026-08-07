@@ -86,7 +86,18 @@ function attachStoryLinks() {
       const ownStory = storyLink.dataset.storyOwn === 'true';
       document.getElementById('story-viewer')?.remove();
       const editAction = ownStory ? '<a class="story-edit-action" href="create.html?editStory=latest">✎ Change story</a>' : '';
-      document.body.insertAdjacentHTML('beforeend', `<div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="${escapeHtml(name)} story"><button type="button" class="story-close" aria-label="Close story">×</button><div><img src="${image}" alt="${escapeHtml(name)} story"><span>${live ? 'Live now' : 'Story'}</span><h2>${escapeHtml(name)}</h2><p>${ownStory ? 'Your latest story is live. Change the photo, video, caption, or audience whenever you like.' : 'Tap through creator updates, product teasers, and behind-the-scenes moments.'}</p>${editAction}<a class="primary-action" href="profile.html">View profile</a></div></div>`);
+      const deleteAction = ownStory ? '<button type="button" class="story-delete-action" data-story-delete>Delete story</button>' : '';
+      document.body.insertAdjacentHTML('beforeend', `<div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="${escapeHtml(name)} story"><button type="button" class="story-close" aria-label="Close story">×</button><div><img src="${image}" alt="${escapeHtml(name)} story"><span>${live ? 'Live now' : 'Story'}</span><h2>${escapeHtml(name)}</h2><p>${ownStory ? 'Your latest story is live. Change the photo, video, caption, or audience whenever you like.' : 'Tap through creator updates, product teasers, and behind-the-scenes moments.'}</p>${editAction}${deleteAction}<a class="primary-action" href="profile.html">View profile</a></div></div>`);
+      document.querySelector('[data-story-delete]')?.addEventListener('click', () => {
+        if (isGuest()) { showGuestGate('Sign in to manage your story'); return; }
+        if (!window.confirm('Delete your latest story?')) return;
+        userUploads.stories.shift();
+        saveUploads();
+        const ownerLink = document.querySelector('.story-create');
+        if (ownerLink) ownerLink.replaceWith(ownerLink.cloneNode(true));
+        document.getElementById('story-viewer')?.remove();
+        hydrateStoryShelf();
+      });
       document.querySelector('.story-close')?.focus();
     });
   });
@@ -101,27 +112,44 @@ function attachStoryLinks() {
 function hydrateStoryShelf() {
   const shelf = document.querySelector('.stories');
   if (!shelf) return;
+  shelf.querySelectorAll('.story[data-story-dynamic="true"]').forEach((link) => link.remove());
   const own = userUploads.stories[0];
   const ownerLink = shelf.querySelector('.story-create');
-  if (ownerLink && own) {
-    ownerLink.href = '#';
-    ownerLink.dataset.storyName = own.title || 'Your story';
-    ownerLink.dataset.storyImage = own.preview;
-    ownerLink.dataset.storyLive = 'true';
-    ownerLink.dataset.storyOwn = 'true';
-    ownerLink.setAttribute('aria-label', 'Open your story');
-    const image = ownerLink.querySelector('img');
-    if (image) { image.src = own.preview; image.alt = 'Your story'; }
-    const label = ownerLink.querySelector('.story-owner-label');
-    if (label) label.textContent = own.title || 'Your story';
-    const plus = ownerLink.querySelector('b');
-    if (plus) plus.textContent = '✎';
+  if (ownerLink) {
+    if (own) {
+      ownerLink.href = '#';
+      ownerLink.dataset.storyName = own.title || 'Your story';
+      ownerLink.dataset.storyImage = own.preview;
+      ownerLink.dataset.storyLive = 'true';
+      ownerLink.dataset.storyOwn = 'true';
+      ownerLink.setAttribute('aria-label', 'Open your story');
+      const image = ownerLink.querySelector('img');
+      if (image) { image.src = own.preview; image.alt = 'Your story'; }
+      const label = ownerLink.querySelector('.story-owner-label');
+      if (label) label.textContent = own.title || 'Your story';
+      const plus = ownerLink.querySelector('b');
+      if (plus) plus.textContent = '✎';
+    } else {
+      ownerLink.href = 'create.html';
+      delete ownerLink.dataset.storyName;
+      delete ownerLink.dataset.storyImage;
+      delete ownerLink.dataset.storyLive;
+      delete ownerLink.dataset.storyOwn;
+      ownerLink.setAttribute('aria-label', 'Create a story');
+      const image = ownerLink.querySelector('img');
+      if (image) { image.src = profile.avatar; image.alt = 'Your story avatar'; }
+      const label = ownerLink.querySelector('.story-owner-label');
+      if (label) label.textContent = 'Your story';
+      const plus = ownerLink.querySelector('b');
+      if (plus) plus.textContent = '＋';
+    }
   }
   const insertPoint = shelf.children[1] || null;
   [...userUploads.stories].slice(1).reverse().forEach((story) => {
     const link = document.createElement('a');
     link.className = 'story';
     link.href = '#';
+    link.dataset.storyDynamic = 'true';
     link.dataset.storyName = story.title;
     link.dataset.storyImage = story.preview;
     link.dataset.storyLive = 'true';
@@ -284,6 +312,8 @@ function attachCreateStudio() {
     video.muted = !state.hasMic;
     updateMicButton();
     fallback.hidden = true;
+    video.muted = true;
+    video.play().catch(() => { /* autoplay can still be started by the browser */ });
     // Reset zoom and restore the gallery thumbnail when returning to the camera
     state.zoom = 1;
     video.style.transform = '';

@@ -99,7 +99,7 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       event.stopImmediatePropagation();
-      const file = replacementFile || upload?.files?.[0];
+      const file = replacementFile;
       const next = {
         ...story,
         title: title?.value.trim() || story.title || 'Your story',
