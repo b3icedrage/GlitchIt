@@ -43,7 +43,7 @@ for us" rather than self-managed.
 | Catalog item | GlitchIt today |
 | --- | --- |
 | Load Balancing | **Provided by the hosting platform** for production. `server.js` is single-instance and preview-only. |
-| Rate Limiting & Firewalls (WAF) | **Managed by providers.** Supabase enforces auth rate limits (e.g., email send caps, surfaced as friendly errors in `src/auth.js`); the platform WAF fronts production traffic. Self-managed rate limiting is deferred until a real backend API exists. |
+| Rate Limiting & Firewalls (WAF) | **Two layers.** (1) The static server (`server.js`) throttles per IP — 300 req/min plus a 40 req/3s burst, answering with `429` + `Retry-After` when exceeded. (2) Providers manage the rest: Supabase enforces auth rate limits (e.g., email send caps, surfaced as friendly errors in `src/auth.js`) and the platform WAF fronts production traffic. |
 
 ## Security & Operations
 
@@ -57,7 +57,7 @@ for us" rather than self-managed.
 
 ## Deliberately not on the map yet
 
-- Self-managed load balancing, WAF configuration, and server-side rate limiting
+- Self-managed load balancing and WAF configuration (both handled by the hosting platform; per-IP rate limiting now lives in `server.js`)
 - Background workers / message queues (transcoding, digests)
 - Redis-class in-memory caching (HTTP + service-worker caching covers current scale)
 - RBAC beyond Supabase Auth (add RLS policies first)
