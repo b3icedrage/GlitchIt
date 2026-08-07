@@ -6,6 +6,7 @@
     <title>Profile · GlitchIt</title>
     <link rel="stylesheet" href="src/styles.css" />
     <link rel="stylesheet" href="src/db.css" />
+    <link rel="stylesheet" href="src/settings.css" />
   </head>
   <body data-page="profile">
     <div id="app">
@@ -86,18 +87,79 @@
 
             <div class="settings-backdrop"></div>
             <section class="settings-panel profile-settings" id="settings" aria-labelledby="settings-title">
-              <button type="button" class="settings-close" aria-label="Close settings">×</button>
-              <div class="settings-heading">
-                <span class="eyebrow">Account settings</span>
-                <h2 id="settings-title">Creator controls</h2>
-                <p>Tune profile visibility, storefront behavior, launch notifications, and your display theme from profile settings.</p>
-              </div>
-              <div class="settings-list">
-                <label class="setting-item"><span><small>Privacy</small><strong>Private profile</strong><em>Approve followers before they can see posts and Shop drops.</em></span><input type="checkbox" aria-label="Private profile"><i aria-hidden="true"></i></label>
-                <label class="setting-item"><span><small>Shop</small><strong>Seller mode</strong><em>Show products, promos, and order stats on your profile.</em></span><input type="checkbox" checked aria-label="Seller mode"><i aria-hidden="true"></i></label>
-                <label class="setting-item"><span><small>Notifications</small><strong>Drop alerts</strong><em>Notify followers when a new product or post goes live.</em></span><input type="checkbox" checked aria-label="Drop alerts"><i aria-hidden="true"></i></label>
-                <label class="setting-item"><span><small>Theme</small><strong>Dark theme</strong><em>Switch GlitchIt into a darker high-contrast interface.</em></span><input type="checkbox" id="theme-toggle" aria-label="Dark theme"><i aria-hidden="true"></i></label>
-                <button type="button" class="auth-logout" id="auth-logout">Log out</button>
+              <header class="settings-topbar">
+                <button type="button" class="settings-close" aria-label="Close settings">×</button>
+                <div class="meta-wordmark" aria-label="GlitchIt account center"><span class="meta-loop" aria-hidden="true">∞</span><strong>Meta</strong></div>
+                <span class="settings-top-spacer" aria-hidden="true"></span>
+              </header>
+
+              <div class="settings-scroll">
+                <div class="settings-account-card">
+                  <button type="button" class="settings-row" data-setting="profiles">
+                    <span class="setting-icon" aria-hidden="true">♧</span>
+                    <span class="setting-copy"><strong>Sharing across profiles</strong></span>
+                    <span class="setting-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button type="button" class="settings-row" data-setting="accounts-login">
+                    <span class="setting-icon" aria-hidden="true">↪</span>
+                    <span class="setting-copy"><strong>Logging in with accounts</strong></span>
+                    <span class="setting-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button type="button" class="settings-view-all" data-setting="view-all">View all</button>
+                </div>
+
+                <h2 id="settings-title" class="settings-section-title">Account settings</h2>
+                <div class="settings-group">
+                  <button type="button" class="settings-row" data-setting="security">
+                    <span class="setting-icon" aria-hidden="true">♢</span>
+                    <span class="setting-copy"><strong>Password and security</strong></span>
+                    <span class="setting-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button type="button" class="settings-row" data-setting="personal-details">
+                    <span class="setting-icon" aria-hidden="true">▣</span>
+                    <span class="setting-copy"><strong>Personal details</strong></span>
+                    <span class="setting-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button type="button" class="settings-row" data-setting="permissions">
+                    <span class="setting-icon" aria-hidden="true">▤</span>
+                    <span class="setting-copy"><strong>Your information and permissions</strong></span>
+                    <span class="setting-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button type="button" class="settings-row" data-setting="ads">
+                    <span class="setting-icon" aria-hidden="true">⌁</span>
+                    <span class="setting-copy"><strong>Ad preferences</strong></span>
+                    <span class="setting-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button type="button" class="settings-row" data-setting="pay">
+                    <span class="setting-icon" aria-hidden="true">▭</span>
+                    <span class="setting-copy"><strong>Meta Pay</strong></span>
+                    <span class="setting-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button type="button" class="settings-row" data-setting="verified">
+                    <span class="setting-icon" aria-hidden="true">✥</span>
+                    <span class="setting-copy"><strong>Meta Verified</strong></span>
+                    <span class="setting-chevron" aria-hidden="true">›</span>
+                  </button>
+                </div>
+
+                <div class="settings-group settings-accounts-group">
+                  <button type="button" class="settings-row settings-row-tall" data-setting="accounts">
+                    <span class="setting-icon" aria-hidden="true">◎</span>
+                    <span class="setting-copy"><strong>Accounts</strong><em>Review the accounts that you have in this Accounts Center.</em></span>
+                    <span class="setting-chevron" aria-hidden="true">›</span>
+                  </button>
+                  <button type="button" class="settings-add-account" data-setting="add-account">Add more accounts</button>
+                </div>
+
+                <div class="settings-group settings-preferences-group">
+                  <label class="settings-row settings-theme-row">
+                    <span class="setting-icon" aria-hidden="true">◐</span>
+                    <span class="setting-copy"><strong>Dark theme</strong><em>Use a darker look across GlitchIt.</em></span>
+                    <input type="checkbox" id="theme-toggle" aria-label="Dark theme">
+                    <span class="setting-switch" aria-hidden="true"><i></i></span>
+                  </label>
+                  <button type="button" class="auth-logout" id="auth-logout">Log out</button>
+                </div>
               </div>
             </section>
           </div>
@@ -126,5 +188,6 @@
       </nav>
     </div>
     <script src="src/main.js?v=4" defer></script>
+    <script src="src/settings-enhancements.js" defer></script>
   </body>
 </html>
