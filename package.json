@@ -4,7 +4,7 @@
   "description": "GlitchIt social marketplace website",
   "private": true,
   "scripts": {
-    "start": "python3 -m http.server ${PORT:-4173} --bind 0.0.0.0",
+    "start": "node server.js",
     "test": "node --check src/main.js"
   }
 }
