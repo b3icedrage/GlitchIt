@@ -1,7 +1,7 @@
 // GlitchIt — Supabase authentication (client-side, no build step).
 // Loaded from main.js via dynamic import, same pattern as db.js. When the
 // config is empty or the network fails, auth degrades gracefully (no gating).
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=3';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=4';
 
 let client = null;
 let clientPromise = null;
@@ -49,6 +49,7 @@ function getClient() {
       })
       .catch((err) => {
         console.warn('GlitchIt: auth client failed to load from all CDNs', err);
+        if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'auth-client' });
         clientPromise = null;
         clientFailed = true;
         return null;
@@ -87,6 +88,7 @@ export async function currentUser() {
     return null;
   } catch (err) {
     console.warn('GlitchIt: session read failed', err);
+    if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'auth-session' });
     return null;
   }
 }
@@ -136,6 +138,7 @@ export async function signOut() {
     await sb.auth.signOut();
   } catch (err) {
     console.warn('GlitchIt: sign out failed', err);
+    if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'auth-signout' });
   }
 }
 

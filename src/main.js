@@ -14,7 +14,7 @@
   if ('serviceWorker' in navigator) {
     try {
       navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none', scope: './' })
-        .catch((err) => console.warn('GlitchIt: service worker registration failed', err));
+        .catch((err) => { console.warn('GlitchIt: service worker registration failed', err); reportError(err, { phase: 'sw-register' }); });
     } catch (err) { /* never let this block the app */ }
   }
 
@@ -36,6 +36,18 @@
   });
   window.addEventListener('unhandledrejection', (event) => reportError(event.reason));
 
+  // Public monitoring hooks for the rest of the app: any module (db/auth/network)
+  // can report failures, and the signed-in user is tagged on errors for context.
+  // Both are no-ops when Sentry is off (DSN empty in src/config.js).
+  window.GLITCHIT_REPORT = reportError;
+  window.GLITCHIT_IDENTIFY = (user) => {
+    try {
+      if (!window.Sentry || !user) return;
+      const meta = user.user_metadata || {};
+      window.Sentry.setUser({ id: user.id || '', username: meta.username || user.email || '' });
+    } catch (e) { /* monitoring must never break the app */ }
+  };
+
   // Sentry SDK: loaded async so it never blocks first paint. It only activates
   // when a DSN is configured in src/config.js (public client key, like the
   // Supabase anon key). Errors before it resolves are reported on the console.
@@ -43,7 +55,7 @@
   bundle.src = 'https://browser.sentry-cdn.com/10.69.0/bundle.tracing.min.js';
   bundle.crossOrigin = 'anonymous';
   bundle.onload = () => {
-    import('./config.js?v=3').then((cfg) => {
+    import('./config.js?v=4').then((cfg) => {
       if (!cfg || !cfg.SENTRY_DSN || !window.Sentry) return;
       window.Sentry.init({
         dsn: cfg.SENTRY_DSN,
@@ -292,7 +304,7 @@ function returnToPage() {
 // ---------- Supabase database (optional — see src/config.js) ----------
 // Loaded lazily so the app works identically when no keys are configured.
 let DB = null;
-import('./db.js?v=3').then((mod) => { DB = mod; }).catch(() => { DB = null; });
+import('./db.js?v=3').then((mod) => { DB = mod; }).catch((err) => { DB = null; if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'db-load' }); });
 
 // ---------- Shared state (persisted across pages) ----------
 const UPLOADS_KEY = 'glitchit.uploads.v1';

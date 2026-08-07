@@ -1,6 +1,7 @@
 // GlitchIt — service worker caching layer (registered by src/main.js).
 // Quota-friendly strategy (video is never cached):
-//  - Navigations:        network-first, cached fallback for offline.
+//  - App shell:        precached at install so the app opens instantly and works offline.
+//  - Navigations:      network-first, cached fallback for offline.
 //  - Same-origin assets: stale-while-revalidate (instant repeat loads).
 //  - Supabase images:    stale-while-revalidate with a small FIFO budget.
 'use strict';
@@ -11,7 +12,35 @@ const MEDIA_BUDGET = 40;
 const ASSET_RE = /\.(css|js|mjs|svg|png|jpe?g|webp|gif|ico|woff2?)$/;
 const MEDIA_RE = /supabase\.co\/storage/;
 
-self.addEventListener('install', () => self.skipWaiting());
+// The app shell: every page plus the core assets it needs. Fetched once during
+// install so first loads are instant and later loads keep working offline
+// (navigations fall back to this cache when the network is unavailable).
+// Keep this list in sync with the versioned asset bumps in the HTML files.
+const SHELL_URLS = [
+  './',
+  './index.html',
+  './search.html',
+  './glitches.html',
+  './messages.html',
+  './chat.html',
+  './live.html',
+  './activity.html',
+  './shop.html',
+  './profile.html',
+  './create.html',
+  './auth.html',
+  './src/styles.css',
+  './src/main.js?v=6',
+  './src/profile-avatar.js',
+];
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await Promise.all(SHELL_URLS.map((url) => cache.add(url).catch(() => null)));
+  })());
+});
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {

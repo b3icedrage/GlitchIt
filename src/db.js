@@ -2,7 +2,7 @@
 // Loaded from main.js via dynamic import. When the config is empty or the
 // network fails, every function degrades gracefully (no-op / localStorage)
 // so the app keeps working exactly as it did before.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=3';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=4';
 
 const SAVED_KEY = 'glitchit.saved.v1';
 let client = null;

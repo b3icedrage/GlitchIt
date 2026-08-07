@@ -34,6 +34,9 @@
     var handle = metadata.username || user && user.email && user.email.split('@')[0] || 'you';
     var avatar = getAvatar(user, handle);
 
+    // Tag the signed-in user for monitoring/error context (no-op until Sentry is on).
+    if (window.GLITCHIT_IDENTIFY && user && !user.guest) window.GLITCHIT_IDENTIFY(user);
+
     document.querySelectorAll('.me img, .profile-photo-wrap > img, .story-create img, .ig-profiles .profile-avatar:not(.gray) img').forEach(function (image) {
       image.src = avatar;
       image.alt = handle + ' profile picture';
