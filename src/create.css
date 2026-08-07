@@ -626,7 +626,25 @@ body[data-page="create"] .stage-fallback-mark {
   font-size: 34px;
 }
 body[data-page="create"] .stage-fallback p { color: #fff; }
-body[data-page="create"] .stage-fallback small { color: var(--camera-muted); }
+body[data-page="create"] .stage-fallback small { color: var(--camera-muted); max-width: 280px; }
+body[data-page="create"] .camera-retry {
+  margin-top: 6px;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 999px;
+  background: rgba(240, 75, 87, .2);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .2s ease, transform .2s ease, border-color .2s ease;
+}
+body[data-page="create"] .camera-retry:hover {
+  background: rgba(240, 75, 87, .4);
+  border-color: rgba(255, 255, 255, .6);
+  transform: translateY(-1px);
+}
+body[data-page="create"] #camera-feed[aria-busy="true"] { opacity: .2; }
 
 body[data-page="create"] .ig-top {
   padding: calc(18px + env(safe-area-inset-top)) 20px 14px;

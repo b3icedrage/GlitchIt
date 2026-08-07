@@ -257,6 +257,9 @@ function attachCreateStudio() {
   const video = document.getElementById('camera-feed');
   const photo = document.getElementById('stage-photo');
   const fallback = document.getElementById('stage-fallback');
+  const cameraStatusTitle = document.getElementById('camera-status-title');
+  const cameraStatusDetail = document.getElementById('camera-status-detail');
+  const cameraRetry = document.getElementById('camera-retry');
   const fxLayer = document.getElementById('stage-fx');
   const nextBtn = document.getElementById('create-next');
   const backBtn = document.getElementById('create-back');
@@ -336,45 +339,68 @@ function attachCreateStudio() {
     video.srcObject = null;
   };
 
+  const showCameraFallback = (title, detail, retryLabel = 'Enable camera') => {
+    if (cameraStatusTitle) cameraStatusTitle.textContent = title;
+    if (cameraStatusDetail) cameraStatusDetail.textContent = detail;
+    if (cameraRetry) cameraRetry.textContent = retryLabel;
+    fallback.hidden = false;
+  };
+
   const startCamera = async (facingMode = state.facing) => {
     stopCamera();
     clearRecordingState();
+    setMode('camera');
+    video.hidden = false;
+    video.setAttribute('aria-busy', 'true');
+    showCameraFallback('Starting camera…', 'Approve camera access in your browser to see a live preview.', 'Allow camera');
     if (!navigator.mediaDevices?.getUserMedia) {
-      fallback.hidden = false;
+      video.removeAttribute('aria-busy');
+      showCameraFallback('Camera is not available here', 'Open the preview over HTTPS or localhost, then allow camera access.', 'Try again');
       return;
     }
-    const videoConstraints = { facingMode, width: { ideal: 1280 } };
+    const videoConstraints = { facingMode, width: { ideal: 1280 }, height: { ideal: 1920 } };
     let stream = null;
     try {
-      // Request microphone + camera preview together
+      // Request microphone + camera preview together.
       stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: true });
     } catch (err) {
-      // Mic denied or missing — fall back to camera-only preview
+      // A microphone denial should not prevent the camera preview.
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
       } catch (err2) {
-        fallback.hidden = false;
-        setMode('camera');
+        video.removeAttribute('aria-busy');
+        showCameraFallback('Camera access is off', 'Allow camera access in your browser settings, then tap Enable camera.', 'Enable camera');
         return;
       }
     }
     state.stream = stream;
     state.hadCamera = true;
     video.srcObject = stream;
+    video.muted = true;
+    video.setAttribute('aria-busy', 'true');
     state.hasMic = stream.getAudioTracks().length > 0;
     state.mic = state.hasMic;
-    video.muted = !state.hasMic;
     updateMicButton();
-    fallback.hidden = true;
-    video.muted = true;
-    video.play().catch(() => { /* autoplay can still be started by the browser */ });
-    // Reset zoom and restore the gallery thumbnail when returning to the camera
+
+    const revealPreview = () => {
+      video.removeAttribute('aria-busy');
+      fallback.hidden = true;
+    };
+    video.addEventListener('loadedmetadata', revealPreview, { once: true });
+    video.addEventListener('playing', revealPreview, { once: true });
+    try {
+      await video.play();
+      revealPreview();
+    } catch (err) {
+      video.removeAttribute('aria-busy');
+      showCameraFallback('Tap to start camera preview', 'Your camera is connected. Tap Enable camera to show the live image.', 'Start preview');
+    }
+    // Reset zoom and restore the gallery thumbnail when returning to the camera.
     state.zoom = 1;
     video.style.transform = '';
     if (zoomBtn) zoomBtn.textContent = '1x';
     if (thumb && state.mode !== 'camera') thumb.querySelector('img').src = thumbOriginal;
     if (ratioBtn) ratioBtn.hidden = false;
-    setMode('camera');
   };
 
   const setPhoto = (src) => {
@@ -435,6 +461,10 @@ function attachCreateStudio() {
 
   // Media source tiles
   document.getElementById('media-camera').addEventListener('click', () => {
+    mediaTiles.forEach((t) => t.classList.toggle('active', t.id === 'media-camera'));
+    startCamera();
+  });
+  cameraRetry?.addEventListener('click', () => {
     mediaTiles.forEach((t) => t.classList.toggle('active', t.id === 'media-camera'));
     startCamera();
   });

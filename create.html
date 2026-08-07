@@ -43,8 +43,9 @@
             <video id="camera-feed" autoplay muted playsinline aria-label="Camera preview"></video>
             <div class="stage-fallback" id="stage-fallback" hidden>
               <span class="stage-fallback-mark">ϟ</span>
-              <p>Camera preview unavailable</p>
-              <small>Tap the photo thumbnail at the bottom to upload your own.</small>
+              <p id="camera-status-title">Camera preview unavailable</p>
+              <small id="camera-status-detail">Allow camera access to see yourself here, or choose a photo below.</small>
+              <button type="button" class="camera-retry" id="camera-retry">Enable camera</button>
             </div>
             <img id="stage-photo" class="stage-photo" alt="Selected photo" hidden>
             <video id="stage-video" class="stage-photo" playsinline loop muted preload="auto" aria-label="Recorded video preview" hidden></video>
