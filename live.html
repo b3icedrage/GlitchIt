@@ -35,14 +35,14 @@
         <section class="page" id="live" data-page="live" aria-labelledby="live-host-name">
           <div class="live-player" id="live-player">
             <video class="live-video" autoplay muted loop playsinline preload="metadata"
-              poster="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&h=1000&q=80"
-              src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" aria-label="charleeatkins is live"></video>
+              poster=""
+              src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" aria-label="Your live stream"></video>
 
             <!-- Top bar: host · LIVE pill · viewers · close -->
             <div class="live-top">
               <a class="live-host" href="profile.html">
-                <img class="live-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="charleeatkins avatar">
-                <strong id="live-host-name">charleeatkins
+                <img class="live-avatar" src="" alt="Your live avatar">
+                <strong id="live-host-name"><span class="handle-text">you</span>
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
                 </strong>
               </a>
@@ -53,12 +53,9 @@
             </div>
             <div class="live-camera-status" id="live-camera-status" role="status" aria-live="polite">Camera is off · tap Enable camera to preview yourself</div>
 
-            <!-- Chat stream (bottom-left) -->
+            <!-- Chat stream (bottom-left): only real messages appear here -->
             <div class="live-chat" id="live-chat" aria-live="polite">
-              <div class="live-msg"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80" alt="" loading="lazy"><span><b>samethyst_grl</b> Hey! How are you doing today?</span></div>
-              <div class="live-msg"><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=80&q=80" alt="" loading="lazy"><span><b>dark_emeralds</b> Miss seeing you go Live!</span></div>
-              <div class="live-msg"><img src="https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=80&q=80" alt="" loading="lazy"><span><b>photosbyean</b> bought a badge 🏆</span></div>
-              <div class="live-msg"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=80&q=80" alt="" loading="lazy"><span><b>hey_sarah2002</b> Welcome! <i aria-hidden="true">❤️❤️❤️</i></span></div>
+              <p class="live-chat-empty">No messages yet — say hi 👋</p>
             </div>
 
             <!-- Floating hearts (right) -->
@@ -66,7 +63,7 @@
 
             <!-- Pinned badge banner -->
             <div class="live-banner">
-              <span>Buy a badge to support charleeatkins</span>
+              <span>Buy a badge to support this stream</span>
               <button type="button" class="live-buy" id="live-buy">Buy</button>
             </div>
 
@@ -91,13 +88,11 @@
       </main>
 
       <aside class="right-rail">
-        <div class="me"><img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=240&q=80" alt="Your profile"><div><strong>b3ice_drage</strong><span>Build your vibe</span></div></div>
-        <div class="stats"><span><b>12.8k</b> followers</span><span><b>46</b> drops</span></div>
-        <h3>Live now</h3>
+        <div class="me"><img src="" alt="Your profile"><div><strong>you</strong><span>GlitchIt creator</span></div></div>
+        <div class="stats"><span><b data-stat="followers">0</b> followers</span><span><b data-stat="drops">0</b> drops</span></div>
+        <div class="rail-head"><h3>Live now</h3><a href="live.html">See all</a></div>
         <div class="live-now-list">
-          <a class="live-now-item" href="live.html"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=120&q=80" alt=""><div><strong>charleeatkins</strong><span>1.5k watching</span></div><i aria-hidden="true"></i></a>
-          <a class="live-now-item" href="live.html"><img src="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=120&q=80" alt=""><div><strong>pixelmakers</strong><span>Studio Q&amp;A 🎙</span></div><i aria-hidden="true"></i></a>
-          <a class="live-now-item" href="live.html"><img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=120&q=80" alt=""><div><strong>mira.motion</strong><span>Dusk drive cam</span></div><i aria-hidden="true"></i></a>
+          <p class="live-now-empty">No one is live right now — be the first to go live.</p>
         </div>
       </aside>
 

@@ -31,7 +31,7 @@
     removePlaceholders(document);
     var user = window.GLITCHIT_USER;
     var metadata = user && user.user_metadata || {};
-    var handle = metadata.username || user && user.email && user.email.split('@')[0] || 'b3ice_drage';
+    var handle = metadata.username || user && user.email && user.email.split('@')[0] || 'you';
     var avatar = getAvatar(user, handle);
 
     document.querySelectorAll('.me img, .profile-photo-wrap > img, .story-create img, .ig-profiles .profile-avatar:not(.gray) img').forEach(function (image) {

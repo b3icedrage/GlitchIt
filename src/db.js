@@ -115,6 +115,7 @@ export async function saveMedia(item) {
       url,
       poster,
       user: owner,
+      handle: item.handle || '',
       avatar: item.avatar || '',
       likes: item.likes || 0,
       comments: item.comments || 0,
@@ -162,6 +163,41 @@ export async function loadMedia(kind, limit = 50) {
   } catch (err) {
     console.warn('GlitchIt: media load failed', err);
     return [];
+  }
+}
+
+// ---------- real creators (distinct users who have posted) ----------
+// Derives the list of real accounts from the media table (owner uuid, latest
+// handle + avatar) so suggestions and account search never use fake users.
+export async function loadCreators(limit = 30) {
+  try {
+    const sb = await getClient();
+    if (!sb) return [];
+    const { data, error } = await sb.from('media').select('user, handle, avatar').order('created_at', { ascending: false }).limit(300);
+    if (error) throw error;
+    const seen = new Map();
+    (data || []).forEach((row) => {
+      if (!row.user || !/^[0-9a-f-]{8,}$/i.test(String(row.user))) return;
+      if (!seen.has(row.user)) seen.set(row.user, { id: row.user, handle: row.handle || '', avatar: row.avatar || '' });
+    });
+    return [...seen.values()].slice(0, limit);
+  } catch (err) {
+    console.warn('GlitchIt: creators load failed', err);
+    return [];
+  }
+}
+
+export async function countMedia(owner) {
+  if (!owner) return 0;
+  try {
+    const sb = await getClient();
+    if (!sb) return 0;
+    const { count, error } = await sb.from('media').select('id', { count: 'exact', head: true }).eq('user', owner);
+    if (error) throw error;
+    return count || 0;
+  } catch (err) {
+    console.warn('GlitchIt: media count failed', err);
+    return 0;
   }
 }
 

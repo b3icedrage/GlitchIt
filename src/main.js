@@ -36,9 +36,9 @@ function userAvatar(user, handle = '') {
 }
 
 const profile = {
-  username: 'b3ice_drage',
-  name: 'ßrįæñ',
-  avatar: fallbackAvatar('b3ice_drage'),
+  username: 'you',
+  name: 'You',
+  avatar: fallbackAvatar('you'),
 };
 
 function syncProfileFromUser(user) {
@@ -57,6 +57,13 @@ function applyProfileAvatarUi() {
     image.src = avatar;
     image.alt = `${handle} profile picture`;
   });
+  document.querySelectorAll('.right-rail .me strong, .me strong').forEach((el) => { el.textContent = handle; });
+  document.querySelectorAll('.right-rail .me span, .me span').forEach((el) => {
+    if (!el.textContent.trim() || el.textContent.trim() === 'Build your vibe') {
+      el.textContent = window.GLITCHIT_USER?.email || 'GlitchIt creator';
+    }
+  });
+  document.querySelectorAll('.handle-text').forEach((el) => { el.textContent = handle; });
 
   document.querySelectorAll('a[href="profile.html"]').forEach((link) => {
     if (!link.closest('.bottom-bar, .sidebar nav')) return;
@@ -80,6 +87,145 @@ function displayUser(owner) {
   const u = window.GLITCHIT_USER;
   if (u && owner === u.id) return u.user_metadata?.username || u.email?.split('@')[0] || owner;
   return owner || '';
+}
+
+// ---------- Real data + empty states ----------
+// Fills the right rail with the signed-in user's real stats and the list of
+// real creators (distinct people who have posted). Shows empty states when
+// there is no data yet, so no fake accounts are ever rendered.
+async function hydrateRail() {
+  const user = window.GLITCHIT_USER;
+  const followers = document.querySelector('[data-stat="followers"]');
+  const drops = document.querySelector('[data-stat="drops"]');
+  if (drops) drops.textContent = String(user && !user.guest && DB ? await DB.countMedia(user.id) : 0);
+  if (followers) followers.textContent = '0';
+
+  const list = document.querySelector('.rail-suggestions');
+  if (!list) return;
+  const creators = DB ? await DB.loadCreators(4) : [];
+  const others = creators.filter((c) => !user || c.id !== user.id);
+  if (!others.length) {
+    list.innerHTML = '<div class="rail-empty"><span class="rail-empty-mark">ϟ</span><p>No creators yet</p><small>Creators who post will show up here.</small></div>';
+    return;
+  }
+  list.innerHTML = others.map((c) => {
+    const handle = escapeHtml(c.handle || String(c.id).slice(0, 8));
+    const avatar = c.avatar ? `<img src="${escapeHtml(c.avatar)}" alt="${handle} avatar" loading="lazy">` : `<span class="badge" aria-hidden="true"><i>${escapeHtml(handle[0]?.toUpperCase() || 'G')}</i></span>`;
+    return `<div class="seller"><div><strong>${handle}</strong><span>Creator</span></div><button type="button">Follow</button></div>`;
+  }).join('');
+  list.querySelectorAll('.seller button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const on = btn.classList.toggle('following');
+      btn.textContent = on ? 'Following' : 'Follow';
+    });
+  });
+}
+
+// Search page: real accounts derived from the media table, or an empty state.
+async function hydrateSearchAccounts() {
+  const list = document.getElementById('sr-accounts');
+  if (!list) return;
+  const creators = DB ? await DB.loadCreators(30) : [];
+  if (!creators.length) {
+    list.innerHTML = '<div class="sr-empty"><span class="sr-empty-mark">⌕</span><h3>No accounts yet</h3><p>Accounts that post on GlitchIt will show up here.</p></div>';
+    return;
+  }
+  list.innerHTML = creators.map((c) => {
+    const handle = escapeHtml(c.handle || String(c.id).slice(0, 8));
+    const avatar = c.avatar ? `<img src="${escapeHtml(c.avatar)}" alt="${handle} avatar" loading="lazy">` : `<span class="badge" aria-hidden="true"><i>${escapeHtml(handle[0]?.toUpperCase() || 'G')}</i></span>`;
+    return `<a class="sr-acct" href="profile.html"><span class="sr-avatar">${avatar}</span><span class="sr-info"><span class="sr-name">${handle}</span><span class="sr-meta">Creator on GlitchIt</span></span></a>`;
+  }).join('');
+}
+
+// Profile page: fill the post grid with the signed-in user's real media.
+async function hydrateProfileGrid() {
+  const grid = document.querySelector('.profile-grid');
+  const user = window.GLITCHIT_USER;
+  if (!grid || !user || user.guest) return;
+  const rows = DB ? await DB.loadMedia('image') : [];
+  const mine = rows.filter((r) => r.user === user.id);
+  if (!mine.length) {
+    grid.innerHTML = '<p class="profile-empty">No posts yet — share your first moment.</p>';
+    return;
+  }
+  grid.innerHTML = mine.slice(0, 12).map((r) => `<img src="${escapeHtml(r.url)}" alt="Post" loading="lazy">`).join('');
+}
+
+// ---------- Shop page: real creators + real media + your storefront ----------
+// Every shop section is filled from the database (creators derived from the
+// media table, shop glitches from real videos, storefront from the signed-in
+// user). When there is no data yet, each section shows an empty state — no
+// fake accounts are ever rendered.
+async function hydrateShop() {
+  hydrateShopStories();
+  hydrateShopGlitches();
+  hydrateShopProfile();
+}
+
+async function hydrateShopStories() {
+  const shelf = document.getElementById('shop-stories');
+  if (!shelf) return;
+  const creators = DB ? await DB.loadCreators(6) : [];
+  if (!creators.length) {
+    shelf.innerHTML = '<p class="profile-empty">No seller stories yet — creators who post will show up here.</p>';
+    return;
+  }
+  shelf.innerHTML = creators.map((c) => {
+    const handle = escapeHtml(c.handle || String(c.id).slice(0, 8));
+    const avatar = c.avatar ? escapeHtml(c.avatar) : fallbackAvatar(handle);
+    return `<a class="story" href="#" data-story-name="${handle}" data-story-image="${avatar}" data-story-live="false" aria-label="Open ${handle}'s story"><span class="story-ring"><img src="${avatar}" alt="${handle} avatar" loading="lazy"></span><span>${handle}</span></a>`;
+  }).join('');
+  attachStoryLinks();
+}
+
+async function hydrateShopGlitches() {
+  const reel = document.getElementById('glitches-reel');
+  if (!reel) return;
+  const rows = DB ? await DB.loadMedia('video', 12) : [];
+  if (!rows.length) {
+    reel.innerHTML = '<div class="feed-empty"><span class="feed-empty-mark">▣</span><h3>No shop glitches yet</h3><p>Videos shared by creators will appear here.</p><a class="primary-action" href="create.html">Post a video</a></div>';
+    return;
+  }
+  reel.innerHTML = rows.map((r) => glitchVideoCard({ id: r.id, title: r.title, caption: r.caption, src: r.url, poster: r.poster || r.url, user: displayUser(r.user), avatar: r.avatar, likes: String(r.likes || 0), comments: String(r.comments || 0), shares: String(r.shares || 0) })).join('');
+  attachReelsActions();
+  attachGlitchAutoplay();
+}
+
+async function hydrateShopProfile() {
+  const panel = document.querySelector('[data-shop-panel="profile"]');
+  if (!panel) return;
+  const user = window.GLITCHIT_USER;
+  const nameEl = document.getElementById('store-name');
+  const handleEl = document.getElementById('store-handle');
+  const avatar = panel.querySelector('.store-avatar');
+  const products = panel.querySelector('[data-stat="store-products"]');
+  const drops = panel.querySelector('[data-stat="store-drops"]');
+  const grid = document.getElementById('store-grid');
+  if (!user || user.guest) {
+    if (nameEl) nameEl.textContent = 'Your store';
+    if (handleEl) handleEl.textContent = '@you';
+    if (avatar) avatar.src = fallbackAvatar('you');
+    if (products) products.textContent = '0';
+    if (drops) drops.textContent = '0';
+    if (grid) grid.innerHTML = '<p class="profile-empty">Sign in to open your storefront — your drops will appear here.</p>';
+    return;
+  }
+  const handle = user.user_metadata?.username || user.email?.split('@')[0] || 'you';
+  if (nameEl) nameEl.textContent = handle;
+  if (handleEl) handleEl.textContent = `@${handle}`;
+  if (avatar) avatar.src = profile.avatar;
+  const count = DB ? await DB.countMedia(user.id) : 0;
+  if (products) products.textContent = String(count);
+  if (drops) drops.textContent = String(count);
+  const rows = DB ? await DB.loadMedia('image') : [];
+  const mine = rows.filter((r) => r.user === user.id);
+  if (!mine.length) {
+    if (grid) grid.innerHTML = '<p class="profile-empty">No drops yet — share your first post and it will appear here.</p>';
+    return;
+  }
+  if (grid) {
+    grid.innerHTML = mine.slice(0, 12).map((r) => `<article class="store-card"><img src="${escapeHtml(r.url)}" alt="${escapeHtml(r.title || 'Drop')}" loading="lazy"><div><span>Post</span><h3>${escapeHtml(r.title || 'Untitled')}</h3><p>${escapeHtml(r.caption || '')}</p></div></article>`).join('');
+  }
 }
 
 const page = document.body.dataset.page || 'home';
@@ -115,9 +261,9 @@ function uploadCard(item, type) {
 }
 
 function glitchVideoCard(video, uploaded = false) {
-  const likes = video.likes || '1.2K';
-  const comments = video.comments || '312';
-  const shares = video.shares || '8.1K';
+  const likes = video.likes || '0';
+  const comments = video.comments || '0';
+  const shares = video.shares || '0';
   const replyTo = video.replyTo || video.user;
   const savedClass = video.saved ? ' saved' : '';
   return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><img src="${video.avatar}" alt="${video.user} avatar"><div class="reel-meta"><strong>${video.user}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
@@ -1956,7 +2102,7 @@ function attachReelsActions() {
         poster: card?.querySelector('video')?.getAttribute('poster') || '',
         title: card?.querySelector('video')?.getAttribute('aria-label') || '',
         caption: card?.querySelector('.reel-meta p')?.textContent || '',
-        user: card?.querySelector('.reel-meta strong')?.textContent || 'b3ice_drage',
+        user: card?.querySelector('.reel-meta strong')?.textContent || '',
         avatar: card?.querySelector('.reel-creator img')?.getAttribute('src') || '',
       };
       const saving = btn.classList.toggle('saved');
@@ -2337,7 +2483,7 @@ function attachProfileTabs() {
 }
 
 // ---------- Page dispatch ----------
-// Live viewing page: simulated chat stream, ticking viewer count, floating
+// Live viewing page: real viewer count, floating
 // heart reactions, comment posting, and badge purchases.
 function attachLive() {
   const chat = document.getElementById('live-chat');
@@ -2347,9 +2493,16 @@ function attachLive() {
   const buyBtn = document.getElementById('live-buy');
   const heartBtn = document.getElementById('live-heart-btn');
   const player = document.getElementById('live-player');
+  const liveUser = window.GLITCHIT_USER;
+  if (liveUser && !liveUser.guest) {
+    const hostName = document.getElementById('live-host-name');
+    if (hostName) { const h = hostName.querySelector('.handle-text'); if (h) h.textContent = profile.username; }
+    const hostImg = document.querySelector('.live-avatar');
+    if (hostImg) hostImg.src = profile.avatar;
+  }
 
   // ----- viewer count ticker -----
-  let viewersCount = 1537;
+  let viewersCount = 1;
   const fmtCount = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
   const renderViewers = () => {
     if (!viewers) return;
@@ -2394,38 +2547,15 @@ function attachLive() {
     h.addEventListener('animationend', () => h.remove());
   });
 
-  // ----- simulated chat stream -----
-  const names = ['mira.motion', 'kicksbyte', 'chantouflowergirl', 'glitchwear', 'pixelmakers', 'duskdrift'];
-  const lines = [
-    'this fit is everything 🔥',
-    'yasss queen 👏',
-    'just joined, hi everyone!',
-    'the vibes are immaculate',
-    'drop the link rn',
-    'LIVE is so good today',
-    'hello from Toronto 🇨🇦',
-    'can we get a wave? 🙌',
-  ];
-  const avatars = [
-    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80',
-    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=80&q=80',
-    'https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=80&q=80',
-    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=80&q=80',
-    'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=80&q=80',
-    'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=80&q=80',
-  ];
+  // ----- chat (real messages only — posted by the signed-in viewer) -----
   const addMsg = (name, text) => {
     if (!chat) return;
     const row = document.createElement('div');
     row.className = 'live-msg';
-    row.innerHTML = `<img src="${avatars[Math.floor(Math.random() * avatars.length)]}" alt="" loading="lazy"><span><b>${escapeHtml(name)}</b> ${escapeHtml(text)}</span>`;
+    row.innerHTML = `<img src="${profile.avatar || fallbackAvatar(name)}" alt="" loading="lazy"><span><b>${escapeHtml(name)}</b> ${escapeHtml(text)}</span>`;
     chat.appendChild(row);
     while (chat.children.length > 4) chat.removeChild(chat.firstChild);
   };
-  setInterval(() => {
-    addMsg(names[Math.floor(Math.random() * names.length)], lines[Math.floor(Math.random() * lines.length)]);
-  }, 5200);
-
   // ----- comment posting -----
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -2442,7 +2572,7 @@ function attachLive() {
   buyBtn?.addEventListener('click', () => {
     const tip = document.createElement('div');
     tip.className = 'end-toast show';
-    tip.innerHTML = `<span class="end-toast-mark">${icon('🏆')}</span><span class="end-toast-text">Badge purchased — thanks for supporting charleeatkins!</span>`;
+    tip.innerHTML = `<span class="end-toast-mark">${icon('🏆')}</span><span class="end-toast-text">Badge purchased — thanks for supporting this stream!</span>`;
     document.body.appendChild(tip);
     setTimeout(() => tip.remove(), 2200);
   });
@@ -2455,12 +2585,20 @@ function runPage() {
   if (page === 'home') {
     const feedTarget = document.getElementById('upload-feed');
     if (feedTarget) feedTarget.innerHTML = renderUploads('feed');
+    const feedEmpty = () => {
+      if (feedTarget && !feedTarget.children.length) {
+        feedTarget.innerHTML = '<div class="feed-empty"><span class="feed-empty-mark">ϟ</span><h3>No posts yet</h3><p>Be the first to share a moment — snap a photo or video from the create page.</p><a class="primary-action" href="create.html">Create a post</a></div>';
+      }
+    };
     if (DB) {
       DB.loadMedia('image').then((rows) => {
-        if (!rows.length || !feedTarget) return;
+        if (!rows.length) { feedEmpty(); return; }
+        if (!feedTarget) return;
         const cards = rows.map((r) => uploadCard({ preview: r.url, title: r.title, caption: r.caption, type: 'image', user: displayUser(r.user), avatar: r.avatar }, 'feed')).join('');
         feedTarget.insertAdjacentHTML('afterbegin', cards);
       });
+    } else {
+      feedEmpty();
     }
     hydrateStoryShelf();
     attachNotes('home-notes');
@@ -2468,14 +2606,22 @@ function runPage() {
   if (page === 'glitches') {
     const videoTarget = document.getElementById('video-feed');
     if (videoTarget) videoTarget.innerHTML = renderUploads('videos');
+    const glitchEmpty = () => {
+      if (videoTarget && !videoTarget.children.length) {
+        videoTarget.innerHTML = '<div class="feed-empty"><span class="feed-empty-mark">▣</span><h3>No glitches yet</h3><p>Share a reel and it will appear here for everyone.</p><a class="primary-action" href="create.html">Post a video</a></div>';
+      }
+    };
     if (DB) {
       DB.loadMedia('video').then((rows) => {
-        if (!rows.length || !videoTarget) return;
+        if (!rows.length) { glitchEmpty(); attachGlitchAutoplay(); attachReelsActions(); return; }
+        if (!videoTarget) return;
         const cards = rows.map((r) => glitchVideoCard({ id: r.id, title: r.title, caption: r.caption, src: r.url, poster: r.poster || r.url, user: displayUser(r.user), avatar: r.avatar, likes: String(r.likes || 0), comments: String(r.comments || 0), shares: String(r.shares || 0) })).join('');
         videoTarget.insertAdjacentHTML('afterbegin', cards);
         attachReelsActions();
         attachGlitchAutoplay();
       });
+    } else {
+      glitchEmpty();
     }
     attachGlitchAutoplay();
     attachReelsActions();
@@ -2503,6 +2649,10 @@ function runPage() {
     });
   }
   if (page === 'shop') { attachShopTabs(); attachShopFilters(); attachStoryLinks(); attachGlitchAutoplay(); }
+
+  if (page === 'search') hydrateSearchAccounts();
+  if (page === 'profile') hydrateProfileGrid();
+  hydrateRail();
 
   attachGuestGuards();
   window.addEventListener('scroll', updateGlitchPlayback, { passive: true });
