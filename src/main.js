@@ -4,6 +4,61 @@
 // and hydrates only the interactions that page needs. Uploads and theme are persisted
 // in localStorage so state carries over when you move between pages.
 
+/* ============================================================
+   GlitchIt platform bootstrap — error tracking (Sentry), global
+   error capture and the service-worker caching layer. Runs first
+   on every page (main.js is loaded by all HTML files).
+   ============================================================ */
+(function bootstrapGlitchItPlatform() {
+  // Caching layer: register the service worker (offline + fast repeat loads).
+  if ('serviceWorker' in navigator) {
+    try {
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none', scope: './' })
+        .catch((err) => console.warn('GlitchIt: service worker registration failed', err));
+    } catch (err) { /* never let this block the app */ }
+  }
+
+  // Global error + promise-rejection capture. Works before Sentry finishes
+  // loading; forwards to Sentry once it's ready.
+  function reportError(err, extra) {
+    try {
+      if (window.Sentry) {
+        const ex = err instanceof Error ? err : new Error(String(err));
+        if (extra) ex.extra = extra;
+        window.Sentry.captureException(ex);
+      } else {
+        console.warn('[GlitchIt error]', err, extra || '');
+      }
+    } catch (e) { /* monitoring must never break the app */ }
+  }
+  window.addEventListener('error', (event) => {
+    reportError(event.error || event.message, { source: String((event.target && event.target.tagName) || '') });
+  });
+  window.addEventListener('unhandledrejection', (event) => reportError(event.reason));
+
+  // Sentry SDK: loaded async so it never blocks first paint. It only activates
+  // when a DSN is configured in src/config.js (public client key, like the
+  // Supabase anon key). Errors before it resolves are reported on the console.
+  const bundle = document.createElement('script');
+  bundle.src = 'https://browser.sentry-cdn.com/10.69.0/bundle.tracing.min.js';
+  bundle.crossOrigin = 'anonymous';
+  bundle.onload = () => {
+    import('./config.js?v=3').then((cfg) => {
+      if (!cfg || !cfg.SENTRY_DSN || !window.Sentry) return;
+      window.Sentry.init({
+        dsn: cfg.SENTRY_DSN,
+        environment: (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'development' : 'production',
+        release: 'glitchit@1.0.0',
+        tracesSampleRate: 0.2,
+        integrations: [window.Sentry.browserTracingIntegration()],
+      });
+      console.info('GlitchIt: Sentry monitoring enabled');
+    }).catch(() => {});
+  };
+  bundle.onerror = () => {};
+  document.head.appendChild(bundle);
+})();
+
 const icon = (name) => `<span class="icon" aria-hidden="true">${name}</span>`;
 
 // Instagram-Reels style line icons (heart / comment / send) used on glitch cards.
