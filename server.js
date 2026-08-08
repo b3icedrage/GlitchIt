@@ -350,6 +350,111 @@ async function handleChatRequest(req, res) {
   try { res.end(); } catch (err) { /* client already gone */ }
 }
 
+// ---------------- Music search proxy (Deezer + Apple Music) ----------------
+// Browsers cannot call Deezer/Apple Music directly from the app origin (the
+// APIs don't send CORS headers), so the note-composer music sheet calls this
+// same-origin endpoint instead; server-side fetches have no CORS restrictions.
+//   GET /api/music?q=...    -> merged Deezer + iTunes search results
+//   GET /api/music?chart=1  -> Deezer global top chart (Trending tab)
+const MUSIC_CACHE_TTL_MS = 60 * 1000;
+const MUSIC_TIMEOUT_MS = 8 * 1000;
+const musicCache = new Map(); // key -> { at, tracks }
+
+async function musicFetchJson(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), MUSIC_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'GlitchIt/1.0' } });
+    if (!res.ok) throw new Error(`upstream ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function musicFromDeezer(t, source) {
+  return {
+    title: t.title || 'Unknown track',
+    artist: (t.artist && t.artist.name) || 'Unknown artist',
+    genre: source,
+    url: t.preview || null,
+    art: (t.album && (t.album.cover_medium || t.album.cover_small)) || '',
+    source,
+    duration: typeof t.duration === 'number' ? t.duration : 0,
+    explicit: Boolean(t.explicit_lyrics)
+  };
+}
+
+function musicFromItunes(r) {
+  return {
+    title: r.trackName || 'Unknown track',
+    artist: r.artistName || 'Unknown artist',
+    genre: r.primaryGenreName || 'Music',
+    url: r.previewUrl || null,
+    art: r.artworkUrl100 || '',
+    source: 'Apple Music',
+    duration: typeof r.trackTimeMillis === 'number' ? Math.round(r.trackTimeMillis / 1000) : 0,
+    explicit: r.trackExplicitness === 'explicit'
+  };
+}
+
+async function musicSearch(query) {
+  const q = encodeURIComponent(query);
+  const [dz, ap] = await Promise.allSettled([
+    musicFetchJson(`https://api.deezer.com/search?q=${q}&limit=25`),
+    musicFetchJson(`https://itunes.apple.com/search?media=music&limit=25&term=${q}`)
+  ]);
+  const tracks = [];
+  if (dz.status === 'fulfilled') {
+    (dz.value.data || []).filter((t) => t.preview).forEach((t) => tracks.push(musicFromDeezer(t, 'Deezer')));
+  }
+  if (ap.status === 'fulfilled') {
+    (ap.value.results || []).filter((r) => r.previewUrl).forEach((r) => tracks.push(musicFromItunes(r)));
+  }
+  // Dedupe by title+artist (case-insensitive), keep the first occurrence.
+  const seen = new Set();
+  return tracks.filter((t) => {
+    const key = `${t.title}|${t.artist}`.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 30);
+}
+
+async function musicChart() {
+  const data = await musicFetchJson('https://api.deezer.com/chart/0/tracks?limit=20');
+  return (data.data || []).filter((t) => t.preview).map((t) => musicFromDeezer(t, 'Trending'));
+}
+
+async function handleMusicRequest(req, res) {
+  const url = new URL(req.url, 'http://glitchit.local');
+  const chart = url.searchParams.get('chart') === '1';
+  const q = (url.searchParams.get('q') || '').trim().slice(0, 100);
+  const key = chart ? 'chart' : `q:${q.toLowerCase()}`;
+  const now = Date.now();
+  const cached = musicCache.get(key);
+  if (cached && now - cached.at < MUSIC_CACHE_TTL_MS) {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ ok: true, tracks: cached.tracks }));
+    return;
+  }
+  if (!chart && !q) {
+    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ ok: false, error: 'A q query parameter is required (or chart=1).' }));
+    return;
+  }
+  try {
+    const tracks = chart ? await musicChart() : await musicSearch(q);
+    musicCache.set(key, { at: now, tracks });
+    if (musicCache.size > 40) musicCache.delete(musicCache.keys().next().value);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ ok: true, tracks }));
+  } catch (err) {
+    res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ ok: false, error: 'Music search is unavailable right now — try again in a moment.' }));
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   // Rate limit before doing any work — abusive traffic gets a fast 429.
   const verdict = rateLimit(clientIp(req));
@@ -365,9 +470,13 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // AI chat is the only dynamic endpoint; everything else is static files.
+  // Dynamic endpoints: AI chat (POST) and the music search proxy (GET).
   if (req.method === 'POST' && new URL(req.url, 'http://glitchit.local').pathname === '/api/chat') {
     await handleChatRequest(req, res);
+    return;
+  }
+  if (req.method === 'GET' && new URL(req.url, 'http://glitchit.local').pathname === '/api/music') {
+    await handleMusicRequest(req, res);
     return;
   }
 
@@ -416,7 +525,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 // Exported for tests; the server only listens when run directly (node server.js).
-module.exports = { createRateLimiter, RATE_LIMIT, chatStream, handleChatRequest, getNvidiaKey };
+module.exports = { createRateLimiter, RATE_LIMIT, chatStream, handleChatRequest, getNvidiaKey, handleMusicRequest, musicSearch, musicChart };
 
 if (require.main === module) {
   server.listen(PORT, '0.0.0.0', () => {
