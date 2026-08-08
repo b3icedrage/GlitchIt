@@ -28,6 +28,7 @@ const SHELL_URLS = [
   './shop.html',
   './profile.html',
   './auth.html',
+  './camera.html',
   './src/styles.css',
   './src/bottombar.css?v=2',
   './src/music-ui.css?v=2',
@@ -37,6 +38,8 @@ const SHELL_URLS = [
   './src/music-ui.js?v=2',
   './src/profile-avatar.js',
   './src/ai-chat.js?v=3',
+  './src/story-camera.css',
+  './src/story-camera.js',
 ];
 
 self.addEventListener('install', (event) => {

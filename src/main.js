@@ -394,6 +394,7 @@ function attachStoryLinks() {
         if (!window.confirm('Delete your latest story?')) return;
         userUploads.stories.shift();
         saveUploads();
+        clearStoryLatest();
         document.getElementById('story-viewer')?.remove();
         hydrateStoryShelf();
       });
@@ -408,10 +409,27 @@ function attachStoryLinks() {
   }
 }
 
+// The user's most recently shared story (mirrored from the story camera page).
+const STORY_LATEST_KEY = 'glitchit.story.latest';
+function storyLatest() {
+  try { return JSON.parse(localStorage.getItem(STORY_LATEST_KEY) || 'null'); } catch (e) { return null; }
+}
+function clearStoryLatest() {
+  try { localStorage.removeItem(STORY_LATEST_KEY); } catch (e) { /* ignore */ }
+}
+
 function hydrateStoryShelf() {
   const shelf = document.querySelector('.stories');
   if (!shelf) return;
   shelf.querySelectorAll('.story[data-story-dynamic="true"]').forEach((link) => link.remove());
+  // Entry rings for the story camera: a persistent "New story" plus button and
+  // a "Your story" ring that shows the latest shared story (or your avatar).
+  const latest = storyLatest();
+  const avatar = profile.avatar || fallbackAvatar(profile.username || 'You');
+  const selfRing = latest
+    ? `<a class="story story-self" data-story-dynamic="true" data-story-name="Your story" data-story-image="${latest.poster || latest.url}" data-story-own="true" aria-label="View your story"><span class="story-ring live"><img src="${latest.poster || latest.url}" alt="Your story"></span><span>Your story</span></a>`
+    : `<a class="story story-self" data-story-dynamic="true" href="camera.html" aria-label="Create a story"><span class="story-ring live"><img src="${avatar}" alt="You"><i class="story-self-badge" aria-hidden="true">＋</i></span><span>Your story</span></a>`;
+  shelf.insertAdjacentHTML('afterbegin', `<a class="story story-create" data-story-dynamic="true" href="camera.html" aria-label="Create a new story"><span class="story-ring"><i class="story-create-plus" aria-hidden="true">＋</i></span><span>New story</span></a>${selfRing}`);
   [...userUploads.stories].reverse().forEach((story) => {
     const link = document.createElement('a');
     link.className = 'story';

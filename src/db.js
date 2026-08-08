@@ -93,7 +93,7 @@ export async function saveMedia(item) {
   try {
     const sb = await getClient();
     if (!sb) return { ok: false, reason: 'network' };
-    const kind = item.type === 'video' ? 'video' : 'image';
+    const kind = item.type === 'video' ? 'video' : (item.kind === 'story' ? 'story' : 'image');
     const owner = item.user || currentOwner;
     if (!owner) return { ok: false, reason: 'auth' };
     let url = item.preview || item.src || item.url || '';
