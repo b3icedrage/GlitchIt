@@ -1,0 +1,314 @@
+/* ============ GlitchIt Direct — Instagram-style inbox (messages.html) ============
+   Loaded AFTER messages.css. Overrides the dm-* inbox styles so the Messages page
+   matches the Instagram Direct look: hamburger header + handle, rounded search,
+   notes circles with floating previews, filter pills, unread dots, floating "+"
+   compose button. chat.html (chat-*) and the home notes shelf are untouched. */
+
+:root {
+  --dm-bg: #ffffff;
+  --dm-surface: #ffffff;
+  --dm-ink: #171717;
+  --dm-muted: #737373;
+  --dm-search: #efefef;
+  --dm-hover: #f7f7f7;
+  --dm-pill: #efefef;
+  --dm-border: rgba(0, 0, 0, 0.07);
+  --dm-blue: #0095f6;
+  --dm-red: #ff3040;
+  --dm-fab: #171717;
+  --dm-fab-ink: #ffffff;
+}
+:root[data-theme="dark"] {
+  --dm-bg: #000000;
+  --dm-surface: #0a0a0a;
+  --dm-ink: #f5f5f5;
+  --dm-muted: #8f8f8f;
+  --dm-search: #1c1c1e;
+  --dm-hover: #141416;
+  --dm-pill: #1c1c1e;
+  --dm-border: rgba(255, 255, 255, 0.08);
+  --dm-fab: #f5f5f5;
+  --dm-fab-ink: #0a0a0a;
+}
+
+/* ---------- Inbox shell (full-bleed on mobile, card on desktop) ---------- */
+.dm-inbox {
+  border: 1px solid var(--dm-border);
+  border-radius: 18px;
+  background: var(--dm-bg);
+  transition: background 0.2s ease;
+}
+
+/* ---------- Header: menu · handle · activity/compose ---------- */
+.dm-top {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--dm-border);
+}
+.dm-menu,
+.dm-act {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dm-ink);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.dm-menu:hover,
+.dm-act:hover { background: var(--dm-hover); }
+.dm-menu:active,
+.dm-act:active { transform: scale(0.92); }
+.dm-menu svg { width: 20px; height: 20px; }
+.dm-act svg { width: 22px; height: 22px; }
+.dm-head-actions { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.dm-title { color: var(--dm-ink); font-size: 16px; font-weight: 700; }
+.dm-title:hover { background: transparent; }
+.dm-title svg { color: var(--dm-muted); }
+
+/* ---------- Search ---------- */
+.dm-search {
+  margin: 10px 12px;
+  background: var(--dm-search);
+  color: var(--dm-muted);
+}
+.dm-search:focus-within { background: var(--dm-search); }
+.dm-search input { color: var(--dm-ink); }
+.dm-search input::placeholder { color: var(--dm-muted); }
+
+/* ---------- Notes row: circles + floating previews ---------- */
+.messages-notes { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.messages-notes-head { display: none; }
+.messages-notes-shelf {
+  display: flex;
+  gap: 18px;
+  margin: 0;
+  /* headroom for the floating note previews above the circles and the
+     "Your note / Location off" lines below the first circle */
+  padding: 52px 14px 46px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.messages-notes-shelf::-webkit-scrollbar { display: none; }
+
+body[data-page="messages"] .messages-notes-shelf .note-bubble {
+  position: relative;
+  min-width: 56px;
+  justify-items: center;
+}
+body[data-page="messages"] .messages-notes-shelf .note-ring {
+  width: 56px;
+  height: 56px;
+}
+body[data-page="messages"] .messages-notes-shelf .note-ring img {
+  width: 50px;
+  height: 50px;
+  border: 3px solid var(--dm-surface);
+}
+body[data-page="messages"] .messages-notes-shelf .note-bubble .note-label {
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 136px;
+  padding: 5px 9px;
+  border-radius: 9px;
+  background: #262626;
+  color: #f5f5f5;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+/* First circle = "Your note" (+ location-off hint), labels live below it. */
+body[data-page="messages"] .messages-notes-shelf .note-add .note-label { display: none; }
+body[data-page="messages"] .messages-notes-shelf .note-add .note-ring {
+  background: conic-gradient(#feda75, #d62976, #4f5bd5, #feda75);
+  border: 0;
+  color: #fff;
+  font-size: 22px;
+}
+body[data-page="messages"] .messages-notes-shelf .note-add::after,
+body[data-page="messages"] .messages-notes-shelf .note-add::before {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  text-align: center;
+}
+body[data-page="messages"] .messages-notes-shelf .note-add::after {
+  content: "Your note";
+  top: calc(100% + 7px);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dm-ink);
+}
+body[data-page="messages"] .messages-notes-shelf .note-add::before {
+  content: "⊘ Location off";
+  top: calc(100% + 26px);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--dm-red);
+}
+
+/* ---------- Filter pills + tabs ---------- */
+.dm-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 10px;
+  border-bottom: 1px solid var(--dm-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.dm-tabs::-webkit-scrollbar { display: none; }
+.dm-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--dm-muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.dm-tab:hover { color: var(--dm-ink); }
+.dm-tab.active { background: var(--dm-pill); color: var(--dm-ink); }
+.dm-tab.active::after { display: none; }
+.dm-tab-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dm-red); flex: 0 0 auto; }
+.dm-tab-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--dm-red);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+.dm-tab-count:empty { display: none; }
+.dm-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: var(--dm-pill);
+  color: var(--dm-ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.dm-filter-pill:hover { transform: translateY(-1px); background: var(--dm-hover); }
+.dm-filter-pill:active { transform: scale(0.96); }
+.dm-filter-pill svg { width: 16px; height: 16px; }
+.dm-filter-pill svg:last-child { width: 12px; height: 12px; }
+
+/* ---------- Conversation list + unread dots ---------- */
+.dm-list { padding: 4px 0 0; }
+.dm-row { padding: 12px 14px; }
+.dm-row:hover { background: var(--dm-hover); }
+.dm-row + .dm-row { border-top-color: var(--dm-border); }
+.dm-avatar { width: 54px; height: 54px; }
+.dm-avatar img { width: 54px; height: 54px; }
+.dm-meta strong { font-weight: 600; font-size: 14.5px; color: var(--dm-ink); }
+.dm-meta em { color: var(--dm-muted); font-size: 13px; }
+.dm-side svg { color: var(--dm-muted); }
+.dm-side .unread { background: var(--dm-blue); box-shadow: 0 0 0 3px rgba(0, 149, 246, 0.16); }
+.dm-avatar .dot { border-color: var(--dm-bg); }
+.dm-avatar .badge i { background: var(--dm-surface); }
+
+/* ---------- Empty state ---------- */
+.dm-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 72px 24px;
+  text-align: center;
+  animation: dmFade 0.4s ease;
+}
+.dm-empty-mark {
+  width: 96px;
+  height: 96px;
+  margin-bottom: 10px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--dm-pill);
+  color: var(--dm-muted);
+  font-size: 34px;
+}
+.dm-empty h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--dm-ink); }
+.dm-empty p { margin: 4px 0 0; max-width: 270px; font-size: 13px; line-height: 1.5; color: var(--dm-muted); }
+@keyframes dmFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Floating "+" compose button (vertical pill, like the reference) ---------- */
+.dm-compose-fab {
+  position: fixed;
+  right: 20px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+  z-index: 1100;
+  width: 46px;
+  height: 74px;
+  border: 0;
+  border-radius: 24px;
+  display: grid;
+  place-items: center;
+  background: var(--dm-fab);
+  color: var(--dm-fab-ink);
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+.dm-compose-fab:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4); }
+.dm-compose-fab:active { transform: scale(0.94); }
+.dm-compose-fab svg { width: 26px; height: 26px; }
+
+/* ---------- AI assistant FAB: keep clear of the "+" (left side on mobile) ---------- */
+@media (max-width: 959px) {
+  body[data-page="messages"] .ai-fab {
+    right: auto;
+    left: 18px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+  }
+  body[data-page="messages"] .ai-chat {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 176px);
+    height: min(560px, calc(100dvh - 240px));
+  }
+}
+@media (min-width: 960px) {
+  .dm-compose-fab { right: 24px; bottom: 96px; }
+  body[data-page="messages"] .ai-chat { bottom: 190px; }
+}
+
+/* ---------- Mobile: full-bleed dark like the reference ---------- */
+@media (max-width: 760px) {
+  body[data-page="messages"],
+  body[data-page="messages"] main { background: var(--dm-bg); }
+  .dm-inbox { border: 0; border-radius: 0; }
+}
