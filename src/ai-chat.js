@@ -291,8 +291,19 @@
       signal: controller.signal,
     }).then(function (res) {
       if (!res.ok) {
-        return res.json().then(function (j) {
-          throw new Error(j && j.error ? j.error : 'Request failed (' + res.status + ')');
+        // Never assume the error body is JSON — it can be a proxy 404 page or
+        // plain text. Parse defensively so the user sees a useful message
+        // instead of an "Unexpected token … is not valid JSON" crash.
+        return res.text().then(function (text) {
+          var detail = '';
+          try {
+            var parsed = JSON.parse(text);
+            if (parsed && typeof parsed.error === 'string') detail = parsed.error;
+          } catch (err) {
+            // Looks like an HTML page (proxy/static fallback) — drop the body.
+            if (!/^\s*</.test(text)) detail = text.slice(0, 140).trim();
+          }
+          throw new Error(detail || 'Request failed (' + res.status + ').');
         });
       }
       return streamAssistant(res);

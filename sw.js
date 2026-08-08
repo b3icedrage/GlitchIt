@@ -35,7 +35,7 @@ const SHELL_URLS = [
   './src/dm-inbox.css',
   './src/main.js?v=6',
   './src/profile-avatar.js',
-  './src/ai-chat.js',
+  './src/ai-chat.js?v=2',
 ];
 
 self.addEventListener('install', (event) => {
