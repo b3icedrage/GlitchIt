@@ -548,6 +548,87 @@ function attachCreateStudio() {
   const RATIO_ORDER = ['9:16', '1:1', '4:5', '16:9'];
   const state = { type: 'feed', videoMode: false, filter: 'none', captured: null, mode: 'camera', stream: null, hadCamera: false, facing: 'user', torch: false, mic: false, hasMic: false, grid: false, audience: 'you', zoom: 1, timer: 0, counting: false, editingDraft: -1, ratio: '9:16', canRecord: typeof MediaRecorder !== 'undefined', recording: false, recorder: null, chunks: [], recTimer: null, recStart: 0, recordedUrl: '', recordedBlob: null, keepUrl: false, edit: { brightness: 100, contrast: 100, saturation: 100, warmth: 0, rotate: 0, flipH: false, flipV: false, texts: [], emojis: [], trimStart: 0, trimEnd: Infinity, trimSet: false } };
 
+  // Instagram-style left rail camera modes: Create / Boomerang / Layout / Hands-free / Close.
+  // All handlers run on click, so they may safely reference consts (state, timerBtn,
+  // updateModeChrome, stopRecording, showStageToast) defined later in this closure.
+  state.boomerang = false;
+  const railEl = document.querySelector('.ig-rail');
+  const railSetActive = (btn) => {
+    railEl?.querySelectorAll('.rail-item').forEach((b) => b.classList.toggle('active', b === btn));
+  };
+  document.getElementById('rail-create')?.addEventListener('click', (event) => {
+    event.stopImmediatePropagation();
+    railSetActive(event.currentTarget);
+    if (typeof openNoteComposer === 'function') { showStageToast('Create — add text & music'); openNoteComposer(); }
+    else showStageToast('Create — text & stickers arrive in Edit');
+  });
+  document.getElementById('rail-boomerang')?.addEventListener('click', (event) => {
+    event.stopImmediatePropagation();
+    const btn = event.currentTarget;
+    railSetActive(btn);
+    state.boomerang = !state.boomerang;
+    btn.classList.toggle('on', state.boomerang);
+    if (state.boomerang) {
+      state.videoMode = true;
+      updateModeChrome();
+      showStageToast('Boomerang — tap the shutter, it loops itself');
+      // Auto-stop the clip ~1.5s after recording starts so it loops like a boomerang.
+      const autoStop = () => {
+        if (recPill && !recPill.hidden) {
+          setTimeout(() => { if (state.recording) stopRecording(); }, 1500);
+          return true;
+        }
+        return false;
+      };
+      if (!autoStop()) {
+        const iv = setInterval(() => { if (autoStop()) clearInterval(iv); }, 250);
+        setTimeout(() => clearInterval(iv), 9000);
+      }
+    } else {
+      state.videoMode = false;
+      updateModeChrome();
+      showStageToast('Boomerang off');
+    }
+  });
+  document.getElementById('rail-layout')?.addEventListener('click', (event) => {
+    event.stopImmediatePropagation();
+    const btn = event.currentTarget;
+    railSetActive(btn);
+    state.grid = !state.grid;
+    btn.classList.toggle('on', state.grid);
+    const stageGridEl = document.getElementById('stage-grid');
+    if (stageGridEl) stageGridEl.classList.toggle('on', state.grid);
+    showStageToast(state.grid ? 'Layout grid on' : 'Grid off');
+  });
+  document.getElementById('rail-handsfree')?.addEventListener('click', (event) => {
+    event.stopImmediatePropagation();
+    const btn = event.currentTarget;
+    railSetActive(btn);
+    state.timer = state.timer > 0 ? 0 : 3;
+    if (timerBtn) {
+      timerBtn.classList.toggle('on', state.timer > 0);
+      timerBtn.setAttribute('aria-label', state.timer > 0 ? `Timer ${state.timer}s` : 'Timer off');
+      timerBtn.textContent = state.timer > 0 ? `⏱${state.timer}` : '⏱';
+    }
+    showStageToast(state.timer > 0 ? 'Hands-free — 3s countdown armed' : 'Hands-free off');
+  });
+  document.getElementById('rail-close')?.addEventListener('click', (event) => {
+    event.stopImmediatePropagation();
+    const collapsed = railEl?.classList.toggle('collapsed') || false;
+    event.currentTarget.classList.toggle('on', collapsed);
+    const reopen = document.getElementById('rail-reopen');
+    if (reopen) reopen.hidden = !collapsed;
+    showStageToast(collapsed ? 'Camera modes hidden' : 'Camera modes shown');
+  });
+  document.getElementById('rail-reopen')?.addEventListener('click', () => {
+    railEl?.classList.remove('collapsed');
+    document.getElementById('rail-close')?.classList.remove('on');
+    const reopen = document.getElementById('rail-reopen');
+    if (reopen) reopen.hidden = true;
+  });
+  // Top-left flip camera mirrors the bottom-right one (same handler).
+  document.getElementById('flip-btn-top')?.addEventListener('click', () => flipBtn?.click());
+
   // Mirror the front camera so users see themselves like a mirror (selfie view).
   // The rear camera stays un-mirrored; zoom is combined into the same transform.
   const applyVideoTransform = () => {
