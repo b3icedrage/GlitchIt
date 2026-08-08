@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="src/bottombar.css?v=2" />
     <link rel="stylesheet" href="src/create.css" />
     <link rel="stylesheet" href="src/create-hub.css" />
+    <link rel="stylesheet" href="src/create-camera.css?v=1" />
   </head>
   <body data-page="create">
     <div id="app">
@@ -248,11 +249,48 @@
               <strong id="create-form-head-label">New story</strong>
               <span></span>
             </div>
-            <div class="create-preview-row">
-              <img id="create-preview-thumb" alt="Captured preview">
-              <video id="create-preview-video" class="create-preview-video" playsinline loop muted preload="metadata" aria-label="Recorded preview" hidden></video>
-              <input name="title" aria-label="Title" required>
+            <!-- Real camera: see yourself, take a photo or record a video -->
+            <div class="fc-cam" id="fc-cam" hidden>
+              <video id="fc-feed" autoplay muted playsinline aria-label="Camera preview"></video>
+              <div class="fc-fallback" id="fc-fallback" hidden>
+                <span class="fc-fallback-mark">ϟ</span>
+                <p id="fc-status-title">Camera preview unavailable</p>
+                <small id="fc-status-detail">Allow camera access to see yourself here, or pick a photo below.</small>
+                <button type="button" class="camera-retry" id="fc-retry">Enable camera</button>
+              </div>
+              <div class="fc-flashfx" id="fc-flashfx" aria-hidden="true"></div>
+              <div class="fc-countdown" id="fc-countdown" hidden></div>
+              <div class="fc-recpill" id="fc-recpill" hidden><i></i><span>REC</span><b id="fc-rec-time">0:00</b></div>
+              <div class="fc-top">
+                <button type="button" class="fc-top-btn" id="fc-flip" aria-label="Flip camera" title="Flip camera">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                </button>
+                <button type="button" class="fc-top-btn" id="fc-flash" aria-label="Toggle flash" title="Flash">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </button>
+                <button type="button" class="fc-top-btn" id="fc-timer" aria-label="Timer off" title="Timer">⏱</button>
+              </div>
+              <div class="fc-bottom">
+                <label class="fc-gallery" for="media-upload-input" aria-label="Pick a photo or video" title="Gallery">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                </label>
+                <button type="button" class="fc-shutter" id="fc-shutter" aria-label="Capture photo"></button>
+                <button type="button" class="fc-record" id="fc-record" aria-label="Record video"><span class="fc-record-ring" aria-hidden="true"></span></button>
+              </div>
             </div>
+
+            <!-- Your shot: retake or continue -->
+            <div class="fc-shot" id="fc-shot" hidden>
+              <img id="fc-shot-photo" class="fc-shot-media" alt="Captured photo" hidden>
+              <video id="fc-shot-video" class="fc-shot-media" playsinline loop muted preload="auto" aria-label="Recorded video" hidden></video>
+              <div class="fc-shot-actions">
+                <button type="button" class="fc-retake" id="fc-retake">Retake</button>
+                <button type="button" class="fc-next" id="fc-next">Next</button>
+              </div>
+            </div>
+
+            <!-- Share sheet: caption + location + share options -->
+            <div class="fc-share" id="fc-share" hidden>
             <textarea name="caption" aria-label="Caption"></textarea>
             <div class="emoji-row" id="caption-emojis" aria-label="Quick emojis">
               <button type="button" data-emoji="😀" aria-label="Insert smiling face">😀</button>
@@ -277,7 +315,11 @@
               <button type="button" id="save-draft-btn" class="draft-save">Save draft</button>
               <button type="submit" class="primary-action">Publish</button>
             </div>
+            </div>
+            <input type="hidden" name="title" value="">
             <input type="file" id="media-upload-input" name="media" accept="image/*,video/*" hidden>
+            <img id="create-preview-thumb" alt="Captured preview" hidden>
+            <video id="create-preview-video" class="create-preview-video" playsinline loop muted preload="metadata" aria-label="Recorded preview" hidden></video>
             <p class="create-status" id="create-status" role="status"></p>
           </form>
         </section>
@@ -300,9 +342,10 @@
         <a href="profile.html"><span class="nav-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span>Profile</span></a>
       </nav>
     </div>
-    <script src="src/main.js?v=9" defer></script>
+    <script src="src/main.js?v=10" defer></script>
     <script src="src/create-hub.js" defer></script>
     <script src="src/profile-avatar.js" defer></script>
     <script src="src/notes-story-enhancements.js" defer></script>
+    <script src="src/create-camera.js?v=1" defer></script>
   </body>
 </html>

@@ -722,6 +722,9 @@ function attachCreateStudio() {
     setVideoMode: (on) => { state.videoMode = Boolean(on); },
     getVideoMode: () => Boolean(state.videoMode),
     pickTab: (name) => { const t = tabs.find((x) => x.dataset.tab === name); if (t) t.click(); },
+    // The real-camera form (src/create-camera.js) stores a poster frame for
+    // recorded clips through the bridge so publish uses a real cover image.
+    setPoster: (src) => { if (src) state.captured = src; },
     // The Create Hub calls this after a pick so users always see themselves in
     // the camera (same live self-view as the Live page) before they shoot.
     ensureCamera: () => { if (!state.stream && state.mode === 'camera') return startCamera(); return Promise.resolve(); }, // (bridge)
