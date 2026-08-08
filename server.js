@@ -304,7 +304,7 @@ async function handleChatRequest(req, res) {
   const apiKey = getNvidiaKey();
   if (!apiKey) {
     res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-    res.end(JSON.stringify({ error: 'The AI assistant is being set up right now — please try again soon.' }));
+    res.end(JSON.stringify({ error: 'The AI assistant is not configured yet — set the NVIDIA_API_KEY environment variable and restart the server.' }));
     return;
   }
 

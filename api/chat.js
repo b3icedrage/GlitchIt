@@ -76,7 +76,7 @@ module.exports = async function handler(req, res) {
 
   const apiKey = process.env.NVIDIA_API_KEY || '';
   if (!apiKey) {
-    res.status(503).json({ error: 'The AI assistant is being set up right now — please try again soon.' });
+    res.status(503).json({ error: 'The AI assistant is not configured yet — add the NVIDIA_API_KEY environment variable in Vercel (Project → Settings → Environment Variables), then redeploy.' });
     return;
   }
 
