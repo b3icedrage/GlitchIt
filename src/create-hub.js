@@ -69,7 +69,12 @@
       default:
         break;
     }
+    // Make sure the camera is running so the user sees themselves immediately
+    // (the Live-page style self-view) the moment they start recording or
+    // snapping a picture — no extra tap needed.
+    const cam = bridge && bridge.ensureCamera ? bridge.ensureCamera() : Promise.resolve();
     close();
+    cam.catch && cam.catch(() => {});
   };
 
   hub.addEventListener('click', (event) => {

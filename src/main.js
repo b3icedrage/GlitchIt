@@ -687,6 +687,9 @@ function attachCreateStudio() {
     setVideoMode: (on) => { state.videoMode = Boolean(on); },
     getVideoMode: () => Boolean(state.videoMode),
     pickTab: (name) => { const t = tabs.find((x) => x.dataset.tab === name); if (t) t.click(); },
+    // The Create Hub calls this after a pick so users always see themselves in
+    // the camera (same live self-view as the Live page) before they shoot.
+    ensureCamera: () => { if (!state.stream && state.mode === 'camera') return startCamera(); return Promise.resolve(); },
   };
 
   // Filter chips — previews + live application

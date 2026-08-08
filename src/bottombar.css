@@ -14,7 +14,7 @@
     transform: translateX(-50%);
     z-index: 40;
     display: grid;
-    grid-template-columns: repeat(8, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     align-items: center;
     gap: 2px;
     width: calc(100% - 28px);
