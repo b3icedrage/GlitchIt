@@ -31,8 +31,10 @@ const SHELL_URLS = [
   './auth.html',
   './src/styles.css',
   './src/bottombar.css?v=1',
+  './src/ai-chat.css',
   './src/main.js?v=6',
   './src/profile-avatar.js',
+  './src/ai-chat.js',
 ];
 
 self.addEventListener('install', (event) => {

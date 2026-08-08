@@ -151,6 +151,187 @@ async function resolvePath(urlPath) {
   }
 }
 
+// ---------------- AI assistant (OpenAI-compatible → NVIDIA NIM) ----------------
+// The chat UI (Messages + Settings → GlitchIt AI) POSTs the conversation here;
+// this endpoint forwards it to NVIDIA's hosted model with the API key held
+// server-side only (never shipped to the browser), and streams NDJSON lines
+// back: {t:'r'} reasoning, {t:'c'} content, {t:'done'}, {t:'err'}.
+const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
+const NVIDIA_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b';
+const AI_TIMEOUT_MS = 150 * 1000;
+const AI_MAX_BODY = 64 * 1024;
+
+const AI_SYSTEM_PROMPT = [
+  'You are the GlitchIt AI assistant — a friendly, helpful support agent for GlitchIt,',
+  'a social marketplace where creators share short glitch-style videos, photos, and',
+  '"drops", and followers can shop creators\' storefronts.',
+  'You help with: reporting bugs and complaints (and escalating to a real human',
+  'support agent when needed), account and login issues, creating posts/videos with',
+  'the in-app camera, saved videos, followers and drops, the marketplace/storefront',
+  'and orders, and general product questions.',
+  'Be warm and concise. Use plain language. When the user has a complaint or issue,',
+  'acknowledge it, ask for the key details (what happened, what they expected), and',
+  'tell them the fastest path to a fix — including that their complaint can be',
+  'escalated to a human if you cannot resolve it. Never invent technical steps; if',
+  'unsure, suggest contacting GlitchIt support.',
+].join(' ');
+
+function getNvidiaKey() {
+  // Set via freebuff-env (sandbox) / freebuff-deploy env (production).
+  return process.env.NVIDIA_API_KEY || '';
+}
+
+async function readJsonBody(req, maxBytes) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > maxBytes) return null;
+    chunks.push(chunk);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch (err) {
+    return null;
+  }
+}
+
+// Streaming generator: yields {type:'reasoning'|'content'|'done'|'error', text}.
+async function* chatStream(messages, opts) {
+  const controller = opts && opts.signal ? opts.signal : undefined;
+  let res;
+  try {
+    res = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${opts.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: NVIDIA_MODEL,
+        messages,
+        temperature: 1,
+        top_p: 0.95,
+        max_tokens: 16384,
+        stream: true,
+        chat_template_kwargs: { enable_thinking: true },
+        reasoning_budget: 16384,
+      }),
+      signal: controller,
+    });
+  } catch (err) {
+    yield { type: 'error', text: 'Could not reach the AI service.' };
+    return;
+  }
+
+  if (!res.ok || !res.body) {
+    let detail = '';
+    try { detail = (await res.text()).slice(0, 300); } catch (err) { /* ignore */ }
+    if (res.status === 401 || res.status === 403) {
+      yield { type: 'error', text: 'The AI assistant is not configured correctly (invalid API key).' };
+    } else if (res.status === 429) {
+      yield { type: 'error', text: 'The AI assistant is busy right now — please try again in a moment.' };
+    } else {
+      yield { type: 'error', text: detail || `The AI service returned an error (${res.status}).` };
+    }
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let nl;
+      while ((nl = buf.indexOf('\n')) !== -1) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === '[DONE]') continue;
+        let chunk;
+        try { chunk = JSON.parse(payload); } catch (err) { continue; }
+        const choice = chunk.choices && chunk.choices[0];
+        if (!choice || !choice.delta) continue;
+        const delta = choice.delta;
+        if (typeof delta.reasoning_content === 'string' && delta.reasoning_content) {
+          yield { type: 'reasoning', text: delta.reasoning_content };
+        }
+        if (typeof delta.reasoning === 'string' && delta.reasoning) {
+          yield { type: 'reasoning', text: delta.reasoning };
+        } else if (Array.isArray(delta.reasoning)) {
+          // Structured reasoning: emit only the summary, not every internal step.
+          const summary = delta.reasoning.find((r) => r && r.type === 'summary' && r.text);
+          if (summary) yield { type: 'reasoning', text: summary.text };
+        }
+        if (typeof delta.content === 'string' && delta.content) {
+          yield { type: 'content', text: delta.content };
+        }
+      }
+    }
+  } catch (err) {
+    if (!(opts.signal && opts.signal.aborted)) {
+      yield { type: 'error', text: 'The AI stream was interrupted.' };
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  yield { type: 'done' };
+}
+
+async function handleChatRequest(req, res) {
+  const apiKey = getNvidiaKey();
+  if (!apiKey) {
+    res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ error: 'The AI assistant is being set up right now — please try again soon.' }));
+    return;
+  }
+
+  const body = await readJsonBody(req, AI_MAX_BODY);
+  if (!body || !Array.isArray(body.messages) || !body.messages.length) {
+    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ error: 'A messages[] array is required.' }));
+    return;
+  }
+
+  // Bound the conversation: last 24 messages, 6k chars each.
+  const messages = body.messages
+    .filter((m) => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'))
+    .slice(-24)
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 6000) }));
+  const handle = typeof body.user === 'string' && body.user ? body.user : '';
+  messages.unshift({
+    role: 'system',
+    content: AI_SYSTEM_PROMPT + (handle ? `\n\nThe person you are helping is @${handle}.` : ''),
+  });
+
+  res.writeHead(200, {
+    'Content-Type': 'application/x-ndjson; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Accel-Buffering': 'no',
+  });
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+  // Stop spending tokens if the client walks away mid-stream.
+  req.on('close', () => { if (!res.writableEnded) controller.abort(); });
+  try {
+    for await (const line of chatStream(messages, { apiKey, signal: controller.signal })) {
+      if (res.writableEnded) break;
+      try {
+        res.write(JSON.stringify(line) + '\n');
+      } catch (err) { break; }
+      if (line.type === 'error') break;
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+  try { res.end(); } catch (err) { /* client already gone */ }
+}
+
 const server = http.createServer(async (req, res) => {
   // Rate limit before doing any work — abusive traffic gets a fast 429.
   const verdict = rateLimit(clientIp(req));
@@ -163,6 +344,12 @@ const server = http.createServer(async (req, res) => {
       'X-RateLimit-Remaining': '0',
     });
     res.end(`429 Too Many Requests — slow down and retry in ${verdict.retryAfter}s`);
+    return;
+  }
+
+  // AI chat is the only dynamic endpoint; everything else is static files.
+  if (req.method === 'POST' && new URL(req.url, 'http://glitchit.local').pathname === '/api/chat') {
+    await handleChatRequest(req, res);
     return;
   }
 
@@ -211,7 +398,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 // Exported for tests; the server only listens when run directly (node server.js).
-module.exports = { createRateLimiter, RATE_LIMIT };
+module.exports = { createRateLimiter, RATE_LIMIT, chatStream, handleChatRequest };
 
 if (require.main === module) {
   server.listen(PORT, '0.0.0.0', () => {

@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="src/bottombar.css?v=1" />
     <link rel="stylesheet" href="src/db.css" />
     <link rel="stylesheet" href="src/settings.css" />
+    <link rel="stylesheet" href="src/ai-chat.css" />
   </head>
   <body data-page="profile">
     <div id="app">
@@ -136,6 +137,14 @@
                   <button type="button" class="settings-add-account" data-setting="add-account">Add more accounts</button>
                 </div>
 
+                <div class="settings-group">
+                  <button type="button" class="settings-row settings-row-tall" data-ai-support>
+                    <span class="setting-icon" aria-hidden="true">ϟ</span>
+                    <span class="setting-copy"><strong>GlitchIt AI assistant</strong><em>Chat with our AI for help, support, and complaints.</em></span>
+                    <span class="setting-chevron" aria-hidden="true">›</span>
+                  </button>
+                </div>
+
                 <div class="settings-group settings-preferences-group">
                   <label class="settings-row settings-theme-row">
                     <span class="setting-icon" aria-hidden="true">◐</span>
@@ -172,5 +181,6 @@
     <script src="src/main.js?v=6" defer></script>
     <script src="src/settings-enhancements.js" defer></script>
     <script src="src/profile-avatar.js" defer></script>
+    <script src="src/ai-chat.js" defer></script>
   </body>
 </html>
