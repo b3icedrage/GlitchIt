@@ -120,7 +120,7 @@ function syncProfileFromUser(user) {
 function applyProfileAvatarUi() {
   const handle = profile.username || 'your account';
   const avatar = profile.avatar || fallbackAvatar(handle);
-  document.querySelectorAll('.me img, .profile-photo-wrap > img, .story-create img, .ig-profiles .profile-avatar:not(.gray) img').forEach((image) => {
+  document.querySelectorAll('.me img, .profile-photo-wrap > img, .story-create img, .ig-profiles .profile-avatar:not(.gray) img, .account-sheet-avatar').forEach((image) => {
     image.src = avatar;
     image.alt = `${handle} profile picture`;
   });

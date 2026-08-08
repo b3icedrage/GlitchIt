@@ -38,7 +38,7 @@
 
         <section class="profile-panel page" id="profile" data-page="profile" aria-labelledby="profile-title">
           <div class="profile-content">
-            <div class="profile-topbar"><strong>you</strong><span class="live-dot" aria-hidden="true"></span><div class="profile-top-actions"><a href="activity.html" aria-label="Activity"><span class="icon" aria-hidden="true">◎</span></a><a href="create.html" aria-label="Create" class="top-plus-badge"><span class="icon" aria-hidden="true">＋</span><b aria-hidden="true"></b></a><button type="button" class="settings-button top-menu-btn" aria-label="Settings"><span class="icon" aria-hidden="true">☰</span></button></div></div>
+            <div class="profile-topbar"><button type="button" class="profile-topbar-account" id="account-switch-btn" aria-label="Switch account" aria-haspopup="dialog"><strong>you</strong><span class="account-chevron" aria-hidden="true">▾</span></button><span class="live-dot" aria-hidden="true"></span><div class="profile-top-actions"><a href="activity.html" aria-label="Activity"><span class="icon" aria-hidden="true">◎</span></a><a href="create.html" aria-label="Create" class="top-plus-badge"><span class="icon" aria-hidden="true">＋</span><b aria-hidden="true"></b></a><button type="button" class="settings-button top-menu-btn" aria-label="Settings"><span class="icon" aria-hidden="true">☰</span></button></div></div>
             <div class="profile-header">
               <div class="profile-photo-wrap">
                 <button type="button" class="share-song" id="share-song"><span>Share a song ♪</span></button>
@@ -156,6 +156,22 @@
                   <button type="button" class="auth-logout" id="auth-logout">Log out</button>
                 </div>
               </div>
+            </section>
+
+            <div class="account-sheet-backdrop" id="account-sheet-backdrop"></div>
+            <section class="account-sheet" id="account-sheet" role="dialog" aria-modal="true" aria-label="Switch account">
+              <span class="account-sheet-handle" aria-hidden="true"></span>
+              <button type="button" class="account-row" id="account-current">
+                <span class="account-avatar"><img class="account-sheet-avatar" id="account-current-avatar" src="" alt=""></span>
+                <span class="account-name" id="account-current-name">you</span>
+                <span class="account-check" aria-hidden="true">✓</span>
+              </button>
+              <button type="button" class="account-row account-add-row" data-account-add>
+                <span class="account-add-icon" aria-hidden="true">＋</span>
+                <span class="account-name">Add GlitchIt account</span>
+              </button>
+              <button type="button" class="account-center-btn" data-account-center>Go to Accounts Center</button>
+              <div class="account-sheet-footer"><span class="glitchit-mark" aria-hidden="true">ϟ</span><span>GlitchIt</span></div>
             </section>
           </div>
         </section>
