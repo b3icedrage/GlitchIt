@@ -297,6 +297,41 @@ async function hydrateShopProfile() {
 
 const page = document.body.dataset.page || 'home';
 
+// ---------- Bottom bar auto-dismiss ----------
+// Fades the floating pill bar out when the user reaches the very bottom of a
+// page (so the content and the "you're all caught up" toast breathe), and fades
+// it back in the moment they scroll back up. Runs on every page: the
+// capture-phase listener catches window AND inner-container scrolling.
+(function attachBottomBarDismiss() {
+  const bar = document.querySelector('.bottom-bar');
+  if (!bar) return;
+  const desktop = window.matchMedia('(min-width: 761px)'); // desktop hides the bar anyway
+  const apply = (hiddenNow) => bar.classList.toggle('bottom-bar-hidden', hiddenNow);
+  const nearBottom = (el) => {
+    let scrollTop, scrollHeight, clientHeight;
+    if (!el || el === document || el === document.documentElement || el === document.body || el === window) {
+      scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+      scrollHeight = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight || 0);
+      clientHeight = window.innerHeight;
+    } else {
+      scrollTop = el.scrollTop || 0;
+      scrollHeight = el.scrollHeight || 0;
+      clientHeight = el.clientHeight || 0;
+    }
+    // Only hide once the page actually scrolls and the user is at the extreme
+    // bottom (last ~32px); a barely-scrollable page never hides the bar.
+    return scrollHeight > clientHeight + 1 && scrollTop > 4 && scrollTop + clientHeight >= scrollHeight - 32;
+  };
+  const onScroll = (event) => {
+    if (desktop.matches) return;
+    const target = event.target;
+    apply(nearBottom(target && typeof target.scrollTop === 'number' ? target : document));
+  };
+  document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+  window.addEventListener('resize', () => { if (!desktop.matches) apply(nearBottom(document)); }, { passive: true });
+  if (!desktop.matches) apply(nearBottom(document)); // restore-scroll safety
+})();
+
 function returnToPage() {
   try { return new URLSearchParams(location.search).get('returnTo') || ''; } catch (e) { return ''; }
 }
@@ -689,7 +724,7 @@ function attachCreateStudio() {
     pickTab: (name) => { const t = tabs.find((x) => x.dataset.tab === name); if (t) t.click(); },
     // The Create Hub calls this after a pick so users always see themselves in
     // the camera (same live self-view as the Live page) before they shoot.
-    ensureCamera: () => { if (!state.stream && state.mode === 'camera') return startCamera(); return Promise.resolve(); },
+    ensureCamera: () => { if (!state.stream && state.mode === 'camera') return startCamera(); return Promise.resolve(); }, // (bridge)
   };
 
   // Filter chips — previews + live application
