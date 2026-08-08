@@ -509,7 +509,7 @@ function attachCreateStudio() {
   // Aspect ratios keyed to height/width (capture canvas height = width * ratio).
   const RATIOS = { '9:16': 16 / 9, '1:1': 1, '4:5': 5 / 4, '16:9': 9 / 16 };
   const RATIO_ORDER = ['9:16', '1:1', '4:5', '16:9'];
-  const state = { type: 'feed', filter: 'none', captured: null, mode: 'camera', stream: null, hadCamera: false, facing: 'user', torch: false, mic: false, hasMic: false, grid: false, audience: 'you', zoom: 1, timer: 0, counting: false, editingDraft: -1, ratio: '9:16', canRecord: typeof MediaRecorder !== 'undefined', recording: false, recorder: null, chunks: [], recTimer: null, recStart: 0, recordedUrl: '', recordedBlob: null, keepUrl: false, edit: { brightness: 100, contrast: 100, saturation: 100, warmth: 0, rotate: 0, flipH: false, flipV: false, texts: [], emojis: [], trimStart: 0, trimEnd: Infinity, trimSet: false } };
+  const state = { type: 'feed', videoMode: false, filter: 'none', captured: null, mode: 'camera', stream: null, hadCamera: false, facing: 'user', torch: false, mic: false, hasMic: false, grid: false, audience: 'you', zoom: 1, timer: 0, counting: false, editingDraft: -1, ratio: '9:16', canRecord: typeof MediaRecorder !== 'undefined', recording: false, recorder: null, chunks: [], recTimer: null, recStart: 0, recordedUrl: '', recordedBlob: null, keepUrl: false, edit: { brightness: 100, contrast: 100, saturation: 100, warmth: 0, rotate: 0, flipH: false, flipV: false, texts: [], emojis: [], trimStart: 0, trimEnd: Infinity, trimSet: false } };
 
   // Mirror the front camera so users see themselves like a mirror (selfie view).
   // The rear camera stays un-mirrored; zoom is combined into the same transform.
@@ -534,7 +534,7 @@ function attachCreateStudio() {
   // Shutter/timer chrome reacts to the active tab (record mode + no timer for REELs).
   const updateModeChrome = () => {
     const capture = document.getElementById('capture-btn');
-    const videoMode = state.type === 'videos';
+    const videoMode = state.type === 'videos' || state.videoMode;
     if (capture) {
       capture.classList.toggle('record', videoMode && state.canRecord);
       capture.setAttribute('aria-label', videoMode ? (state.recording ? 'Stop recording' : 'Record video') : 'Capture photo');
@@ -680,6 +680,14 @@ function attachCreateStudio() {
       updateModeChrome();
     });
   });
+
+  // Bridge for the Create Hub chooser (src/create-hub.js): pick a post type
+  // and whether the shutter records video or captures a photo.
+  window.__glitchCreate = {
+    setVideoMode: (on) => { state.videoMode = Boolean(on); },
+    getVideoMode: () => Boolean(state.videoMode),
+    pickTab: (name) => { const t = tabs.find((x) => x.dataset.tab === name); if (t) t.click(); },
+  };
 
   // Filter chips — previews + live application
   chips.forEach((chip) => {
@@ -927,8 +935,10 @@ function attachCreateStudio() {
       countdown.replaceChildren();
       return;
     }
-    // REEL tab: tap to start/stop a video recording
-    if (state.type === 'videos' && state.canRecord) {
+    // Video mode (REEL tab, or a "Record" pick from the Create Hub): tap to
+    // start/stop a video recording. Feed/Story tabs stay in photo mode unless
+    // the Create Hub set videoMode.
+    if ((state.type === 'videos' || state.videoMode) && state.canRecord) {
       if (state.recording) { stopRecording(); return; }
       if (!(await ensureCameraForShutter())) return;
       startRecording();
@@ -1016,7 +1026,7 @@ function attachCreateStudio() {
     shareRow.hidden = state.type !== 'stories';
   };
   const openCaptionForm = () => {
-    const isVideo = state.type === 'videos' && state.recordedUrl;
+    const isVideo = (state.type === 'videos' || state.videoMode) && state.recordedUrl;
     if (previewImg) previewImg.hidden = isVideo;
     if (previewVideo) {
       previewVideo.hidden = !isVideo;
@@ -1030,7 +1040,7 @@ function attachCreateStudio() {
       }
     }
     if (previewImg) previewImg.src = state.captured || CREATE_SAMPLE_IMAGE;
-    document.getElementById('create-form-head-label').textContent = state.type === 'videos' ? 'New video' : state.type === 'stories' ? 'New story' : 'New post';
+    document.getElementById('create-form-head-label').textContent = isVideo ? 'New video' : state.type === 'stories' ? 'New story' : 'New post';
     setShareRow();
     stopCamera();
     stage.hidden = true;
@@ -1064,7 +1074,8 @@ function attachCreateStudio() {
     const caption = data.get('caption');
     const editingStory = new URLSearchParams(window.location.search).get('editStory') === 'latest' && userUploads.stories.length > 0;
     const type = editingStory ? 'stories' : state.type;
-    const isVideo = state.type === 'videos';
+    const isVideo = state.type === 'videos' || state.videoMode;
+    const dest = type === 'feed' ? 'the Home feed' : type === 'stories' ? 'your Story' : 'Glitches';
     let preview = state.captured;
     const file = data.get('media');
     if (!preview && file?.size) preview = await readFileAsDataURL(file);
@@ -1103,20 +1114,20 @@ function attachCreateStudio() {
             if (isVideo) item.src = res.url;
             saveUploads();
           }
-          status.className = 'create-status ok'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} and saved to the database.`; return;
+          status.className = 'create-status ok'; status.textContent = `Published to ${dest} and saved to the database.`; return;
         }
-        if (res.reason === 'auth') { status.className = 'create-status'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — sign in to publish to the database.`; return; }
-        if (res.reason === 'config') { status.className = 'create-status'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only — add Supabase keys in src/config.js).`; }
-        else if (res.reason === 'table') { status.className = 'create-status'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — database needs setup: create the media & saved tables in the Supabase SQL Editor (I can re-send the script).`; }
-        else { status.className = 'create-status'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} (local only) — database error. Check that the tables and the glitchit-media bucket exist.`; }
+        if (res.reason === 'auth') { status.className = 'create-status'; status.textContent = `Published to ${dest} (local only) — sign in to publish to the database.`; return; }
+        if (res.reason === 'config') { status.className = 'create-status'; status.textContent = `Published to ${dest} (local only — add Supabase keys in src/config.js).`; }
+        else if (res.reason === 'table') { status.className = 'create-status'; status.textContent = `Published to ${dest} (local only) — database needs setup: create the media & saved tables in the Supabase SQL Editor (I can re-send the script).`; }
+        else { status.className = 'create-status'; status.textContent = `Published to ${dest} (local only) — database error. Check that the tables and the glitchit-media bucket exist.`; }
       });
     } else if (status) {
       status.className = 'create-status ok';
-      status.textContent = `Published to ${isVideo ? 'Glitches' : type}. View it on ${isVideo ? 'the Glitches page' : 'the Home feed'}.`;
+      status.textContent = `Published to ${dest}.`;
     }
     form.reset();
     celebratePublish();
-    if (status) { status.className = 'create-status ok'; status.textContent = `Published to ${isVideo ? 'Glitches' : type} ✓`; }
+    if (status) { status.className = 'create-status ok'; status.textContent = `Published to ${dest} ✓`; }
     clearTimeout(submitTimer);
     submitTimer = setTimeout(resetStudio, 1100);
   });
