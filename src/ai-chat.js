@@ -198,45 +198,50 @@
 
   /* ---------------- Streaming ---------------- */
 
+  // Accept both wire formats the server may emit: {t:'r'|'c'|'done'|'err', d}
+  // and the descriptive {type:'reasoning'|'content'|'done'|'error', text}.
   function handleLine(line) {
     if (!line) return;
     var msg;
     try { msg = JSON.parse(line); } catch (err) { return; }
-    if (!msg || typeof msg.t !== 'string') return;
+    if (!msg) return;
+    var type = msg.t || msg.type;
+    var data = msg.d || msg.text;
+    if (typeof type !== 'string') return;
 
-    if (msg.t === 'r') {
+    if (type === 'r' || type === 'reasoning') {
       if (currentAssistant && !currentAssistant.thinkingOpen) {
         currentAssistant.thinkingOpen = true;
         currentAssistant.thinkingEl.open = true;
         currentAssistant.thinkingEl.setAttribute('data-state', 'working');
       }
       if (currentAssistant) {
-        currentAssistant.thinkingEl.querySelector('div').textContent += msg.d || '';
+        currentAssistant.thinkingEl.querySelector('div').textContent += data || '';
         scrollBottom();
       }
-    } else if (msg.t === 'c') {
+    } else if (type === 'c' || type === 'content') {
       if (currentAssistant) {
-        currentAssistant.contentEl.textContent += msg.d || '';
+        currentAssistant.contentEl.textContent += data || '';
         currentAssistant.contentEl.classList.add('ai-caret');
         scrollBottom();
       }
-    } else if (msg.t === 'done') {
+    } else if (type === 'done') {
       if (currentAssistant) {
         currentAssistant.contentEl.classList.remove('ai-caret');
         currentAssistant.thinkingEl.setAttribute('data-state', 'done');
         currentAssistant.thinkingEl.open = false;
       }
-    } else if (msg.t === 'err') {
+    } else if (type === 'err' || type === 'error') {
       if (currentAssistant) {
         currentAssistant.contentEl.classList.remove('ai-caret');
         if (!currentAssistant.contentEl.textContent) {
           currentAssistant.bubble.classList.add('ai-error');
-          currentAssistant.contentEl.textContent = msg.d || 'Something went wrong.';
+          currentAssistant.contentEl.textContent = data || 'Something went wrong.';
         } else {
-          currentAssistant.contentEl.textContent += '\n\n⚠ ' + (msg.d || 'Something went wrong.');
+          currentAssistant.contentEl.textContent += '\n\n⚠ ' + (data || 'Something went wrong.');
         }
       } else {
-        showError(msg.d || 'Something went wrong.');
+        showError(data || 'Something went wrong.');
       }
       scrollBottom();
     }
