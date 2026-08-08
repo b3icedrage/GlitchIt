@@ -30,6 +30,7 @@ const SHELL_URLS = [
   './create.html',
   './auth.html',
   './src/styles.css',
+  './src/bottombar.css?v=1',
   './src/main.js?v=6',
   './src/profile-avatar.js',
 ];

@@ -1,0 +1,118 @@
+/* ============ Floating pill bottom bar (upgraded) ============
+   Linked AFTER src/styles.css so these rules win the cascade.
+   Desktop keeps the legacy rule (bottom-bar hidden); mobile gets
+   a floating glass pill with gradient active chips and a raised
+   center create button. */
+
+.bottom-bar { display: none; } /* desktop: hidden (matches styles.css) */
+
+@media (max-width: 760px) {
+  .bottom-bar {
+    left: 50%;
+    right: auto;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 40;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    align-items: center;
+    gap: 2px;
+    width: calc(100% - 28px);
+    max-width: 520px;
+    padding: 10px 12px calc(8px + env(safe-area-inset-bottom));
+    border: 1px solid rgba(38, 38, 38, .08);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, .82);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, .14), 0 4px 14px rgba(0, 0, 0, .08), inset 0 1px 0 rgba(255, 255, 255, .6);
+    backdrop-filter: blur(22px) saturate(1.5);
+    -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  }
+
+  .bottom-bar a {
+    display: grid;
+    justify-items: center;
+    align-items: center;
+    align-content: center;
+    gap: 3px;
+    min-width: 0;
+    padding: 6px 4px 5px;
+    border-radius: 16px;
+    font-size: 10px;
+    line-height: 1.15;
+    color: #8a8a8a;
+    -webkit-tap-highlight-color: transparent;
+    transition: color .18s ease, transform .18s ease;
+  }
+
+  .bottom-bar .nav-icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 28px;
+    border-radius: 13px;
+    transition: background .22s ease, box-shadow .22s ease;
+  }
+
+  .bottom-bar a svg {
+    display: block;
+    transition: transform .22s ease;
+  }
+
+  .bottom-bar a:hover { color: #262626; background: transparent; }
+  .bottom-bar a:hover .nav-icon { background: rgba(38, 38, 38, .06); }
+  .bottom-bar a:hover .nav-icon svg { transform: translateY(-1px) scale(1.06); }
+  .bottom-bar a:active { transform: scale(.94); }
+
+  /* Active tab: gradient chip + white icon */
+  .bottom-bar a.active { color: #171717; font-weight: 800; background: transparent; }
+  .bottom-bar a.active .nav-icon {
+    background: linear-gradient(135deg, #d62976, #4f5bd5);
+    box-shadow: 0 6px 14px rgba(214, 41, 118, .35);
+  }
+  .bottom-bar a.active .nav-icon svg { stroke: #fff; transform: scale(1.04); }
+
+  /* Glowing play tab */
+  .glitch-nav-btn .nav-icon svg { width: 26px; height: 26px; }
+  .glitch-nav-btn .glitch-play-icon { filter: drop-shadow(0 0 6px rgba(214, 41, 118, .6)); }
+  .glitch-nav-btn:not(.active):hover .glitch-play-icon { filter: drop-shadow(0 0 10px rgba(214, 41, 118, .7)); transform: scale(1.06); }
+
+  /* Center create button */
+  .bottom-bar .bottom-create { position: relative; padding-top: 22px; }
+  .bottom-bar .bottom-create:active { transform: none; }
+  .bottom-bar .bottom-create-btn {
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #d62976, #4f5bd5);
+    color: #fff;
+    box-shadow: 0 10px 22px rgba(214, 41, 118, .45), 0 0 0 4px rgba(255, 255, 255, .92);
+    transition: transform .28s cubic-bezier(.34, 1.56, .64, 1), box-shadow .28s ease;
+  }
+  .bottom-bar .bottom-create:hover .bottom-create-btn,
+  .bottom-bar .bottom-create:active .bottom-create-btn {
+    transform: translateX(-50%) rotate(90deg);
+  }
+  .bottom-bar .bottom-create:hover .bottom-create-btn {
+    transform: translateX(-50%) rotate(90deg) scale(1.05);
+    box-shadow: 0 13px 28px rgba(214, 41, 118, .55), 0 0 0 4px rgba(255, 255, 255, .92);
+  }
+
+  /* Dark mode */
+  :root[data-theme="dark"] .bottom-bar {
+    border-color: rgba(255, 255, 255, .09);
+    background: rgba(15, 14, 25, .78);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, .55), 0 4px 14px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .08);
+  }
+  :root[data-theme="dark"] .bottom-bar a { color: #b9b3ce; }
+  :root[data-theme="dark"] .bottom-bar a:hover { color: #f6f3ff; }
+  :root[data-theme="dark"] .bottom-bar a:hover .nav-icon { background: rgba(255, 255, 255, .08); }
+  :root[data-theme="dark"] .bottom-bar a.active { color: #fff; }
+  :root[data-theme="dark"] .bottom-bar .bottom-create-btn { box-shadow: 0 10px 22px rgba(214, 41, 118, .5), 0 0 0 4px rgba(15, 14, 25, .95); }
+  :root[data-theme="dark"] .bottom-bar .bottom-create:hover .bottom-create-btn { box-shadow: 0 13px 28px rgba(214, 41, 118, .6), 0 0 0 4px rgba(15, 14, 25, .95); }
+}
