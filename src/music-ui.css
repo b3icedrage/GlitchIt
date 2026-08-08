@@ -1,7 +1,11 @@
-/* GlitchIt — Music picker (Spotify-style music sheet)
+/* GlitchIt — Notes music UI (Spotify-style music sheet + Instagram-style composer)
    Loaded AFTER src/styles.css on pages with the note composer, so these
-   rules win over the base .music-* styles. The sheet itself is always a
-   dark glass card (matches the app's note modals in both themes). */
+   rules win over the base .music-* / .note-* styles. The sheets themselves
+   are always dark glass cards (matches the app's note modals in both themes). */
+
+/* ================================================================
+   Music sheet (For you / Trending / Saved + search)
+   ================================================================ */
 
 .note-music-card {
   display: flex;
@@ -322,8 +326,419 @@
 }
 .music-toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* ================================================================
+   Instagram-style note composer (bottom sheet)
+   ================================================================ */
+
+/* The composer opens as a bottom sheet (backdrop from styles.css stays) */
+.note-modal#note-composer {
+  place-items: end center;
+  padding: 0;
+}
+.note-modal#note-composer[hidden] { display: none; }
+
+.note-composer-card {
+  width: min(480px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 26px 26px 0 0;
+  padding: 14px 18px calc(18px + env(safe-area-inset-bottom));
+  background: radial-gradient(circle at top right, #241c3f, #12101f 60%);
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, .55);
+  animation: ncSlideUp .3s cubic-bezier(.2, .9, .3, 1);
+}
+@keyframes ncSlideUp {
+  from { transform: translateY(48px); opacity: .3; }
+  to { transform: none; opacity: 1; }
+}
+
+/* Close X top-left, Share top-right */
+.note-composer-card .note-modal-close {
+  top: 12px;
+  right: auto;
+  left: 14px;
+  background: transparent;
+  color: #f6f3ff;
+  font-size: 20px;
+}
+.note-composer-card .nc-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+  margin-bottom: 4px;
+}
+.note-composer-card .nc-top-spacer { width: 34px; }
+.note-composer-card .nc-share {
+  border: 0;
+  background: transparent;
+  color: #6a9dff;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 6px 4px;
+  transition: opacity .18s ease;
+}
+.note-composer-card .nc-share:active { opacity: .6; }
+
+/* Speech bubble */
+.note-composer-card .nc-bubble {
+  position: relative;
+  margin: 4px auto 0;
+  width: min(340px, 88%);
+  padding: 4px 16px 6px;
+  border: 1px solid #322d45;
+  border-radius: 20px;
+  background: #1b1929;
+}
+.note-composer-card .nc-bubble-tail {
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 13px;
+  height: 13px;
+  transform: translateX(-50%) rotate(45deg);
+  border-right: 1px solid #322d45;
+  border-bottom: 1px solid #322d45;
+  background: #1b1929;
+}
+.note-composer-card .nc-text {
+  display: block;
+  width: 100%;
+  border: 0;
+  padding: 8px 0 2px;
+  background: transparent;
+  color: #f6f3ff;
+  font-size: 15px;
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+}
+.note-composer-card .nc-text::placeholder { color: #8f88a8; }
+
+/* Avatar with gradient ring + music palette button */
+.note-composer-card .nc-avatar-wrap {
+  position: relative;
+  width: fit-content;
+  margin: 18px auto 14px;
+}
+.note-composer-card .nc-ring {
+  display: block;
+  padding: 3px;
+  border-radius: 50%;
+  background: conic-gradient(from 210deg, #f6f3ff, #b9b3ce, #8f88a8, #f6f3ff, #b9b3ce, #f6f3ff);
+}
+.note-composer-card .nc-avatar {
+  display: block;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #241c3f;
+}
+.note-composer-card .nc-palette {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #12101f;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d62976, #b0246a);
+  color: #fff;
+  cursor: pointer;
+  transition: transform .18s ease;
+}
+.note-composer-card .nc-palette:active { transform: scale(.88); }
+
+/* Action row: music / location / GIF */
+.note-composer-card .nc-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+.note-composer-card .nc-action {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #322d45;
+  border-radius: 14px;
+  background: #1b1929;
+  color: #d62976;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .2s ease, color .2s ease;
+}
+.note-composer-card .nc-action:active { transform: scale(.9); }
+.note-composer-card .nc-action:hover { border-color: #d62976; }
+.note-composer-card .nc-action-gif { color: #1db954; font-weight: 800; font-size: 13px; }
+.note-composer-card .nc-action-gif:hover { border-color: #1db954; }
+
+/* ---------- Song editor sheet ---------- */
+.note-composer-card .nc-sheet {
+  margin-top: 16px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+}
+.note-composer-card .nc-sheet[hidden] { display: none; }
+
+.note-composer-card .nc-sheet-handle {
+  width: 38px;
+  height: 4px;
+  margin: 0 auto 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .18);
+}
+
+.note-composer-card .nc-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.note-composer-card .nc-sheet-new,
+.note-composer-card .nc-sheet-done {
+  border: 0;
+  background: transparent;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+.note-composer-card .nc-sheet-new { color: #f6f3ff; }
+.note-composer-card .nc-sheet-done { color: #6a9dff; }
+.note-composer-card .nc-sheet-new:active,
+.note-composer-card .nc-sheet-done:active { opacity: .6; }
+
+.note-composer-card .nc-sheet-song {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.note-composer-card .nc-sheet-art {
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2a2440, #191627);
+  color: #d62976;
+  font-size: 20px;
+}
+.note-composer-card .nc-sheet-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.note-composer-card .nc-sheet-meta {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.note-composer-card .nc-sheet-meta b {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f6f3ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.note-composer-card .nc-sheet-meta em {
+  font-size: 13px;
+  font-style: normal;
+  color: #8f88a8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Timeline: clip chip + progress + play */
+.note-composer-card .nc-timeline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.note-composer-card .nc-clip-chip {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 50%;
+  background: transparent;
+  color: #f6f3ff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease;
+}
+.note-composer-card .nc-clip-chip.on {
+  border-color: #d62976;
+  background: rgba(214, 41, 118, .18);
+}
+.note-composer-card .nc-progress {
+  position: relative;
+  flex: 1 1 auto;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .14);
+  overflow: visible;
+}
+.note-composer-card .nc-progress i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d62976, #7b5cff);
+  transition: width .2s linear;
+}
+.note-composer-card .nc-progress i::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, .5);
+}
+.note-composer-card .nc-play {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: #111;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 0 0 2px;
+  cursor: pointer;
+  transition: transform .18s ease, opacity .18s ease;
+}
+.note-composer-card .nc-play:active { transform: scale(.92); }
+
+/* Waveform with selection highlight */
+.note-composer-card .nc-wave {
+  position: relative;
+  height: 58px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .04);
+}
+.note-composer-card .nc-wave-bars {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  padding: 8px 10px;
+}
+.note-composer-card .nc-wave-bars i {
+  flex: 1 1 0;
+  min-width: 2px;
+  display: block;
+  border-radius: 2px;
+  background: #3a3450;
+}
+.note-composer-card .nc-wave-sel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(247, 183, 51, .55), rgba(214, 41, 118, .5) 55%, rgba(123, 92, 255, .55));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
+  transition: left .25s ease, width .25s ease;
+}
+
+/* ---------- Compact attached-song bar (after Done) ---------- */
+.note-composer-card .nc-attached {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .05);
+}
+.note-composer-card .nc-attached[hidden] { display: none; }
+.note-composer-card .nc-attached-art {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2a2440, #191627);
+  color: #d62976;
+  font-size: 16px;
+}
+.note-composer-card .nc-attached-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.note-composer-card .nc-attached-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.note-composer-card .nc-attached-meta b {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f6f3ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.note-composer-card .nc-attached-meta em {
+  font-size: 11px;
+  font-style: normal;
+  color: #8f88a8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.note-composer-card .nc-chip-btn {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .1);
+  color: #f6f3ff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .18s ease;
+}
+.note-composer-card .nc-chip-btn:hover { background: rgba(255, 255, 255, .18); }
+
 /* ---------- Mobile ---------- */
 @media (max-width: 480px) {
   .note-music-card { padding: 16px 14px 10px; }
   .note-music-card .music-thumb { width: 44px; height: 44px; }
+  .note-composer-card { padding: 12px 14px calc(16px + env(safe-area-inset-bottom)); }
+  .note-composer-card .nc-avatar { width: 64px; height: 64px; }
 }
