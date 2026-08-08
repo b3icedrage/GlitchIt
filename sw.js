@@ -27,21 +27,16 @@ const SHELL_URLS = [
   './activity.html',
   './shop.html',
   './profile.html',
-  './create.html',
   './auth.html',
   './src/styles.css',
   './src/bottombar.css?v=2',
   './src/music-ui.css?v=2',
   './src/ai-chat.css',
   './src/dm-inbox.css',
-  './src/create-hub.css',
-  './src/create-camera.css?v=1',
   './src/main.js?v=10',
   './src/music-ui.js?v=2',
   './src/profile-avatar.js',
   './src/ai-chat.js?v=3',
-  './src/create-hub.js',
-  './src/create-camera.js?v=1',
 ];
 
 self.addEventListener('install', (event) => {

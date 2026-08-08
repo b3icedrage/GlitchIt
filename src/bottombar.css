@@ -1,8 +1,7 @@
 /* ============ Floating pill bottom bar (upgraded) ============
    Linked AFTER src/styles.css so these rules win the cascade.
    Desktop keeps the legacy rule (bottom-bar hidden); mobile gets
-   a floating glass pill with gradient active chips and a raised
-   center create button. */
+   a floating glass pill with gradient active chips. */
 
 .bottom-bar { display: none; } /* desktop: hidden (matches styles.css) */
 
@@ -14,7 +13,7 @@
     transform: translateX(-50%);
     z-index: 40;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     align-items: center;
     gap: 2px;
     width: calc(100% - 28px);
@@ -86,33 +85,6 @@
   .glitch-nav-btn .glitch-play-icon { filter: drop-shadow(0 0 6px rgba(214, 41, 118, .6)); }
   .glitch-nav-btn:not(.active):hover .glitch-play-icon { filter: drop-shadow(0 0 10px rgba(214, 41, 118, .7)); transform: scale(1.06); }
 
-  /* Center create button */
-  .bottom-bar .bottom-create { position: relative; padding-top: 22px; }
-  .bottom-bar .bottom-create:active { transform: none; }
-  .bottom-bar .bottom-create-btn {
-    position: absolute;
-    top: -24px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: grid;
-    place-items: center;
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #d62976, #4f5bd5);
-    color: #fff;
-    box-shadow: 0 10px 22px rgba(214, 41, 118, .45), 0 0 0 4px rgba(255, 255, 255, .92);
-    transition: transform .28s cubic-bezier(.34, 1.56, .64, 1), box-shadow .28s ease;
-  }
-  .bottom-bar .bottom-create:hover .bottom-create-btn,
-  .bottom-bar .bottom-create:active .bottom-create-btn {
-    transform: translateX(-50%) rotate(90deg);
-  }
-  .bottom-bar .bottom-create:hover .bottom-create-btn {
-    transform: translateX(-50%) rotate(90deg) scale(1.05);
-    box-shadow: 0 13px 28px rgba(214, 41, 118, .55), 0 0 0 4px rgba(255, 255, 255, .92);
-  }
-
   /* Dark mode */
   :root[data-theme="dark"] .bottom-bar {
     border-color: rgba(255, 255, 255, .09);
@@ -123,6 +95,4 @@
   :root[data-theme="dark"] .bottom-bar a:hover { color: #f6f3ff; }
   :root[data-theme="dark"] .bottom-bar a:hover .nav-icon { background: rgba(255, 255, 255, .08); }
   :root[data-theme="dark"] .bottom-bar a.active { color: #fff; }
-  :root[data-theme="dark"] .bottom-bar .bottom-create-btn { box-shadow: 0 10px 22px rgba(214, 41, 118, .5), 0 0 0 4px rgba(15, 14, 25, .95); }
-  :root[data-theme="dark"] .bottom-bar .bottom-create:hover .bottom-create-btn { box-shadow: 0 13px 28px rgba(214, 41, 118, .6), 0 0 0 4px rgba(15, 14, 25, .95); }
 }
