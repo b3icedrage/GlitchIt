@@ -22,6 +22,24 @@ const { join, normalize, extname, resolve, sep, basename } = require('node:path'
 const ROOT = resolve(__dirname);
 const PORT = Number(process.env.PORT || 4173);
 
+// Load local dev secrets from .env.local if present (e.g. NVIDIA_API_KEY).
+// The platform may inject sandbox env vars, but reading the file here too
+// guarantees the preview works even without injection. Values go straight
+// into the process environment — they are never logged or exposed.
+const { readFileSync } = require('node:fs');
+function loadLocalEnv() {
+  try {
+    const text = readFileSync(join(ROOT, '.env.local'), 'utf8');
+    for (const line of text.split('\n')) {
+      const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/.exec(line);
+      if (m && !(m[1] in process.env)) {
+        process.env[m[1]] = m[2].replace(/^(['"])(.*)\1$/, '$2');
+      }
+    }
+  } catch (err) { /* no .env.local — fall back to platform env */ }
+}
+loadLocalEnv();
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -177,7 +195,7 @@ const AI_SYSTEM_PROMPT = [
 ].join(' ');
 
 function getNvidiaKey() {
-  // Set via freebuff-env (sandbox) / freebuff-deploy env (production).
+  // Set via .env.local (sandbox) / freebuff-deploy env (production).
   return process.env.NVIDIA_API_KEY || '';
 }
 
@@ -398,7 +416,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 // Exported for tests; the server only listens when run directly (node server.js).
-module.exports = { createRateLimiter, RATE_LIMIT, chatStream, handleChatRequest };
+module.exports = { createRateLimiter, RATE_LIMIT, chatStream, handleChatRequest, getNvidiaKey };
 
 if (require.main === module) {
   server.listen(PORT, '0.0.0.0', () => {
