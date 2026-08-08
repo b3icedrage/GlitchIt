@@ -103,10 +103,15 @@
 
             <!-- Top bar: settings (left) · flash (center) · drafts + close + next (right) -->
             <div class="ig-top">
-              <button type="button" class="ig-top-btn" aria-label="Settings" title="Settings">⚙</button>
-              <button type="button" class="ig-top-btn ig-flash-btn" id="flash-btn" aria-label="Toggle flash" title="Flash">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/><line class="flash-strike" x1="3" y1="3" x2="21" y2="21" stroke="#fff" stroke-width="1.6"/></svg>
-              </button>
+              <button type="button" class="ig-top-btn" id="settings-gear-btn" aria-label="Settings" title="Settings">⚙</button>
+              <div class="ig-top-left">
+                <button type="button" class="ig-top-btn" id="flip-btn-top" aria-label="Flip camera" title="Flip camera">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                </button>
+                <button type="button" class="ig-top-btn ig-flash-btn" id="flash-btn" aria-label="Toggle flash" title="Flash">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/><line class="flash-strike" x1="3" y1="3" x2="21" y2="21" stroke="#fff" stroke-width="1.6"/></svg>
+                </button>
+              </div>
               <div class="ig-top-right">
                 <button type="button" id="drafts-btn" class="drafts-btn" hidden title="Restore latest draft">Drafts <b id="drafts-count">0</b></button>
                 <a class="ig-top-btn" href="index.html" aria-label="Close">✕</a>
@@ -114,27 +119,29 @@
               </div>
             </div>
 
-            <!-- Left rail panel: Create / Boomerang / Layout / more -->
-            <div class="ig-rail" aria-label="Camera modes">
-              <button type="button" class="rail-item active" aria-label="Create">
+            <!-- Left rail: Create / Boomerang / Layout / Hands-free / Close -->
+            <div class="ig-rail" id="ig-rail" aria-label="Camera modes">
+              <button type="button" class="rail-item active" id="rail-create" aria-label="Create with text">
                 <span class="rail-aa" aria-hidden="true">Aa</span><span>Create</span>
               </button>
-              <button type="button" class="rail-item" aria-label="Boomerang">
+              <button type="button" class="rail-item" id="rail-boomerang" aria-label="Boomerang">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6.8c-2.1 0-3.8 2.3-3.8 5.2s1.7 5.2 3.8 5.2c1.9 0 3.1-1.5 3.9-3.1.8 1.6 2 3.1 3.9 3.1 2.1 0 3.8-2.3 3.8-5.2S18.2 6.8 16.1 6.8c-1.9 0-3.1 1.5-3.9 3.1-.8-1.6-2-3.1-3.9-3.1z"/></svg>
                 <span>Boomerang</span>
               </button>
-              <button type="button" class="rail-item" aria-label="Layout">
+              <button type="button" class="rail-item" id="rail-layout" aria-label="Layout grid">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
                 <span>Layout</span>
               </button>
-              <button type="button" class="rail-item" aria-label="More modes">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+              <button type="button" class="rail-item" id="rail-handsfree" aria-label="Hands-free countdown">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/></svg>
+                <span>Hands-free</span>
               </button>
-              <button type="button" class="rail-item" id="grid-btn" aria-label="Toggle grid overlay">
-                <svg class="rail-grid-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-                <span>Grid</span>
+              <button type="button" class="rail-item" id="rail-close" aria-label="Close camera modes">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>
+                <span>Close</span>
               </button>
             </div>
+            <button type="button" class="rail-reopen" id="rail-reopen" aria-label="Show camera modes" hidden>Aa</button>
 
             <!-- Profile selection: two circular profile pictures -->
             <div class="ig-profiles" aria-label="Story audience">
@@ -163,42 +170,37 @@
             <div class="media-strip" id="media-strip" aria-label="Media sources">
               <button type="button" class="media-tile media-camera active" id="media-camera" aria-label="Use camera"><span class="media-tile-icon">📷</span></button>
               <label class="media-tile media-upload" for="media-upload-input" aria-label="Upload"><span class="media-tile-icon">＋</span></label>
-              <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=300&q=80" aria-label="Recent photo"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=300&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=300&q=80" aria-label="Recent photo"><img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=300&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=300&q=80" aria-label="Recent photo"><img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=300&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=300&q=80" aria-label="Recent photo"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=300&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=300&q=80" aria-label="Recent photo"><img src="https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=300&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="media-tile media-sample" data-media="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=300&q=80" aria-label="Recent photo"><img src="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=300&q=80" alt="" loading="lazy"></button>
+              <!-- Real recent captures appear here (added by main.js from shots you take) -->
             </div>
 
             <!-- Filters: appear after capture -->
             <div class="filter-strip" id="filter-strip" aria-label="Filters">
-              <button type="button" class="filter-chip" data-filter="none" aria-label="Original"><img class="chip-thumb" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="clarendon" aria-label="Clarendon"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="gingham" aria-label="Gingham"><img class="chip-thumb" src="https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="moon" aria-label="Moon"><img class="chip-thumb" src="https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="none" aria-label="Original"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="clarendon" aria-label="Clarendon"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="gingham" aria-label="Gingham"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="moon" aria-label="Moon"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
 
               <!-- Shutter: large white circle splitting the filter carousel -->
               <button type="button" class="capture-btn" id="capture-btn" aria-label="Capture photo"></button>
 
-              <button type="button" class="filter-chip" data-filter="lark" aria-label="Lark"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="reyes" aria-label="Reyes"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="juno" aria-label="Juno"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="slumber" aria-label="Slumber"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="crema" aria-label="Crema"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="ludwig" aria-label="Ludwig"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="aden" aria-label="Aden"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="perpetua" aria-label="Perpetua"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="glitch" aria-label="Glitch"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="vhs" aria-label="VHS"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
-              <button type="button" class="filter-chip" data-filter="neon" aria-label="Neon"><img class="chip-thumb" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="lark" aria-label="Lark"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="reyes" aria-label="Reyes"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="juno" aria-label="Juno"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="slumber" aria-label="Slumber"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="crema" aria-label="Crema"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="ludwig" aria-label="Ludwig"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="aden" aria-label="Aden"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="perpetua" aria-label="Perpetua"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="glitch" aria-label="Glitch"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="vhs" aria-label="VHS"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
+              <button type="button" class="filter-chip" data-filter="neon" aria-label="Neon"><img class="chip-thumb" src="" alt="" loading="lazy"></button>
             </div>
             </div>
 
             <!-- Bottom bar: thumbnail · POST/STORY/REEL/LIVE · flip -->
             <div class="ig-modebar">
               <button type="button" class="mode-thumb" id="mode-thumb" aria-label="Gallery">
-                <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=120&q=80" alt="" loading="lazy">
+                <img src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='3'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpath d='M21 15l-5-5L5 21'/%3E%3C/svg%3E" alt="" loading="lazy">
               </button>
               <div class="create-tabs" role="tablist" aria-label="Post type">
                 <button type="button" class="create-tab" data-tab="feed" role="tab" aria-selected="false">POST</button>

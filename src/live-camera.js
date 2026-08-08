@@ -1,12 +1,15 @@
 // Live camera preview: opt-in only, with clear permission and device fallbacks.
+// There is no sample/demo video anymore — while the camera is off the player
+// shows a standby state, and enabling the camera mirrors the front-facing
+// selfie so the host sees themselves the same way the create camera does.
 (function attachLiveCameraPreview() {
   const player = document.getElementById('live-player');
   const video = player?.querySelector('.live-video');
   const toggle = document.getElementById('live-camera-toggle');
   const status = document.getElementById('live-camera-status');
+  const standby = document.getElementById('live-standby');
   if (!player || !video || !toggle || !status) return;
 
-  const sampleSrc = video.currentSrc || video.getAttribute('src') || '';
   let stream = null;
   let enabled = false;
 
@@ -15,18 +18,23 @@
     status.dataset.tone = tone;
   };
 
-  const restoreSample = () => {
+  const setStandby = (show) => {
+    if (!standby) return;
+    standby.hidden = !show;
+    standby.setAttribute('aria-hidden', show ? 'false' : 'true');
+  };
+
+  const restoreOff = () => {
     video.srcObject = null;
-    if (sampleSrc) video.src = sampleSrc;
-    video.loop = true;
-    video.load();
+    video.style.transform = '';
+    setStandby(true);
   };
 
   const stop = () => {
     stream?.getTracks().forEach((track) => track.stop());
     stream = null;
     enabled = false;
-    restoreSample();
+    restoreOff();
     toggle.disabled = false;
     toggle.setAttribute('aria-pressed', 'false');
     toggle.setAttribute('aria-label', 'Enable your camera');
@@ -50,7 +58,10 @@
       video.removeAttribute('src');
       video.srcObject = stream;
       video.muted = true;
-      video.loop = false;
+      // Mirror the front-facing selfie (like the create camera), so the host
+      // sees themselves as they would in a mirror.
+      video.style.transform = 'scaleX(-1)';
+      setStandby(false);
       await video.play();
       enabled = true;
       toggle.disabled = false;
@@ -74,4 +85,5 @@
     else start();
   });
   window.addEventListener('pagehide', stop, { once: true });
+  setStandby(true);
 })();

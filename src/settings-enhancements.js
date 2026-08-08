@@ -1,4 +1,5 @@
-// Settings panel micro-interactions for the Accounts Center-inspired drawer.
+// Settings panel micro-interactions for the Accounts Center-inspired drawer,
+// plus the Instagram-style account switcher bottom sheet on the profile page.
 (function attachSettingsEnhancements() {
   const noticeText = {
     profiles: 'Sharing across profiles is ready to configure',
@@ -10,8 +11,6 @@
     ads: 'Ad preferences is ready to configure',
     pay: 'Meta Pay is ready to configure',
     verified: 'Meta Verified is ready to configure',
-    accounts: 'Your connected accounts are ready to review',
-    'add-account': 'Add another account to Accounts Center',
   };
 
   const showNotice = (message) => {
@@ -29,10 +28,59 @@
     showNotice.timer = setTimeout(() => notice.classList.remove('show'), 1800);
   };
 
-  document.querySelectorAll('[data-setting]').forEach((item) => {
-    item.addEventListener('click', () => showNotice(noticeText[item.dataset.setting] || 'Settings are ready to configure'));
+  // ---- Account switcher bottom sheet (Instagram-style) ----
+  const backdrop = document.getElementById('account-sheet-backdrop');
+  const sheet = document.getElementById('account-sheet');
+
+  // Fill the sheet with the signed-in user's real handle + avatar.
+  const hydrateAccountSheet = () => {
+    const user = window.GLITCHIT_USER;
+    const metadata = user && user.user_metadata || {};
+    const handle = (user && !user.guest && (metadata.username || (user.email && user.email.split('@')[0]))) || 'you';
+    const nameEl = document.getElementById('account-current-name');
+    if (nameEl) nameEl.textContent = handle;
+    // Prefer the already-hydrated profile photo so the sheet matches the page.
+    const avatar = document.querySelector('.profile-photo-wrap img')?.getAttribute('src') || '';
+    const img = document.getElementById('account-current-avatar');
+    if (img && avatar) img.src = avatar;
+  };
+
+  const openAccountSheet = () => {
+    if (!sheet) return;
+    hydrateAccountSheet();
+    document.body.classList.add('account-sheet-open');
+  };
+  const closeAccountSheet = () => document.body.classList.remove('account-sheet-open');
+
+  document.getElementById('account-switch-btn')?.addEventListener('click', openAccountSheet);
+  backdrop?.addEventListener('click', closeAccountSheet);
+
+  // "Add GlitchIt account" -> sign-up / sign-in flow (guests land here too).
+  sheet?.querySelector('[data-account-add]')?.addEventListener('click', () => {
+    location.href = 'auth.html';
   });
+
+  // "Go to Accounts Center" -> open the full settings drawer.
+  sheet?.querySelector('[data-account-center]')?.addEventListener('click', () => {
+    closeAccountSheet();
+    document.body.classList.add('settings-open');
+  });
+
+  // Settings rows: the Accounts rows open the switcher sheet, the rest toast.
+  document.querySelectorAll('[data-setting]').forEach((item) => {
+    item.addEventListener('click', () => {
+      if (item.dataset.setting === 'accounts' || item.dataset.setting === 'add-account') {
+        openAccountSheet();
+        return;
+      }
+      showNotice(noticeText[item.dataset.setting] || 'Settings are ready to configure');
+    });
+  });
+
+  // Escape closes either the settings drawer or the account sheet.
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') document.body.classList.remove('settings-open');
+    if (event.key !== 'Escape') return;
+    document.body.classList.remove('settings-open');
+    document.body.classList.remove('account-sheet-open');
   });
 })();

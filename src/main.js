@@ -120,7 +120,7 @@ function syncProfileFromUser(user) {
 function applyProfileAvatarUi() {
   const handle = profile.username || 'your account';
   const avatar = profile.avatar || fallbackAvatar(handle);
-  document.querySelectorAll('.me img, .profile-photo-wrap > img, .story-create img, .ig-profiles .profile-avatar:not(.gray) img').forEach((image) => {
+  document.querySelectorAll('.me img, .profile-photo-wrap > img, .story-create img, .ig-profiles .profile-avatar:not(.gray) img, .account-sheet-avatar').forEach((image) => {
     image.src = avatar;
     image.alt = `${handle} profile picture`;
   });
@@ -463,8 +463,10 @@ function hydrateStoryShelf() {
 }
 
 // ---------- Create page (Instagram-style studio) ----------
-const CREATE_SAMPLE_VIDEO = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
-const CREATE_SAMPLE_IMAGE = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1000&q=80';
+// Neutral placeholders only — the create studio is real-camera now, so no
+// stock photos or sample videos should ever fall through into a post.
+const CREATE_SAMPLE_VIDEO = '';
+const CREATE_SAMPLE_IMAGE = 'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23101016"/%3E%3C/svg%3E';
 const CREATE_FILTERS = {
   none: { filter: 'none', fx: '' },
   clarendon: { filter: 'contrast(1.22) saturate(1.35)', fx: '' },
@@ -545,6 +547,87 @@ function attachCreateStudio() {
   const RATIOS = { '9:16': 16 / 9, '1:1': 1, '4:5': 5 / 4, '16:9': 9 / 16 };
   const RATIO_ORDER = ['9:16', '1:1', '4:5', '16:9'];
   const state = { type: 'feed', videoMode: false, filter: 'none', captured: null, mode: 'camera', stream: null, hadCamera: false, facing: 'user', torch: false, mic: false, hasMic: false, grid: false, audience: 'you', zoom: 1, timer: 0, counting: false, editingDraft: -1, ratio: '9:16', canRecord: typeof MediaRecorder !== 'undefined', recording: false, recorder: null, chunks: [], recTimer: null, recStart: 0, recordedUrl: '', recordedBlob: null, keepUrl: false, edit: { brightness: 100, contrast: 100, saturation: 100, warmth: 0, rotate: 0, flipH: false, flipV: false, texts: [], emojis: [], trimStart: 0, trimEnd: Infinity, trimSet: false } };
+
+  // Instagram-style left rail camera modes: Create / Boomerang / Layout / Hands-free / Close.
+  // All handlers run on click, so they may safely reference consts (state, timerBtn,
+  // updateModeChrome, stopRecording, showStageToast) defined later in this closure.
+  state.boomerang = false;
+  const railEl = document.querySelector('.ig-rail');
+  const railSetActive = (btn) => {
+    railEl?.querySelectorAll('.rail-item').forEach((b) => b.classList.toggle('active', b === btn));
+  };
+  document.getElementById('rail-create')?.addEventListener('click', (event) => {
+    event.stopImmediatePropagation();
+    railSetActive(event.currentTarget);
+    if (typeof openNoteComposer === 'function') { showStageToast('Create — add text & music'); openNoteComposer(); }
+    else showStageToast('Create — text & stickers arrive in Edit');
+  });
+  document.getElementById('rail-boomerang')?.addEventListener('click', (event) => {
+    event.stopImmediatePropagation();
+    const btn = event.currentTarget;
+    railSetActive(btn);
+    state.boomerang = !state.boomerang;
+    btn.classList.toggle('on', state.boomerang);
+    if (state.boomerang) {
+      state.videoMode = true;
+      updateModeChrome();
+      showStageToast('Boomerang — tap the shutter, it loops itself');
+      // Auto-stop the clip ~1.5s after recording starts so it loops like a boomerang.
+      const autoStop = () => {
+        if (recPill && !recPill.hidden) {
+          setTimeout(() => { if (state.recording) stopRecording(); }, 1500);
+          return true;
+        }
+        return false;
+      };
+      if (!autoStop()) {
+        const iv = setInterval(() => { if (autoStop()) clearInterval(iv); }, 250);
+        setTimeout(() => clearInterval(iv), 9000);
+      }
+    } else {
+      state.videoMode = false;
+      updateModeChrome();
+      showStageToast('Boomerang off');
+    }
+  });
+  document.getElementById('rail-layout')?.addEventListener('click', (event) => {
+    event.stopImmediatePropagation();
+    const btn = event.currentTarget;
+    railSetActive(btn);
+    state.grid = !state.grid;
+    btn.classList.toggle('on', state.grid);
+    const stageGridEl = document.getElementById('stage-grid');
+    if (stageGridEl) stageGridEl.classList.toggle('on', state.grid);
+    showStageToast(state.grid ? 'Layout grid on' : 'Grid off');
+  });
+  document.getElementById('rail-handsfree')?.addEventListener('click', (event) => {
+    event.stopImmediatePropagation();
+    const btn = event.currentTarget;
+    railSetActive(btn);
+    state.timer = state.timer > 0 ? 0 : 3;
+    if (timerBtn) {
+      timerBtn.classList.toggle('on', state.timer > 0);
+      timerBtn.setAttribute('aria-label', state.timer > 0 ? `Timer ${state.timer}s` : 'Timer off');
+      timerBtn.textContent = state.timer > 0 ? `⏱${state.timer}` : '⏱';
+    }
+    showStageToast(state.timer > 0 ? 'Hands-free — 3s countdown armed' : 'Hands-free off');
+  });
+  document.getElementById('rail-close')?.addEventListener('click', (event) => {
+    event.stopImmediatePropagation();
+    const collapsed = railEl?.classList.toggle('collapsed') || false;
+    event.currentTarget.classList.toggle('on', collapsed);
+    const reopen = document.getElementById('rail-reopen');
+    if (reopen) reopen.hidden = !collapsed;
+    showStageToast(collapsed ? 'Camera modes hidden' : 'Camera modes shown');
+  });
+  document.getElementById('rail-reopen')?.addEventListener('click', () => {
+    railEl?.classList.remove('collapsed');
+    document.getElementById('rail-close')?.classList.remove('on');
+    const reopen = document.getElementById('rail-reopen');
+    if (reopen) reopen.hidden = true;
+  });
+  // Top-left flip camera mirrors the bottom-right one (same handler).
+  document.getElementById('flip-btn-top')?.addEventListener('click', () => flipBtn?.click());
 
   // Mirror the front camera so users see themselves like a mirror (selfie view).
   // The rear camera stays un-mirrored; zoom is combined into the same transform.
@@ -652,6 +735,7 @@ function attachCreateStudio() {
       video.removeAttribute('aria-busy');
       fallback.hidden = true;
       updateLiveChip();
+      refreshFilterThumbs();
     };
     video.addEventListener('loadedmetadata', revealPreview, { once: true });
     video.addEventListener('playing', revealPreview, { once: true });
@@ -675,6 +759,7 @@ function attachCreateStudio() {
     fallback.hidden = true;
     state.captured = src;
     setMode('photo');
+    refreshFilterThumbs(src);
   };
 
   const applyFilter = () => {
@@ -749,12 +834,33 @@ function attachCreateStudio() {
     mediaTiles.forEach((t) => t.classList.toggle('active', t.id === 'media-camera'));
     startCamera();
   });
-  document.querySelectorAll('.media-sample').forEach((tile) => {
+  // Real recent captures: tiles are built from shots the user actually takes
+  // (or real uploads), never stock photos. Tap one to set it as the stage.
+  const addRecentTile = (src) => {
+    if (!src || !/^(data:|https?:\/\/)/.test(src)) return;
+    const strip = document.getElementById('media-strip');
+    if (!strip) return;
+    const tiles = [...strip.querySelectorAll('.media-tile.media-sample')];
+    if (tiles.some((t) => t.dataset.media === src)) return;
+    while (tiles.length >= 4) tiles.shift().remove();
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'media-tile media-sample';
+    tile.dataset.media = src;
+    tile.setAttribute('aria-label', 'Recent capture');
+    tile.innerHTML = `<img src="${src}" alt="" loading="lazy">`;
     tile.addEventListener('click', () => {
       mediaTiles.forEach((t) => t.classList.toggle('active', t === tile));
-      setPhoto(tile.dataset.media);
+      setPhoto(src);
     });
-  });
+    strip.appendChild(tile);
+  };
+  // Seed the strip with the user's own earlier captures (persisted locally).
+  [...(userUploads.feed || []), ...(userUploads.stories || []), ...(userUploads.videos || [])]
+    .map((item) => item.preview)
+    .filter((src) => src && /^(data:|https?:\/\/)/.test(src))
+    .slice(0, 4)
+    .forEach(addRecentTile);
   const uploadInput = document.getElementById('media-upload-input');
   const grabUploadedPoster = () => {
     try {
@@ -856,6 +962,22 @@ function attachCreateStudio() {
     } catch (e) { return ''; }
   };
 
+  // Filter chips preview YOUR camera frame instead of stock photos: refresh
+  // the thumbnails from the live feed while the camera is on, and from the
+  // captured shot after capture.
+  const refreshFilterThumbs = (src) => {
+    const frame = src || frameFromCamera() || state.captured || '';
+    if (!frame) return;
+    chips.forEach((chip) => {
+      const img = chip.querySelector('.chip-thumb');
+      if (img) img.src = frame;
+    });
+  };
+  // While the camera is live, keep the filter previews showing the user.
+  setInterval(() => {
+    if (state.mode === 'camera' && state.stream && video && video.videoWidth) refreshFilterThumbs();
+  }, 3000);
+
   const updateRecClock = () => {
     if (!recTime) return;
     const s = Math.max(0, Math.floor((Date.now() - state.recStart) / 1000));
@@ -920,6 +1042,7 @@ function attachCreateStudio() {
     const poster = frameFromCamera() || '';
     state.captured = poster;
     state.recordedUrl = url;
+    refreshFilterThumbs(poster);
     state.recordedBlob = blob;
     if (stageVideo) stageVideo.src = url;
     stopCamera();
