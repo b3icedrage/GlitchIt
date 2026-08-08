@@ -724,7 +724,11 @@ body[data-page="create"] .timer-tool.on::after { background: var(--camera-red); 
 body[data-page="create"] .ig-controls { bottom: calc(72px + env(safe-area-inset-bottom)); gap: 8px; }
 body[data-page="create"] .filter-strip { justify-content: center; gap: 7px; padding: 0 max(16px, calc(50% - 170px)) 4px; mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
 body[data-page="create"] .filter-chip { opacity: .7; }
+body[data-page="create"] .filter-chip { background: radial-gradient(circle at 50% 35%, #2a1420, #150a10 70%); }
 body[data-page="create"] .filter-chip .chip-thumb { width: 48px; height: 48px; border-color: transparent; filter: saturate(.78) brightness(.78); }
+/* Empty chip thumbs (real camera frame hasn't landed yet) never show a broken image icon. */
+body[data-page="create"] .filter-chip img.chip-thumb[src=""],
+body[data-page="create"] .filter-chip img.chip-thumb:not([src]) { opacity: 0; }
 body[data-page="create"] .filter-chip.active { opacity: 1; }
 body[data-page="create"] .filter-chip.active .chip-thumb { border-color: #fff; box-shadow: 0 0 0 2px var(--camera-red), 0 5px 18px rgba(240, 75, 87, .3); filter: none; }
 

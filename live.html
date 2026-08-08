@@ -35,9 +35,17 @@
 
         <section class="page" id="live" data-page="live" aria-labelledby="live-host-name">
           <div class="live-player" id="live-player">
-            <video class="live-video" autoplay muted loop playsinline preload="metadata"
-              poster=""
-              src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" aria-label="Your live stream"></video>
+            <video class="live-video" autoplay muted playsinline preload="metadata"
+              poster="" aria-label="Your live stream"></video>
+
+            <!-- Camera-off standby: shown until the user enables their real camera -->
+            <div class="live-standby" id="live-standby" aria-hidden="true">
+              <span class="live-standby-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </span>
+              <strong>Your camera is off</strong>
+              <small>Tap Enable camera to preview yourself — no demo video, just you.</small>
+            </div>
 
             <!-- Top bar: host · LIVE pill · viewers · close -->
             <div class="live-top">

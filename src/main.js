@@ -463,8 +463,10 @@ function hydrateStoryShelf() {
 }
 
 // ---------- Create page (Instagram-style studio) ----------
-const CREATE_SAMPLE_VIDEO = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
-const CREATE_SAMPLE_IMAGE = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1000&q=80';
+// Neutral placeholders only — the create studio is real-camera now, so no
+// stock photos or sample videos should ever fall through into a post.
+const CREATE_SAMPLE_VIDEO = '';
+const CREATE_SAMPLE_IMAGE = 'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23101016"/%3E%3C/svg%3E';
 const CREATE_FILTERS = {
   none: { filter: 'none', fx: '' },
   clarendon: { filter: 'contrast(1.22) saturate(1.35)', fx: '' },
@@ -652,6 +654,7 @@ function attachCreateStudio() {
       video.removeAttribute('aria-busy');
       fallback.hidden = true;
       updateLiveChip();
+      refreshFilterThumbs();
     };
     video.addEventListener('loadedmetadata', revealPreview, { once: true });
     video.addEventListener('playing', revealPreview, { once: true });
@@ -675,6 +678,7 @@ function attachCreateStudio() {
     fallback.hidden = true;
     state.captured = src;
     setMode('photo');
+    refreshFilterThumbs(src);
   };
 
   const applyFilter = () => {
@@ -749,12 +753,33 @@ function attachCreateStudio() {
     mediaTiles.forEach((t) => t.classList.toggle('active', t.id === 'media-camera'));
     startCamera();
   });
-  document.querySelectorAll('.media-sample').forEach((tile) => {
+  // Real recent captures: tiles are built from shots the user actually takes
+  // (or real uploads), never stock photos. Tap one to set it as the stage.
+  const addRecentTile = (src) => {
+    if (!src || !/^(data:|https?:\/\/)/.test(src)) return;
+    const strip = document.getElementById('media-strip');
+    if (!strip) return;
+    const tiles = [...strip.querySelectorAll('.media-tile.media-sample')];
+    if (tiles.some((t) => t.dataset.media === src)) return;
+    while (tiles.length >= 4) tiles.shift().remove();
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'media-tile media-sample';
+    tile.dataset.media = src;
+    tile.setAttribute('aria-label', 'Recent capture');
+    tile.innerHTML = `<img src="${src}" alt="" loading="lazy">`;
     tile.addEventListener('click', () => {
       mediaTiles.forEach((t) => t.classList.toggle('active', t === tile));
-      setPhoto(tile.dataset.media);
+      setPhoto(src);
     });
-  });
+    strip.appendChild(tile);
+  };
+  // Seed the strip with the user's own earlier captures (persisted locally).
+  [...(userUploads.feed || []), ...(userUploads.stories || []), ...(userUploads.videos || [])]
+    .map((item) => item.preview)
+    .filter((src) => src && /^(data:|https?:\/\/)/.test(src))
+    .slice(0, 4)
+    .forEach(addRecentTile);
   const uploadInput = document.getElementById('media-upload-input');
   const grabUploadedPoster = () => {
     try {
@@ -856,6 +881,22 @@ function attachCreateStudio() {
     } catch (e) { return ''; }
   };
 
+  // Filter chips preview YOUR camera frame instead of stock photos: refresh
+  // the thumbnails from the live feed while the camera is on, and from the
+  // captured shot after capture.
+  const refreshFilterThumbs = (src) => {
+    const frame = src || frameFromCamera() || state.captured || '';
+    if (!frame) return;
+    chips.forEach((chip) => {
+      const img = chip.querySelector('.chip-thumb');
+      if (img) img.src = frame;
+    });
+  };
+  // While the camera is live, keep the filter previews showing the user.
+  setInterval(() => {
+    if (state.mode === 'camera' && state.stream && video && video.videoWidth) refreshFilterThumbs();
+  }, 3000);
+
   const updateRecClock = () => {
     if (!recTime) return;
     const s = Math.max(0, Math.floor((Date.now() - state.recStart) / 1000));
@@ -920,6 +961,7 @@ function attachCreateStudio() {
     const poster = frameFromCamera() || '';
     state.captured = poster;
     state.recordedUrl = url;
+    refreshFilterThumbs(poster);
     state.recordedBlob = blob;
     if (stageVideo) stageVideo.src = url;
     stopCamera();

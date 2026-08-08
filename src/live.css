@@ -140,6 +140,48 @@
 .live-close:hover { background: rgba(255, 255, 255, .22); }
 .live-close:active { transform: scale(.92); }
 
+/* ---------- Camera-off standby state ---------- */
+.live-standby {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  color: #fff;
+  background:
+    radial-gradient(120% 90% at 50% 30%, rgba(255, 45, 124, .14), transparent 55%),
+    radial-gradient(120% 90% at 50% 100%, rgba(79, 91, 213, .12), transparent 55%),
+    #05050a;
+  transition: opacity .25s ease;
+}
+.live-standby[hidden] { display: none; }
+.live-standby-mark {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(255, 255, 255, .05);
+  color: rgba(255, 255, 255, .85);
+  box-shadow: 0 10px 34px rgba(255, 45, 124, .18);
+}
+.live-standby strong {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+.live-standby small {
+  max-width: 260px;
+  color: rgba(255, 255, 255, .55);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 /* ---------- Camera preview controls ---------- */
 .live-camera-toggle {
   border: 1px solid rgba(255, 255, 255, .34);
