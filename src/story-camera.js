@@ -452,6 +452,7 @@
     }
   });
   function closePreview() {
+    musicAudio.pause();
     els.preview.hidden = true;
     if (preview && preview.kind === 'video' && preview.url.startsWith('blob:')) URL.revokeObjectURL(preview.url);
     textLayers = [];
@@ -787,6 +788,8 @@
   }
 
   function renderMusicRows(tracks, emptyMsg) {
+    // The playing row is about to be replaced — stop its preview audio now.
+    musicAudio.pause();
     if (!tracks.length) {
       els.musicList.innerHTML = `<p class="cam-music-empty">${escapeHtml(emptyMsg || 'No songs right now.')}</p>`;
       return;
