@@ -42,6 +42,7 @@
       <nav class="cam-menu" id="cam-menu" hidden aria-label="Create tools">
         <button type="button" class="cam-menu-item is-current" data-tool="create"><span class="cam-menu-ic" aria-hidden="true">Aa</span><span>Create</span></button>
         <button type="button" class="cam-menu-item" data-tool="take"><span class="cam-menu-ic" aria-hidden="true">▶</span><span>Take</span></button>
+        <button type="button" class="cam-menu-item" data-tool="music"><span class="cam-menu-ic" aria-hidden="true">♪</span><span>Music</span></button>
         <button type="button" class="cam-menu-item" data-tool="boomerang"><span class="cam-menu-ic" aria-hidden="true">∞</span><span>Boomerang</span></button>
         <button type="button" class="cam-menu-item" data-tool="layout"><span class="cam-menu-ic" aria-hidden="true">⊞</span><span>Layout</span></button>
         <button type="button" class="cam-menu-item" data-tool="hands"><span class="cam-menu-ic" aria-hidden="true">◎</span><span>Hands-free</span></button>
@@ -79,10 +80,12 @@
           <strong class="cam-preview-title" id="cam-preview-title">Your story</strong>
           <span class="cam-preview-top-actions">
             <button type="button" class="cam-top-btn" id="cam-text-tool" aria-label="Add text">Aa</button>
+            <button type="button" class="cam-top-btn" id="cam-music-tool" aria-label="Add music">♪</button>
             <button type="button" class="cam-top-btn" id="cam-preview-settings" aria-label="More options">•••</button>
           </span>
         </div>
         <div class="cam-preview-bottom">
+          <button type="button" class="cam-audio-chip" id="cam-audio-chip" aria-label="Choose audio">Original audio</button>
           <button type="button" class="cam-save" id="cam-save"><span id="cam-save-to">Send to</span><b id="cam-save-target">Your story</b><i aria-hidden="true">→</i></button>
         </div>
       </section>
@@ -99,6 +102,24 @@
 
       <!-- Hands-free countdown -->
       <div class="cam-countdown" id="cam-countdown" hidden aria-hidden="true"><b>3</b></div>
+
+      <!-- Music sheet -->
+      <div class="cam-music" id="cam-music" hidden>
+        <div class="cam-music-card" role="dialog" aria-label="Add music">
+          <header class="cam-music-head"><strong>Add music</strong><button type="button" class="cam-music-close" id="cam-music-close" aria-label="Close music">×</button></header>
+          <div class="cam-music-choice" role="tablist" aria-label="Audio">
+            <button type="button" class="cam-music-choice-btn is-current" id="cam-audio-original">Original audio</button>
+            <button type="button" class="cam-music-choice-btn" id="cam-audio-music">♪ Music</button>
+          </div>
+          <input class="cam-music-search" id="cam-music-search" placeholder="Search songs or artists…" autocomplete="off" />
+          <div class="cam-music-tabs" role="tablist">
+            <button type="button" class="is-current" data-mtab="trending">Trending</button>
+            <button type="button" data-mtab="search">Search</button>
+          </div>
+          <div class="cam-music-list" id="cam-music-list"></div>
+          <button type="button" class="cam-music-done" id="cam-music-done">Done</button>
+        </div>
+      </div>
 
       <!-- Settings sheet -->
       <div class="cam-sheet" id="cam-sheet" hidden>

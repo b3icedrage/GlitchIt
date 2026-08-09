@@ -17,6 +17,10 @@
     textLayers: $('cam-text-layers'), previewTitle: $('cam-preview-title'),
     saveTo: $('cam-save-to'), saveTarget: $('cam-save-target'), previewBack: $('cam-preview-back'),
     textTool: $('cam-text-tool'), previewSettings: $('cam-preview-settings'), save: $('cam-save'),
+    musicTool: $('cam-music-tool'), audioChip: $('cam-audio-chip'),
+    musicSheet: $('cam-music'), musicClose: $('cam-music-close'), musicDone: $('cam-music-done'),
+    musicSearch: $('cam-music-search'), musicTabs: [...document.querySelectorAll('#cam-music [data-mtab]')], musicList: $('cam-music-list'),
+    audioOriginal: $('cam-audio-original'), audioMusic: $('cam-audio-music'),
     composer: $('cam-composer'), composerInput: $('cam-composer-input'),
     composerColors: $('cam-composer-colors'), composerSize: $('cam-composer-size'), composerDone: $('cam-composer-done'),
     countdown: $('cam-countdown'),
@@ -115,23 +119,33 @@
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 1920 } },
-        audio: false,
+        audio: true,
       });
-      els.video.srcObject = stream;
-      els.video.muted = true;
-      await els.video.play();
-      if (facing === 'user') els.video.style.transform = 'scaleX(-1)';
-      els.off.hidden = true;
-      setVideoFilter();
-      applyTorch();
     } catch (err) {
-      const msg = err?.name === 'NotAllowedError'
-        ? 'Camera permission was denied. Allow access in your browser and try again.'
-        : err?.name === 'NotFoundError'
-          ? 'No camera was found on this device.'
-          : 'Could not access your camera.';
-      showOff(msg);
+      // Some browsers/OS deny or lack a microphone — fall back to video-only
+      // so the camera still works (takes/reels then record without audio).
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 1920 } },
+          audio: false,
+        });
+      } catch (err2) {
+        const msg = err2?.name === 'NotAllowedError'
+          ? 'Camera permission was denied. Allow access in your browser and try again.'
+          : err2?.name === 'NotFoundError'
+            ? 'No camera was found on this device.'
+            : 'Could not access your camera.';
+        showOff(msg);
+        return;
+      }
     }
+    els.video.srcObject = stream;
+    els.video.muted = true;
+    await els.video.play();
+    if (facing === 'user') els.video.style.transform = 'scaleX(-1)';
+    els.off.hidden = true;
+    setVideoFilter();
+    applyTorch();
   }
   function setVideoFilter() {
     els.video.style.filter = FILTERS[filterIdx].css;
@@ -184,6 +198,9 @@
       } else if (t === 'take') {
         tool = 'take';
         toast('Take — tap the shutter to record');
+      } else if (t === 'music') {
+        if (preview && preview.kind === 'image') toast('Add music to videos — record a take or pick a video first');
+        openMusicSheet();
       } else if (t === 'hands') {
         handsFree = !handsFree;
         btn.classList.toggle('is-current', handsFree);
@@ -330,6 +347,10 @@
     ctx.filter = FILTERS[filterIdx].css;
     const render = () => drawCover(ctx, els.video, W, H);
     const capStream = els.canvas.captureStream(30);
+    // "Original audio": bake the microphone into the recording when available.
+    if (stream && typeof stream.getAudioTracks === 'function' && stream.getAudioTracks().length) {
+      capStream.addTrack(stream.getAudioTracks()[0]);
+    }
     const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
       .find((m) => typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(m)) || '';
     const rec = new MediaRecorder(capStream, mime ? { mimeType: mime, videoBitsPerSecond: 3_000_000 } : undefined);
@@ -411,12 +432,15 @@
     els.previewImg.hidden = !isImage;
     els.previewVideo.hidden = isImage;
     els.textTool.style.visibility = isImage ? 'visible' : 'hidden';
+    els.musicTool.style.visibility = isImage ? 'hidden' : 'visible';
+    els.audioChip.hidden = isImage;
     els.previewImg.src = isImage ? preview.url : '';
     els.previewVideo.src = isImage ? '' : preview.url;
     els.previewVideo.poster = preview.poster || '';
     textLayers = [];
     renderTextLayers();
     updateSaveLabel();
+    updateAudioChip();
     if (!isImage) els.previewVideo.play().catch(() => {});
   }
   els.previewBack.addEventListener('click', closePreview);
@@ -581,21 +605,43 @@
       let file;
       let poster = null;
       let kind = 'image';
+      let musicNote = '';
       if (preview.kind === 'image') {
         file = await new Promise((res) => bakeImage().toBlob(res, 'image/jpeg', 0.92));
       } else {
-        file = preview.blob;
         poster = preview.poster || null;
         kind = 'video';
+        // Replace the video's audio with a chosen song — or keep original audio.
+        if (audioChoice === 'music' && musicSel) {
+          saveLabel.textContent = 'Mixing audio…';
+          if (!musicBuffer && !musicSel.broken) {
+            try { musicBuffer = await decodeMusic(musicSel.url); } catch (e) { musicBuffer = null; }
+          }
+          if (musicBuffer) {
+            file = await remixWithAudio();
+            if (file) {
+              musicNote = ` · ♪ ${musicSel.title} (${musicSel.artist})`;
+            } else {
+              toast('Couldn’t mix that track — using original audio instead.');
+              file = preview.blob;
+            }
+          } else {
+            toast('That track’s audio couldn’t be loaded — using original audio instead.');
+            file = preview.blob;
+          }
+        } else {
+          file = preview.blob;
+        }
       }
       const handle = (user.user_metadata && user.user_metadata.username) || user.email?.split('@')[0] || '';
       const avatar = (user.user_metadata && user.user_metadata.avatar) || '';
+      const baseCaption = target === 'reel' ? 'Reel moment' : target === 'post' ? 'Post moment' : 'Story moment';
       const res = await db.saveMedia({
         type: kind,
         kind: target === 'story' ? 'story' : kind,
         file,
         title: target === 'reel' ? 'Reel' : target === 'post' ? 'Post' : 'Story',
-        caption: target === 'reel' ? 'Reel moment' : target === 'post' ? 'Post moment' : 'Story moment',
+        caption: baseCaption + musicNote,
         handle,
         avatar,
       });
@@ -712,6 +758,201 @@
   els.setTimer.addEventListener('click', () => {
     timerIdx = (timerIdx + 1) % TIMERS.length;
     syncSheet();
+  });
+
+  // ---------- music (original audio or a song from the /api/music library) ----------
+  let musicSel = null;          // { title, artist, url } — the chosen song
+  let musicBuffer = null;       // decoded AudioBuffer, loaded lazily
+  let audioChoice = 'original'; // 'original' | 'music'
+  let musicCtx = null;
+  const musicAudio = new Audio(); // 30s preview playback inside the sheet
+  let musicTracksCache = [];
+  let musicSearchTimer = null;
+
+  async function decodeMusic(url) {
+    if (!musicCtx) musicCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (musicCtx.state === 'suspended') await musicCtx.resume();
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('fetch ' + res.status);
+    const buf = await res.arrayBuffer();
+    return await musicCtx.decodeAudioData(buf);
+  }
+
+  function updateAudioChip() {
+    const music = audioChoice === 'music' && musicSel;
+    els.audioChip.textContent = music ? `♪ ${musicSel.title}` : 'Original audio';
+    els.audioChip.classList.toggle('has-music', Boolean(music));
+    els.audioOriginal.classList.toggle('is-current', !music);
+    els.audioMusic.classList.toggle('is-current', Boolean(music));
+  }
+
+  function renderMusicRows(tracks, emptyMsg) {
+    if (!tracks.length) {
+      els.musicList.innerHTML = `<p class="cam-music-empty">${escapeHtml(emptyMsg || 'No songs right now.')}</p>`;
+      return;
+    }
+    els.musicList.innerHTML = tracks.map((t, i) => `
+      <button type="button" class="cam-music-row" data-idx="${i}">
+        <span class="cam-music-art">${t.art ? `<img src="${escapeHtml(t.art)}" alt="" loading="lazy">` : '<i>♪</i>'}</span>
+        <span class="cam-music-meta"><strong>${escapeHtml(t.title)}</strong><em>${escapeHtml(t.artist)} · ${escapeHtml(t.source || 'Music')}</em></span>
+        <span class="cam-music-play" data-play="${i}" aria-label="Preview ${escapeHtml(t.title)}">▶</span>
+      </button>`).join('');
+    els.musicList.querySelectorAll('[data-play]').forEach((b) => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const t = musicTracksCache[Number(b.dataset.play)];
+        if (!t) return;
+        if (musicAudio.src === t.url && !musicAudio.paused) { musicAudio.pause(); b.textContent = '▶'; return; }
+        musicAudio.src = t.url;
+        musicAudio.play().then(() => { b.textContent = '❚❚'; }).catch(() => toast('Preview unavailable for this track'));
+      });
+    });
+  }
+  musicAudio.addEventListener('ended', () => {
+    document.querySelectorAll('#cam-music-list [data-play]').forEach((x) => { x.textContent = '▶'; });
+  });
+  els.musicList.addEventListener('click', (e) => {
+    const row = e.target.closest('.cam-music-row');
+    if (!row || e.target.closest('[data-play]')) return;
+    const t = musicTracksCache[Number(row.dataset.idx)];
+    if (t) selectTrack(t);
+  });
+
+  async function selectTrack(track) {
+    musicSel = { title: track.title, artist: track.artist, url: track.url };
+    musicBuffer = null;
+    audioChoice = 'music';
+    updateAudioChip();
+    try {
+      musicBuffer = await decodeMusic(track.url);
+      toast(`♪ ${track.title} — this song will replace the video’s audio`);
+    } catch (e) {
+      musicSel.broken = true;
+      audioChoice = 'original';
+      updateAudioChip();
+      toast('That track can’t be used (its audio is blocked) — try another.');
+      return;
+    }
+    openMusicSheet(false);
+    musicAudio.pause();
+  }
+
+  async function musicLoadTrending() {
+    els.musicList.innerHTML = '<p class="cam-music-empty">Loading trending songs…</p>';
+    try {
+      const res = await fetch('/api/music?chart=1');
+      const data = await res.json();
+      if (!data || !data.ok || !Array.isArray(data.tracks) || !data.tracks.length) throw new Error('empty');
+      musicTracksCache = data.tracks;
+      renderMusicRows(musicTracksCache);
+    } catch (e) {
+      els.musicList.innerHTML = '<p class="cam-music-empty">Trending songs are unavailable right now — try again soon.</p>';
+    }
+  }
+
+  async function musicSearch(q) {
+    els.musicList.innerHTML = '<p class="cam-music-empty">Searching…</p>';
+    try {
+      const res = await fetch('/api/music?q=' + encodeURIComponent(q));
+      const data = await res.json();
+      if (!data || !data.ok || !Array.isArray(data.tracks)) throw new Error('bad');
+      musicTracksCache = data.tracks;
+      renderMusicRows(musicTracksCache, 'No songs found for that search.');
+    } catch (e) {
+      els.musicList.innerHTML = '<p class="cam-music-empty">Search is unavailable right now — try again soon.</p>';
+    }
+  }
+
+  function openMusicSheet(open = true) {
+    els.musicSheet.hidden = !open;
+    if (open) {
+      updateAudioChip();
+      if (!musicTracksCache.length) musicLoadTrending();
+      else renderMusicRows(musicTracksCache);
+    } else {
+      musicAudio.pause();
+    }
+  }
+
+  // Re-encode the preview video with the chosen song as its audio track.
+  async function remixWithAudio() {
+    const v = els.previewVideo;
+    if (!v || !v.videoWidth) return null;
+    const W = 720;
+    const H = 1280;
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const ctx = c.getContext('2d');
+    const stream = c.captureStream(30);
+    const ac = new AudioContext();
+    let src = null;
+    try {
+      const buf = musicBuffer || await decodeMusic(musicSel.url);
+      src = ac.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const dest = ac.createMediaStreamDestination();
+      src.connect(dest);
+      stream.addTrack(dest.stream.getAudioTracks()[0]);
+      src.start();
+    } catch (e) {
+      try { await ac.close(); } catch (e2) { /* ignore */ }
+      return null;
+    }
+    await v.play().catch(() => {});
+    const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
+      .find((m) => typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(m)) || '';
+    const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 3_000_000 } : undefined);
+    const chunks = [];
+    rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    const stopped = new Promise((res) => { rec.onstop = res; });
+    rec.start();
+    const draw = () => ctx.drawImage(v, 0, 0, W, H);
+    const loop = () => { if (rec.state !== 'recording') return; draw(); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+    const durMs = (v.duration && isFinite(v.duration) ? v.duration : 15) * 1000;
+    await new Promise((res) => {
+      v.addEventListener('ended', res, { once: true });
+      setTimeout(res, Math.min(durMs, 120000) + 1500);
+    });
+    setTimeout(() => { try { rec.stop(); } catch (e) { /* noop */ } }, 80);
+    await stopped;
+    try { src && src.stop(); } catch (e) { /* noop */ }
+    try { await ac.close(); } catch (e) { /* noop */ }
+    const blob = new Blob(chunks, { type: rec.mimeType || 'video/webm' });
+    return blob && blob.size ? blob : null;
+  }
+
+  // ---------- music sheet wiring ----------
+  els.musicTool.addEventListener('click', () => openMusicSheet());
+  els.audioChip.addEventListener('click', () => openMusicSheet());
+  els.musicClose.addEventListener('click', () => openMusicSheet(false));
+  els.musicDone.addEventListener('click', () => openMusicSheet(false));
+  els.musicSheet.addEventListener('click', (e) => { if (e.target === els.musicSheet) openMusicSheet(false); });
+  els.audioOriginal.addEventListener('click', () => { audioChoice = 'original'; updateAudioChip(); });
+  els.audioMusic.addEventListener('click', () => {
+    audioChoice = 'music';
+    if (!musicSel) toast('Pick a song below to add music');
+    updateAudioChip();
+  });
+  els.musicTabs.forEach((b) => {
+    b.addEventListener('click', () => {
+      els.musicTabs.forEach((t) => t.classList.toggle('is-current', t === b));
+      if (b.dataset.mtab === 'search') {
+        const q = els.musicSearch.value.trim();
+        if (q) musicSearch(q);
+        else renderMusicRows([], 'Type to search songs or artists.');
+      } else {
+        musicLoadTrending();
+      }
+    });
+  });
+  els.musicSearch.addEventListener('input', () => {
+    clearTimeout(musicSearchTimer);
+    const q = els.musicSearch.value.trim();
+    if (!q) { musicLoadTrending(); return; }
+    musicSearchTimer = setTimeout(() => musicSearch(q), 400);
   });
 
   // ---------- keyboard ----------
