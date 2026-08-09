@@ -55,7 +55,7 @@
   bundle.src = 'https://browser.sentry-cdn.com/10.69.0/bundle.tracing.min.js';
   bundle.crossOrigin = 'anonymous';
   bundle.onload = () => {
-    import('./config.js?v=4').then((cfg) => {
+    import('./config.js?v=6').then((cfg) => {
       if (!cfg || !cfg.SENTRY_DSN || !window.Sentry) return;
       window.Sentry.init({
         dsn: cfg.SENTRY_DSN,
@@ -1537,6 +1537,13 @@ async function boot() {
     }
   }
   runPage();
+
+  // Kick off RevenueCat (subscriptions) in the background — non-blocking, so
+  // a missing key or CDN outage never affects the rest of the app. Uses the
+  // signed-in account id when available, else a persisted anonymous id.
+  import('./revenuecat.js?v=1')
+    .then((rc) => rc.initRevenueCat(window.GLITCHIT_USER?.id))
+    .catch(() => {});
 }
 
 boot();

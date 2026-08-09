@@ -1,7 +1,7 @@
 // GlitchIt — Supabase authentication (client-side, no build step).
 // Loaded from main.js via dynamic import, same pattern as db.js. When the
 // config is empty or the network fails, auth degrades gracefully (no gating).
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=4';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=6';
 
 let client = null;
 let clientPromise = null;
