@@ -35,6 +35,7 @@ const SHELL_URLS = [
   './src/ai-chat.css',
   './src/dm-inbox.css',
   './src/main.js?v=10',
+  './src/story-swipe.js',
   './src/music-ui.js?v=2',
   './src/profile-avatar.js',
   './src/ai-chat.js?v=3',
