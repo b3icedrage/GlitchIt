@@ -613,17 +613,26 @@
   function shareError(err, isReel) {
     const noun = isReel ? 'reel' : 'story';
     const what = isReel ? 'Reels' : 'Stories';
+    const backend = db && typeof db.mediaBackend === 'function' ? db.mediaBackend() : 'supabase';
+    const sizeLimit = backend === 'cloudinary' ? '100 MB' : '50 MB';
+    const sizeFix = backend === 'cloudinary'
+      ? 'Cloudinary’s free limit is 100 MB per file — trim the video and try again.'
+      : 'trim the video, or raise the bucket max in Supabase → Storage → bucket settings.';
     switch (err.message) {
-      case 'config': return `${what} can’t be shared yet — add your Supabase URL & anon key to src/config.js.`;
-      case 'network': return `Couldn’t reach Supabase — check your connection and try again.`;
+      case 'config': return backend === 'cloudinary'
+        ? `${what} can’t be shared yet — add your Cloudinary cloud name & upload preset to src/config.js.`
+        : `${what} can’t be shared yet — add your Supabase URL & anon key to src/config.js.`;
+      case 'network': return `Couldn’t reach the upload service — check your connection and try again.`;
       case 'auth': return `Sign in to share your ${noun} — then try again.`;
       case 'table': return `${what} can’t save yet — create the \`media\` table in Supabase.`;
-      case 'bucket': return `${what} need the \`glitchit-media\` storage bucket — create it in Supabase (public read).`;
+      case 'bucket': return backend === 'cloudinary'
+        ? `${what} can’t save yet — check your Cloudinary cloud name & upload preset in src/config.js.`
+        : `${what} need the \`glitchit-media\` storage bucket — create it in Supabase (public read).`;
       case 'permission': return `Supabase blocked the save — allow inserts on the \`media\` table (RLS policy) for signed-in users.`;
-      case 'upload': return `Couldn’t upload your ${noun} to storage — try a smaller video or check the bucket.`;
+      case 'upload': return `Couldn’t upload your ${noun} — check the upload config and try again.`;
       case 'size': {
         const mb = err.size ? ` (${(err.size / 1048576).toFixed(1)} MB)` : '';
-        return `Your ${noun} is too large${mb} — the storage limit is 50 MB. Trim the video, or raise the bucket max in Supabase → Storage → bucket settings.`;
+        return `Your ${noun} is too large${mb} — the limit is ${sizeLimit}. ${sizeFix}`;
       }
       default: return `Couldn’t share your ${noun} — please try again.`;
     }

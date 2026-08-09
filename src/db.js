@@ -2,7 +2,7 @@
 // Loaded from main.js via dynamic import. When the config is empty or the
 // network fails, every function degrades gracefully (no-op / localStorage)
 // so the app keeps working exactly as it did before.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=4';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from './config.js?v=5';
 
 const SAVED_KEY = 'glitchit.saved.v1';
 let client = null;
@@ -45,6 +45,47 @@ export function setCurrentUser(user) {
 
 export function dbAvailable() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+}
+
+// Media blobs are uploaded to Cloudinary (unsigned preset — no secret on the
+// page) when it's configured; otherwise we fall back to Supabase Storage.
+export function mediaBackend() {
+  return Boolean(CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET) ? 'cloudinary' : 'supabase';
+}
+function cloudinaryConfigured() {
+  return mediaBackend() === 'cloudinary';
+}
+
+// Upload a Blob straight to Cloudinary and return its public CDN URL.
+// Free-tier limits: 100 MB per file (unsigned uploads), 25 GB total.
+async function uploadToCloudinary(blob, kind) {
+  const resource = /^video\//i.test(blob.type) ? 'video' : /^image\//i.test(blob.type) ? 'image' : 'auto';
+  const ext = (blob.type.split('/')[1] || (kind === 'video' ? 'webm' : 'jpg')).replace(/[^a-z0-9]/gi, '');
+  const name = `glitchit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const fd = new FormData();
+  fd.append('file', blob, name);
+  fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  fd.append('folder', `glitchit/${kind}`);
+  try {
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(CLOUDINARY_CLOUD_NAME)}/${resource}/upload`, {
+      method: 'POST',
+      body: fd,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.secure_url) {
+      const msg = String(data?.error?.message || `Cloudinary upload failed (${res.status})`);
+      let reason = 'upload';
+      if (/invalid upload preset|unknown preset|not found|invalid cloud/i.test(msg) || res.status === 401 || res.status === 404) reason = 'config';
+      else if (/too large|limit|exceed/i.test(msg)) reason = 'size';
+      console.warn('GlitchIt: Cloudinary upload failed', data || res.status);
+      return { ok: false, reason, detail: msg, size: blob.size || 0 };
+    }
+    return { ok: true, url: data.secure_url, publicId: data.public_id };
+  } catch (err) {
+    const msg = String(err?.message || err);
+    console.warn('GlitchIt: Cloudinary request failed', err);
+    return { ok: false, reason: /failed to fetch|network|timeout|CORS/i.test(msg) ? 'network' : 'upload', detail: msg, size: blob.size || 0 };
+  }
 }
 
 function getClient() {
@@ -104,19 +145,26 @@ export async function saveMedia(item) {
     // every one of those must be pushed to storage so the feed row points at a
     // real, shareable file instead of an empty or throwaway URL.
     if (blob && !/^https?:\/\//i.test(url)) {
-      const ext = (blob.type.split('/')[1] || (kind === 'video' ? 'webm' : 'jpg')).replace(/[^a-z0-9]/gi, '');
-      const path = `${kind}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: upErr } = await sb.storage.from('glitchit-media').upload(path, blob, { upsert: false });
-      if (upErr) {
-        const msg = String(upErr.message || upErr);
-        let reason = 'upload';
-        if (/not found|does not exist|no such bucket/i.test(msg)) reason = 'bucket';
-        else if (/entitytoolarge|413|exceeded the maximum|payload too large|too large/i.test(msg)) reason = 'size';
-        console.warn('GlitchIt: media upload failed', upErr);
-        return { ok: false, reason, detail: msg, size: blob.size || 0 };
+      if (cloudinaryConfigured()) {
+        const up = await uploadToCloudinary(blob, kind);
+        if (!up.ok) return up;
+        url = up.url;
+      } else {
+        // Fallback: Supabase Storage (previous behavior) until Cloudinary is set up.
+        const ext = (blob.type.split('/')[1] || (kind === 'video' ? 'webm' : 'jpg')).replace(/[^a-z0-9]/gi, '');
+        const path = `${kind}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: upErr } = await sb.storage.from('glitchit-media').upload(path, blob, { upsert: false });
+        if (upErr) {
+          const msg = String(upErr.message || upErr);
+          let reason = 'upload';
+          if (/not found|does not exist|no such bucket/i.test(msg)) reason = 'bucket';
+          else if (/entitytoolarge|413|exceeded the maximum|payload too large|too large/i.test(msg)) reason = 'size';
+          console.warn('GlitchIt: media upload failed', upErr);
+          return { ok: false, reason, detail: msg, size: blob.size || 0 };
+        }
+        const { data } = sb.storage.from('glitchit-media').getPublicUrl(path);
+        url = data.publicUrl;
       }
-      const { data } = sb.storage.from('glitchit-media').getPublicUrl(path);
-      url = data.publicUrl;
     }
     const row = {
       kind,
@@ -155,7 +203,7 @@ export async function saveMedia(item) {
 
 // Probe the project and report exactly which pieces are missing.
 export async function checkSetup() {
-  const out = { configured: dbAvailable(), mediaTable: false, savedTable: false, bucket: false };
+  const out = { configured: dbAvailable(), mediaTable: false, savedTable: false, bucket: false, cloudinary: cloudinaryConfigured() };
   if (!out.configured) return out;
   try {
     const sb = await getClient();
