@@ -683,8 +683,9 @@ function getGlitchVideos() {
   return [...document.querySelectorAll('.glitch-video')];
 }
 
-function pauseGlitchVideo(video) {
+function pauseGlitchVideo(video, byScroll = false) {
   video.pause();
+  if (byScroll) video.dataset.scrollPaused = 'true';
   const card = video.closest('.video-card');
   card?.querySelector('.video-toggle')?.replaceChildren(document.createRange().createContextualFragment(icon('▶')));
 }
@@ -692,25 +693,27 @@ function pauseGlitchVideo(video) {
 function playGlitchVideo(video) {
   if (video.dataset.userPaused === 'true') return;
   getGlitchVideos().forEach((otherVideo) => {
-    if (otherVideo !== video) pauseGlitchVideo(otherVideo);
+    if (otherVideo !== video) pauseGlitchVideo(otherVideo, true);
   });
+  // Auto replay: when a video becomes the active one again after scrolling away,
+  // restart it from the top instead of resuming where it left off.
+  if (video.paused && video.dataset.scrollPaused === 'true') video.currentTime = 0;
+  video.dataset.scrollPaused = '';
   video.play().catch(() => pauseGlitchVideo(video));
   const card = video.closest('.video-card');
   card?.querySelector('.video-toggle')?.replaceChildren(document.createRange().createContextualFragment(icon('Ⅱ')));
 }
 
 function updateGlitchPlayback() {
-  const reel = document.getElementById('glitches-reel');
-  if (!reel) {
-    getGlitchVideos().forEach(pauseGlitchVideo);
-    return;
-  }
+  // Play whichever video is most visible in the viewport (any page that has
+  // videos), pause the rest — and pause everything when none are visible.
   const mostVisible = getGlitchVideos().map((video) => {
     const rect = video.getBoundingClientRect();
     const visible = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
     return { video, visible };
   }).filter(({ visible }) => visible > 0).sort((a, b) => b.visible - a.visible)[0]?.video;
   if (mostVisible) playGlitchVideo(mostVisible);
+  else getGlitchVideos().forEach((v) => pauseGlitchVideo(v, true));
 }
 
 function attachGlitchAutoplay() {
