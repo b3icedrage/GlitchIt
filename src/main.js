@@ -1463,6 +1463,83 @@ function attachAuthPage(auth) {
 }
 
 // Profile page: reflect the signed-in user and wire the Log out button.
+// GlitchIt Pro paywall sheet — built in-app from the RevenueCat offering, so it
+// works without a hosted paywall attached in the dashboard. Purchases flow
+// through RevenueCat's checkout (simulated Test Store on test keys).
+async function openProPaywall(proStatus, applyPro, proToast) {
+  const backdrop = document.getElementById('paywall-backdrop');
+  const list = document.getElementById('paywall-packages');
+  const cta = document.getElementById('paywall-cta');
+  const closeBtn = document.getElementById('paywall-close');
+  if (!backdrop || !list || !cta || !closeBtn) return;
+  const close = () => { backdrop.hidden = true; };
+  closeBtn.addEventListener('click', close);
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+  const names = { $rc_monthly: 'Monthly', $rc_annual: 'Annual', $rc_lifetime: 'Lifetime' };
+  const labelFor = (id) => names[id] || String(id).replace(/^\$rc_/, '').replace(/^./, (c) => c.toUpperCase());
+  try {
+    const rc = await import('./revenuecat.js?v=3');
+    const offerings = await rc.getOfferings();
+    const offering = offerings && offerings.current;
+    const packages = offering && offering.availablePackages;
+    if (!packages || !packages.length) {
+      proStatus.textContent = 'Unavailable';
+      proToast('No plans found — add packages to your offering in RevenueCat.');
+      return;
+    }
+    const best = packages.find((p) => p.identifier === '$rc_annual');
+    list.innerHTML = '';
+    packages.forEach((pkg) => {
+      const wb = pkg.webBillingProduct || {};
+      const price = (wb.price && wb.price.formattedPrice) || '';
+      const period = (wb.defaultSubscriptionOption && wb.defaultSubscriptionOption.base && wb.defaultSubscriptionOption.base.period && wb.defaultSubscriptionOption.base.period.unit) || '';
+      const tag = labelFor(pkg.identifier);
+      const detail = wb.productType === 'subscription'
+        ? `${price}/${period === 'year' ? 'year' : 'month'}`
+        : `${price} · one-time`;
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.dataset.id = pkg.identifier;
+      row.className = 'paywall-package' + (pkg.identifier === best?.identifier ? ' best' : '');
+      row.innerHTML = `<span class="paywall-package-name">${tag}${pkg.identifier === best?.identifier ? '<em>Best value</em>' : ''}</span><span class="paywall-package-price">${detail}</span>`;
+      row.addEventListener('click', () => {
+        list.querySelectorAll('.paywall-package').forEach((el) => el.classList.remove('selected'));
+        row.classList.add('selected');
+        cta.disabled = false;
+        cta.textContent = `Get ${tag} — ${detail}`;
+      });
+      list.appendChild(row);
+    });
+    backdrop.hidden = false;
+    cta.disabled = true;
+    cta.textContent = 'Choose a plan';
+    cta.onclick = async () => {
+      const selected = list.querySelector('.paywall-package.selected');
+      if (!selected) return;
+      cta.disabled = true;
+      cta.textContent = 'Opening checkout…';
+      const pkg = packages.find((p) => p.identifier === selected.dataset.id) || packages[0];
+      try {
+        const result = await rc.purchasePackage(pkg || packages[0]);
+        const pro = await rc.isPro();
+        applyPro(pro);
+        close();
+        proToast(pro ? 'Welcome to GlitchIt Pro ✦' : 'Purchase not completed yet');
+      } catch (err) {
+        cta.disabled = false;
+        cta.textContent = 'Choose a plan';
+        console.warn('GlitchIt: purchase failed', err);
+        const message = (err && err.message) || '';
+        if (!/cancel/i.test(message)) proToast('Purchase didn’t complete — try again.');
+      }
+    };
+  } catch (err) {
+    console.warn('GlitchIt: paywall failed', err);
+    proStatus.textContent = 'Unlock premium features';
+    proToast('Couldn’t load plans — try again.');
+  }
+}
+
 function attachProfileAuth() {
   const user = window.GLITCHIT_USER;
   const logoutBtn = document.getElementById('auth-logout');
@@ -1507,31 +1584,11 @@ function attachProfileAuth() {
       .then((rc) => rc.isPro())
       .then(applyPro)
       .catch(() => { proStatus.textContent = 'Unavailable'; });
-    // Tap the row to open the RevenueCat paywall (test store while on a test key).
-    proRow?.addEventListener('click', async () => {
+    // Tap the row to open the GlitchIt Pro paywall sheet (built in-app from the
+    // RevenueCat offering — no dashboard paywall required).
+    proRow?.addEventListener('click', () => {
       if (proUser) return;
-      proStatus.textContent = 'Opening…';
-      try {
-        const rc = await import('./revenuecat.js?v=3');
-        const result = await rc.presentPaywall();
-        if (!result) { applyPro(false); return; }
-        const pro = await rc.isPro();
-        applyPro(pro);
-        proToast(pro ? 'Welcome to GlitchIt Pro ✦' : 'Purchase not completed yet');
-      } catch (err) {
-        console.warn('GlitchIt: paywall failed', err);
-        applyPro(false);
-        const message = (err && err.message) || '';
-        if (/cancel/i.test(message)) {
-          // User closed the paywall — not an error.
-        } else if (message.includes('paywall attached') || message.includes('No offering')) {
-          proStatus.textContent = 'Setup needed';
-          proToast('Pro isn’t ready yet — attach a paywall to your offering in RevenueCat.');
-        } else {
-          proStatus.textContent = 'Unlock premium features';
-          proToast('Couldn’t open the paywall — try again.');
-        }
-      }
+      openProPaywall(proStatus, applyPro, proToast);
     });
   }
   if (!user || user.guest) return;

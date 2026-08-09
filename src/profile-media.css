@@ -17,3 +17,103 @@
 .settings-pro-group #pro-status { color: #8e8ea0; }
 .settings-pro-group .pro-active .setting-icon,
 .settings-pro-group .pro-active #pro-status { color: #22c55e; }
+
+/* GlitchIt Pro paywall sheet */
+.paywall-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(8, 8, 18, .62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.paywall-sheet {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: 88vh;
+  overflow: auto;
+  padding: 22px;
+  border-radius: 22px;
+  background: #13131f;
+  color: #fff;
+  border: 1px solid rgba(214, 41, 118, .35);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .55);
+  animation: paywallIn .22s ease;
+}
+@keyframes paywallIn {
+  from { opacity: 0; transform: translateY(14px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.paywall-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.paywall-close:hover { background: rgba(255, 255, 255, .16); }
+.paywall-header { text-align: center; margin-bottom: 18px; }
+.paywall-mark {
+  font-size: 30px;
+  color: #d62976;
+  text-shadow: 0 0 18px rgba(214, 41, 118, .55);
+}
+.paywall-header h3 { margin: 8px 0 4px; font-size: 23px; letter-spacing: .2px; }
+.paywall-header p { margin: 0 auto; max-width: 300px; color: #9a9ab2; font-size: 13px; line-height: 1.5; }
+.paywall-packages { display: grid; gap: 10px; margin-bottom: 16px; }
+.paywall-package {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid rgba(255, 255, 255, .09);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .045);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.paywall-package:hover { background: rgba(255, 255, 255, .075); transform: translateY(-1px); }
+.paywall-package.selected { border-color: #d62976; background: rgba(214, 41, 118, .13); }
+.paywall-package.best { border-color: rgba(214, 41, 118, .45); }
+.paywall-package-name { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 15px; }
+.paywall-package-name em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: #13131f;
+  background: linear-gradient(90deg, #feda75, #fa7e1e, #d62976);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.paywall-package-price { color: #d2d2e6; font-size: 14px; white-space: nowrap; }
+.paywall-cta {
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(90deg, #d62976, #962fbf);
+  cursor: pointer;
+  transition: opacity .15s ease, transform .15s ease;
+}
+.paywall-cta:hover:not(:disabled) { transform: translateY(-1px); }
+.paywall-cta:disabled { opacity: .45; cursor: not-allowed; }
+.paywall-note { margin: 12px 0 0; text-align: center; color: #7c7c96; font-size: 11px; line-height: 1.5; }
