@@ -27,6 +27,7 @@ const ENTRIES = [
   'camera.html',
   'src',
   'sw.js',
+  'ads.txt',
   'vercel.json',
   'api',
 ];
