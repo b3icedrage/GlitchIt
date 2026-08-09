@@ -16,8 +16,8 @@ export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 //      → (optional) Folder: glitchit → Save, then copy the preset name.
 //   3. Paste both values below. Leave CLOUDINARY_UPLOAD_PRESET as '' to keep
 //      using Supabase Storage instead.
-export const CLOUDINARY_CLOUD_NAME = '';
-export const CLOUDINARY_UPLOAD_PRESET = '';
+export const CLOUDINARY_CLOUD_NAME = 'cyv96uet';
+export const CLOUDINARY_UPLOAD_PRESET = 'glitchit';
 
 // GlitchIt — monitoring. Public Sentry DSN (a client key, safe to ship in the
 // browser like the anon key above) enabling error tracking + performance
