@@ -99,14 +99,22 @@ export async function saveMedia(item) {
     let url = item.preview || item.src || item.url || '';
     let poster = item.poster || null;
     const blob = toBlob(item.file) || toBlob(item.preview);
-    if (blob && url.startsWith('data:')) {
+    // Upload anything that isn't already a hosted public URL. Camera photos come
+    // in as data: URLs, camera videos as blob: URLs, gallery files as Blobs —
+    // every one of those must be pushed to storage so the feed row points at a
+    // real, shareable file instead of an empty or throwaway URL.
+    if (blob && !/^https?:\/\//i.test(url)) {
       const ext = (blob.type.split('/')[1] || (kind === 'video' ? 'webm' : 'jpg')).replace(/[^a-z0-9]/gi, '');
       const path = `${kind}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const { error: upErr } = await sb.storage.from('glitchit-media').upload(path, blob, { upsert: false });
-      if (!upErr) {
-        const { data } = sb.storage.from('glitchit-media').getPublicUrl(path);
-        url = data.publicUrl;
+      if (upErr) {
+        const msg = String(upErr.message || upErr);
+        const reason = /not found|does not exist|no such bucket|bucket/i.test(msg) ? 'bucket' : 'upload';
+        console.warn('GlitchIt: media upload failed', upErr);
+        return { ok: false, reason, detail: msg };
       }
+      const { data } = sb.storage.from('glitchit-media').getPublicUrl(path);
+      url = data.publicUrl;
     }
     const row = {
       kind,
@@ -115,20 +123,31 @@ export async function saveMedia(item) {
       url,
       poster,
       user: owner,
-      handle: item.handle || '',
+      // Note: the real `media` table has no `handle` column — display names are
+      // derived from the auth user (see displayUser in main.js), so `handle` is
+      // intentionally not written. Do not add it back unless the table changes.
       avatar: item.avatar || '',
       likes: item.likes || 0,
       comments: item.comments || 0,
       shares: item.shares || 0,
     };
     const { data, error } = await sb.from('media').insert(row).select('id').single();
-    if (error) throw new Error(error.message || 'insert failed');
+    if (error) {
+      const msg = String(error.message || error);
+      const reason = /could not find the table|does not exist|PGRST205/i.test(msg)
+        ? 'table'
+        : /permission denied|row-level security|policy|PGRST301/i.test(msg)
+          ? 'permission'
+          : 'error';
+      console.warn('GlitchIt: media insert failed', error);
+      return { ok: false, reason, detail: msg };
+    }
     return { ok: true, id: data.id, url, poster };
   } catch (err) {
     const msg = String(err?.message || err);
     const reason = /could not find the table|does not exist|PGRST205/i.test(msg) ? 'table' : 'error';
     console.warn('GlitchIt: media save failed', err);
-    return { ok: false, reason };
+    return { ok: false, reason, detail: msg };
   }
 }
 
@@ -173,12 +192,14 @@ export async function loadCreators(limit = 30) {
   try {
     const sb = await getClient();
     if (!sb) return [];
-    const { data, error } = await sb.from('media').select('user, handle, avatar').order('created_at', { ascending: false }).limit(300);
+    // The real `media` table has no `handle` column; consumers fall back to the
+    // owner id slice for a display name, so we only select the columns that exist.
+    const { data, error } = await sb.from('media').select('user, avatar').order('created_at', { ascending: false }).limit(300);
     if (error) throw error;
     const seen = new Map();
     (data || []).forEach((row) => {
       if (!row.user || !/^[0-9a-f-]{8,}$/i.test(String(row.user))) return;
-      if (!seen.has(row.user)) seen.set(row.user, { id: row.user, handle: row.handle || '', avatar: row.avatar || '' });
+      if (!seen.has(row.user)) seen.set(row.user, { id: row.user, handle: '', avatar: row.avatar || '' });
     });
     return [...seen.values()].slice(0, limit);
   } catch (err) {

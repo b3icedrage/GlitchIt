@@ -556,6 +556,7 @@
       return;
     }
     const saveLabel = els.save.querySelector('b');
+    const isReel = mode === 'reel';
     els.save.disabled = true;
     els.save.classList.add('busy');
     saveLabel.textContent = 'Sharing…';
@@ -570,7 +571,6 @@
         poster = preview.poster || null;
         kind = 'video';
       }
-      const isReel = mode === 'reel';
       const handle = (user.user_metadata && user.user_metadata.username) || user.email?.split('@')[0] || '';
       const avatar = (user.user_metadata && user.user_metadata.avatar) || '';
       const res = await db.saveMedia({
@@ -582,7 +582,11 @@
         handle,
         avatar,
       });
-      if (!res.ok) throw new Error(res.reason || 'save');
+      if (!res.ok) {
+        const e = new Error(res.reason || 'save');
+        e.detail = res.detail || '';
+        throw e;
+      }
       if (!isReel) {
         try {
           localStorage.setItem('glitchit.story.latest', JSON.stringify({
@@ -599,11 +603,26 @@
       els.save.disabled = false;
       els.save.classList.remove('busy');
       updateSaveLabel();
-      toast(err.message === 'table'
-        ? 'Stories can’t save yet — create the media table in Supabase.'
-        : 'Couldn’t share your story — please try again.');
+      toast(shareError(err, isReel));
+      if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'camera-save' });
     }
   });
+
+  // Turn a db.saveMedia failure into a specific, actionable message.
+  function shareError(err, isReel) {
+    const noun = isReel ? 'reel' : 'story';
+    const what = isReel ? 'Reels' : 'Stories';
+    switch (err.message) {
+      case 'config': return `${what} can’t be shared yet — add your Supabase URL & anon key to src/config.js.`;
+      case 'network': return `Couldn’t reach Supabase — check your connection and try again.`;
+      case 'auth': return `Sign in to share your ${noun} — then try again.`;
+      case 'table': return `${what} can’t save yet — create the \`media\` table in Supabase.`;
+      case 'bucket': return `${what} need the \`glitchit-media\` storage bucket — create it in Supabase (public read).`;
+      case 'permission': return `Supabase blocked the save — allow inserts on the \`media\` table (RLS policy) for signed-in users.`;
+      case 'upload': return `Couldn’t upload your ${noun} to storage — try a smaller video or check the bucket.`;
+      default: return `Couldn’t share your ${noun} — please try again.`;
+    }
+  }
 
   // ---------- gallery ----------
   els.gallery.addEventListener('click', () => els.file.click());
