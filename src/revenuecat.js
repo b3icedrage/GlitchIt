@@ -119,3 +119,34 @@ export async function isPro() {
   const target = norm(PRO_ENTITLEMENT_ID);
   return Object.keys(active).some((k) => norm(k) === target);
 }
+
+// Present RevenueCat's hosted paywall for the current offering. Resolves with
+// { customerInfo, redemptionInfo, ... } after a purchase, rejects when the
+// user closes. The offering must have a paywall attached in the RevenueCat
+// dashboard, or the SDK throws "This offering doesn't have a paywall attached."
+export async function presentPaywall(opts = {}) {
+  const p = await getInstance();
+  if (!p) return null;
+  const offering = opts.offering || (await p.getOfferings()).current;
+  if (!offering) throw new Error('No offering available');
+  return await p.presentPaywall({ offering, ...opts });
+}
+
+// Purchase a specific package directly (opens RevenueCat's checkout UI).
+export async function purchasePackage(pkg) {
+  const p = await getInstance();
+  if (!p) return null;
+  return await p.purchasePackage(pkg);
+}
+
+// SDK helper: is the user entitled to the given entitlement id?
+export async function isEntitledTo(id) {
+  const p = await getInstance();
+  if (!p) return false;
+  try {
+    return await p.isEntitledTo(id);
+  } catch (err) {
+    console.warn('GlitchIt: isEntitledTo failed', err);
+    return false;
+  }
+}

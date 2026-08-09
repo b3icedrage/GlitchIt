@@ -1479,13 +1479,60 @@ function attachProfileAuth() {
   // GlitchIt Pro status — reflects the RevenueCat entitlement in real time.
   const proStatus = document.getElementById('pro-status');
   if (proStatus) {
-    import('./revenuecat.js?v=2')
+    const proRow = proStatus.closest('.settings-row');
+    let proUser = false;
+    let proToastTimer = null;
+    const applyPro = (pro) => {
+      proUser = Boolean(pro);
+      proStatus.textContent = pro ? 'Active — thanks for supporting GlitchIt ✦' : 'Unlock premium features';
+      proRow?.classList.toggle('pro-active', proUser);
+    };
+    const proToast = (message) => {
+      let toast = document.getElementById('end-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'end-toast';
+        toast.className = 'end-toast';
+        toast.setAttribute('role', 'status');
+        document.body.appendChild(toast);
+      }
+      toast.innerHTML = `<span class="end-toast-mark">✦</span><span class="end-toast-text">${message}</span>`;
+      toast.classList.remove('show');
+      void toast.offsetWidth; // restart the animation
+      toast.classList.add('show');
+      clearTimeout(proToastTimer);
+      proToastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+    };
+    import('./revenuecat.js?v=3')
       .then((rc) => rc.isPro())
-      .then((pro) => {
-        proStatus.textContent = pro ? 'Active — thanks for supporting GlitchIt ✦' : 'Unlock premium features';
-        proStatus.closest('.settings-row')?.classList.toggle('pro-active', pro);
-      })
+      .then(applyPro)
       .catch(() => { proStatus.textContent = 'Unavailable'; });
+    // Tap the row to open the RevenueCat paywall (test store while on a test key).
+    proRow?.addEventListener('click', async () => {
+      if (proUser) return;
+      proStatus.textContent = 'Opening…';
+      try {
+        const rc = await import('./revenuecat.js?v=3');
+        const result = await rc.presentPaywall();
+        if (!result) { applyPro(false); return; }
+        const pro = await rc.isPro();
+        applyPro(pro);
+        proToast(pro ? 'Welcome to GlitchIt Pro ✦' : 'Purchase not completed yet');
+      } catch (err) {
+        console.warn('GlitchIt: paywall failed', err);
+        applyPro(false);
+        const message = (err && err.message) || '';
+        if (/cancel/i.test(message)) {
+          // User closed the paywall — not an error.
+        } else if (message.includes('paywall attached') || message.includes('No offering')) {
+          proStatus.textContent = 'Setup needed';
+          proToast('Pro isn’t ready yet — attach a paywall to your offering in RevenueCat.');
+        } else {
+          proStatus.textContent = 'Unlock premium features';
+          proToast('Couldn’t open the paywall — try again.');
+        }
+      }
+    });
   }
   if (!user || user.guest) return;
   const handle = user.user_metadata?.username || user.email?.split('@')[0] || '';
@@ -1552,7 +1599,7 @@ async function boot() {
   // Kick off RevenueCat (subscriptions) in the background — non-blocking, so
   // a missing key or CDN outage never affects the rest of the app. Uses the
   // signed-in account id when available, else a persisted anonymous id.
-  import('./revenuecat.js?v=2')
+  import('./revenuecat.js?v=3')
     .then((rc) => rc.initRevenueCat(window.GLITCHIT_USER?.id))
     .catch(() => {});
 }
