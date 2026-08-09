@@ -31,6 +31,13 @@
         <button type="button" class="cam-top-btn" id="cam-settings" aria-label="Camera settings">⚙</button>
       </header>
 
+      <!-- Reel recording timer -->
+      <div class="cam-reel-timer" id="cam-reel-timer" hidden aria-hidden="true">
+        <span class="cam-reel-dot" aria-hidden="true"></span>
+        <b id="cam-reel-time">0:00</b>
+        <span>REC</span>
+      </div>
+
       <!-- Left create tools menu -->
       <nav class="cam-menu" id="cam-menu" hidden aria-label="Create tools">
         <button type="button" class="cam-menu-item is-current" data-tool="create"><span class="cam-menu-ic" aria-hidden="true">Aa</span><span>Create</span></button>
@@ -68,14 +75,14 @@
         </div>
         <div class="cam-preview-top">
           <button type="button" class="cam-top-btn" id="cam-preview-back" aria-label="Retake">✕</button>
-          <strong class="cam-preview-title">Your story</strong>
+          <strong class="cam-preview-title" id="cam-preview-title">Your story</strong>
           <span class="cam-preview-top-actions">
             <button type="button" class="cam-top-btn" id="cam-text-tool" aria-label="Add text">Aa</button>
             <button type="button" class="cam-top-btn" id="cam-preview-settings" aria-label="More options">•••</button>
           </span>
         </div>
         <div class="cam-preview-bottom">
-          <button type="button" class="cam-save" id="cam-save"><span>Send to</span><b>Your story</b><i aria-hidden="true">→</i></button>
+          <button type="button" class="cam-save" id="cam-save"><span id="cam-save-to">Send to</span><b id="cam-save-target">Your story</b><i aria-hidden="true">→</i></button>
         </div>
       </section>
 

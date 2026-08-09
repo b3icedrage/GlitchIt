@@ -12,9 +12,10 @@
     dismiss: $('cam-dismiss'), flash: $('cam-flash'), settings: $('cam-settings'),
     menu: $('cam-menu'), trigger: $('cam-trigger'), menuClose: $('cam-menu-close'),
     gallery: $('cam-gallery'), shutter: $('cam-shutter'), filters: $('cam-filters'),
-    refresh: $('cam-refresh'),
+    refresh: $('cam-refresh'), reelTimer: $('cam-reel-timer'), reelTime: $('cam-reel-time'),
     preview: $('cam-preview'), previewImg: $('cam-preview-img'), previewVideo: $('cam-preview-video'),
-    textLayers: $('cam-text-layers'), previewBack: $('cam-preview-back'),
+    textLayers: $('cam-text-layers'), previewTitle: $('cam-preview-title'),
+    saveTo: $('cam-save-to'), saveTarget: $('cam-save-target'), previewBack: $('cam-preview-back'),
     textTool: $('cam-text-tool'), previewSettings: $('cam-preview-settings'), save: $('cam-save'),
     composer: $('cam-composer'), composerInput: $('cam-composer-input'),
     composerColors: $('cam-composer-colors'), composerSize: $('cam-composer-size'), composerDone: $('cam-composer-done'),
@@ -48,6 +49,7 @@
   let flash = 'off';
   let filterIdx = 0;
   let tool = 'create'; // create | boomerang | layout | hands
+  let mode = 'story';  // story | reel — which the mode bar is in
   let gridOn = false;
   let handsFree = false;
   let timerIdx = 0;
@@ -208,17 +210,32 @@
     stopStream();
     location.reload();
   });
+  function setMode(m) {
+    mode = m;
+    document.querySelectorAll('.cam-modes [data-mode]').forEach((b) => {
+      b.classList.toggle('active', b.dataset.mode === m);
+    });
+    els.shutter.setAttribute('aria-label', m === 'reel' ? 'Start recording a reel' : 'Take a photo');
+    toast(m === 'reel' ? 'Reel mode — tap to record' : 'Story mode — tap to snap');
+  }
   document.querySelectorAll('.cam-modes [data-mode]').forEach((b) => {
     b.addEventListener('click', () => {
       const m = b.dataset.mode;
-      if (m === 'story') return;
-      location.href = m === 'post' ? 'index.html' : m === 'reel' ? 'glitches.html' : 'live.html';
+      if (m === 'post' || m === 'live') { location.href = m === 'post' ? 'index.html' : 'live.html'; return; }
+      setMode(m);
     });
   });
   window.addEventListener('pagehide', () => stopStream(), { once: true });
 
   // ---------- shutter: photo / boomerang / hands-free ----------
   els.shutter.addEventListener('click', () => {
+    if (mode === 'reel') {
+      if (recording) stopReelRecording();
+      else if (!stream) toast('Camera unavailable — pick from your gallery instead');
+      else if (handsFree) runCountdown(startReelRecording);
+      else startReelRecording();
+      return;
+    }
     if (recording) return;
     if (!stream) {
       toast('Camera unavailable — pick from your gallery instead');
@@ -278,6 +295,63 @@
     setTimeout(() => { try { rec.stop(); } catch (e) { /* already stopped */ } }, 1600);
   }
 
+  // Reel mode: continuous vertical video recording (tap to start, tap to stop,
+  // auto-caps at 90s) with a live timer pill.
+  let reelRec = null;
+  let reelRaf = 0;
+  let reelTimerInt = 0;
+  let reelStart = 0;
+  const REEL_MAX = 90;
+
+  function startReelRecording() {
+    const vw = els.video.videoWidth || 720;
+    const vh = els.video.videoHeight || 1280;
+    const W = 720;
+    const H = 1280;
+    els.canvas.width = W;
+    els.canvas.height = H;
+    const ctx = els.canvas.getContext('2d');
+    ctx.filter = FILTERS[filterIdx].css;
+    const render = () => drawCover(ctx, els.video, W, H);
+    const capStream = els.canvas.captureStream(30);
+    const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
+      .find((m) => typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(m)) || '';
+    const rec = new MediaRecorder(capStream, mime ? { mimeType: mime, videoBitsPerSecond: 6_000_000 } : undefined);
+    const chunks = [];
+    rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = () => {
+      cancelAnimationFrame(reelRaf);
+      clearInterval(reelTimerInt);
+      recording = false;
+      els.shutter.classList.remove('recording');
+      els.reelTimer.hidden = true;
+      const blob = new Blob(chunks, { type: rec.mimeType || 'video/webm' });
+      preview = { kind: 'video', url: URL.createObjectURL(blob), blob, poster: framePoster(els.video) };
+      openPreview('video');
+    };
+    recording = true;
+    reelRec = rec;
+    els.shutter.classList.add('recording');
+    els.reelTimer.hidden = false;
+    reelStart = Date.now();
+    els.reelTime.textContent = '0:00';
+    reelTimerInt = setInterval(() => {
+      const sec = Math.min(REEL_MAX, Math.floor((Date.now() - reelStart) / 1000));
+      els.reelTime.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+      if (sec >= REEL_MAX) stopReelRecording();
+    }, 250);
+    const loop = () => { if (!recording) return; render(); reelRaf = requestAnimationFrame(loop); };
+    reelRaf = requestAnimationFrame(loop);
+    rec.start();
+    toast('Recording… tap the shutter to stop');
+  }
+
+  function stopReelRecording() {
+    if (!reelRec) return;
+    try { reelRec.stop(); } catch (e) { /* already stopped */ }
+    reelRec = null;
+  }
+
   // First frame of a video source as a small JPEG poster (for the story ring).
   function framePoster(src, w = 540, h = 960) {
     try {
@@ -326,6 +400,7 @@
     els.previewVideo.poster = preview.poster || '';
     textLayers = [];
     renderTextLayers();
+    updateSaveLabel();
     if (!isImage) els.previewVideo.play().catch(() => {});
   }
   els.previewBack.addEventListener('click', closePreview);
@@ -346,7 +421,15 @@
     preview = null;
     els.save.disabled = false;
     els.save.classList.remove('busy');
-    els.save.querySelector('b').textContent = 'Your story';
+    updateSaveLabel();
+  }
+
+  // The save pill + preview title adapt to the chosen mode (story vs reel).
+  function updateSaveLabel() {
+    const isReel = mode === 'reel';
+    els.previewTitle.textContent = isReel ? 'Your reel' : 'Your story';
+    els.saveTo.textContent = isReel ? 'Share to' : 'Send to';
+    els.saveTarget.textContent = isReel ? 'Your reel' : 'Your story';
   }
 
   // ---------- text overlays ----------
@@ -464,7 +547,7 @@
   els.save.addEventListener('click', async () => {
     if (!preview) return;
     if (!user) {
-      toast('Sign in to share your story');
+      toast(mode === 'reel' ? 'Sign in to share your reel' : 'Sign in to share your story');
       setTimeout(() => { location.href = 'auth.html?returnTo=camera.html'; }, 1300);
       return;
     }
@@ -487,32 +570,35 @@
         poster = preview.poster || null;
         kind = 'video';
       }
+      const isReel = mode === 'reel';
       const handle = (user.user_metadata && user.user_metadata.username) || user.email?.split('@')[0] || '';
       const avatar = (user.user_metadata && user.user_metadata.avatar) || '';
       const res = await db.saveMedia({
         type: kind,
-        kind: 'story',
+        kind: isReel ? 'video' : 'story',
         file,
-        title: 'Story',
-        caption: 'Story moment',
+        title: isReel ? 'Reel' : 'Story',
+        caption: isReel ? 'Reel moment' : 'Story moment',
         handle,
         avatar,
       });
       if (!res.ok) throw new Error(res.reason || 'save');
-      try {
-        localStorage.setItem('glitchit.story.latest', JSON.stringify({
-          url: res.url,
-          poster: kind === 'video' ? poster : res.url,
-          kind,
-          at: Date.now(),
-        }));
-      } catch (e) { /* storage unavailable */ }
-      toast('Story shared ✦');
-      setTimeout(() => { location.href = 'index.html'; }, 900);
+      if (!isReel) {
+        try {
+          localStorage.setItem('glitchit.story.latest', JSON.stringify({
+            url: res.url,
+            poster: kind === 'video' ? poster : res.url,
+            kind,
+            at: Date.now(),
+          }));
+        } catch (e) { /* storage unavailable */ }
+      }
+      toast(isReel ? 'Reel shared ✦' : 'Story shared ✦');
+      setTimeout(() => { location.href = isReel ? 'glitches.html' : 'index.html'; }, 900);
     } catch (err) {
       els.save.disabled = false;
       els.save.classList.remove('busy');
-      saveLabel.textContent = 'Your story';
+      updateSaveLabel();
       toast(err.message === 'table'
         ? 'Stories can’t save yet — create the media table in Supabase.'
         : 'Couldn’t share your story — please try again.');
