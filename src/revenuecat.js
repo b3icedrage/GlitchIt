@@ -105,3 +105,17 @@ export async function getOfferings() {
     return null;
   }
 }
+
+// The entitlement id as configured in the RevenueCat dashboard.
+export const PRO_ENTITLEMENT_ID = 'GlitchIt  Pro';
+
+// Whether the user currently has the GlitchIt Pro entitlement. Matches the
+// exact id first, then falls back to a whitespace-normalized comparison in
+// case the dashboard id differs only in spacing/case.
+export async function isPro() {
+  const active = await activeEntitlements();
+  if (active[PRO_ENTITLEMENT_ID]) return true;
+  const norm = (s) => String(s).replace(/\s+/g, ' ').trim().toLowerCase();
+  const target = norm(PRO_ENTITLEMENT_ID);
+  return Object.keys(active).some((k) => norm(k) === target);
+}

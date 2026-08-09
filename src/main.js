@@ -1476,6 +1476,17 @@ function attachProfileAuth() {
       location.href = 'auth.html';
     });
   }
+  // GlitchIt Pro status — reflects the RevenueCat entitlement in real time.
+  const proStatus = document.getElementById('pro-status');
+  if (proStatus) {
+    import('./revenuecat.js?v=2')
+      .then((rc) => rc.isPro())
+      .then((pro) => {
+        proStatus.textContent = pro ? 'Active — thanks for supporting GlitchIt ✦' : 'Unlock premium features';
+        proStatus.closest('.settings-row')?.classList.toggle('pro-active', pro);
+      })
+      .catch(() => { proStatus.textContent = 'Unavailable'; });
+  }
   if (!user || user.guest) return;
   const handle = user.user_metadata?.username || user.email?.split('@')[0] || '';
   const top = document.querySelector('.profile-topbar strong');
@@ -1541,7 +1552,7 @@ async function boot() {
   // Kick off RevenueCat (subscriptions) in the background — non-blocking, so
   // a missing key or CDN outage never affects the rest of the app. Uses the
   // signed-in account id when available, else a persisted anonymous id.
-  import('./revenuecat.js?v=1')
+  import('./revenuecat.js?v=2')
     .then((rc) => rc.initRevenueCat(window.GLITCHIT_USER?.id))
     .catch(() => {});
 }
