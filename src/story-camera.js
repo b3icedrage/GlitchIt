@@ -48,7 +48,7 @@
   let facing = 'user';
   let flash = 'off';
   let filterIdx = 0;
-  let tool = 'create'; // create | boomerang | layout | hands
+  let tool = 'create'; // create | take | boomerang | layout | hands
   let mode = 'story';  // story | reel — which the mode bar is in
   let gridOn = false;
   let handsFree = false;
@@ -181,6 +181,9 @@
       if (t === 'boomerang') {
         tool = 'boomerang';
         toast('Boomerang — tap to record a loop');
+      } else if (t === 'take') {
+        tool = 'take';
+        toast('Take — tap the shutter to record');
       } else if (t === 'hands') {
         handsFree = !handsFree;
         btn.classList.toggle('is-current', handsFree);
@@ -215,13 +218,18 @@
     document.querySelectorAll('.cam-modes [data-mode]').forEach((b) => {
       b.classList.toggle('active', b.dataset.mode === m);
     });
-    els.shutter.setAttribute('aria-label', m === 'reel' ? 'Start recording a reel' : 'Take a photo');
-    toast(m === 'reel' ? 'Reel mode — tap to record' : 'Story mode — tap to snap');
+    const shutterAria = m === 'reel' ? 'Start recording a reel'
+      : m === 'post' ? 'Take a photo, record a take, or choose from your gallery'
+      : 'Take a photo';
+    els.shutter.setAttribute('aria-label', shutterAria);
+    toast(m === 'reel' ? 'Reel mode — tap to record'
+      : m === 'post' ? 'Post mode — photo, take or upload'
+      : 'Story mode — tap to snap');
   }
   document.querySelectorAll('.cam-modes [data-mode]').forEach((b) => {
     b.addEventListener('click', () => {
       const m = b.dataset.mode;
-      if (m === 'post' || m === 'live') { location.href = m === 'post' ? 'index.html' : 'live.html'; return; }
+      if (m === 'live') { location.href = 'live.html'; return; }
       setMode(m);
     });
   });
@@ -229,6 +237,14 @@
 
   // ---------- shutter: photo / boomerang / hands-free ----------
   els.shutter.addEventListener('click', () => {
+    // Post/Story "Take": record a video clip (tap to stop) instead of a photo.
+    if (tool === 'take' && mode !== 'reel') {
+      if (recording) stopReelRecording();
+      else if (!stream) toast('Camera unavailable — pick from your gallery instead');
+      else if (handsFree) runCountdown(startReelRecording);
+      else startReelRecording();
+      return;
+    }
     if (mode === 'reel') {
       if (recording) stopReelRecording();
       else if (!stream) toast('Camera unavailable — pick from your gallery instead');
@@ -424,12 +440,13 @@
     updateSaveLabel();
   }
 
-  // The save pill + preview title adapt to the chosen mode (story vs reel).
+  // The save pill + preview title adapt to the chosen mode (story / post / reel).
   function updateSaveLabel() {
-    const isReel = mode === 'reel';
-    els.previewTitle.textContent = isReel ? 'Your reel' : 'Your story';
-    els.saveTo.textContent = isReel ? 'Share to' : 'Send to';
-    els.saveTarget.textContent = isReel ? 'Your reel' : 'Your story';
+    const t = mode === 'reel' ? 'reel' : mode === 'post' ? 'post' : 'story';
+    const label = t === 'reel' ? 'Your reel' : t === 'post' ? 'Your post' : 'Your story';
+    els.previewTitle.textContent = label;
+    els.saveTo.textContent = t === 'story' ? 'Send to' : 'Share to';
+    els.saveTarget.textContent = label;
   }
 
   // ---------- text overlays ----------
@@ -546,8 +563,9 @@
   // ---------- save ----------
   els.save.addEventListener('click', async () => {
     if (!preview) return;
+    const target = mode === 'reel' ? 'reel' : mode === 'post' ? 'post' : 'story';
     if (!user) {
-      toast(mode === 'reel' ? 'Sign in to share your reel' : 'Sign in to share your story');
+      toast(`Sign in to share your ${target}`);
       setTimeout(() => { location.href = 'auth.html?returnTo=camera.html'; }, 1300);
       return;
     }
@@ -556,7 +574,6 @@
       return;
     }
     const saveLabel = els.save.querySelector('b');
-    const isReel = mode === 'reel';
     els.save.disabled = true;
     els.save.classList.add('busy');
     saveLabel.textContent = 'Sharing…';
@@ -575,10 +592,10 @@
       const avatar = (user.user_metadata && user.user_metadata.avatar) || '';
       const res = await db.saveMedia({
         type: kind,
-        kind: isReel ? 'video' : 'story',
+        kind: target === 'story' ? 'story' : kind,
         file,
-        title: isReel ? 'Reel' : 'Story',
-        caption: isReel ? 'Reel moment' : 'Story moment',
+        title: target === 'reel' ? 'Reel' : target === 'post' ? 'Post' : 'Story',
+        caption: target === 'reel' ? 'Reel moment' : target === 'post' ? 'Post moment' : 'Story moment',
         handle,
         avatar,
       });
@@ -588,7 +605,7 @@
         e.size = res.size || 0;
         throw e;
       }
-      if (!isReel) {
+      if (target === 'story') {
         try {
           localStorage.setItem('glitchit.story.latest', JSON.stringify({
             url: res.url,
@@ -598,21 +615,21 @@
           }));
         } catch (e) { /* storage unavailable */ }
       }
-      toast(isReel ? 'Reel shared ✦' : 'Story shared ✦');
-      setTimeout(() => { location.href = isReel ? 'glitches.html' : 'index.html'; }, 900);
+      toast(target === 'reel' ? 'Reel shared ✦' : target === 'post' ? 'Post shared ✦' : 'Story shared ✦');
+      setTimeout(() => { location.href = target === 'reel' ? 'glitches.html' : 'index.html'; }, 900);
     } catch (err) {
       els.save.disabled = false;
       els.save.classList.remove('busy');
       updateSaveLabel();
-      toast(shareError(err, isReel));
+      toast(shareError(err, target));
       if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'camera-save' });
     }
   });
 
   // Turn a db.saveMedia failure into a specific, actionable message.
-  function shareError(err, isReel) {
-    const noun = isReel ? 'reel' : 'story';
-    const what = isReel ? 'Reels' : 'Stories';
+  function shareError(err, target) {
+    const noun = target === 'reel' ? 'reel' : target === 'post' ? 'post' : 'story';
+    const what = target === 'reel' ? 'Reels' : target === 'post' ? 'Posts' : 'Stories';
     const backend = db && typeof db.mediaBackend === 'function' ? db.mediaBackend() : 'supabase';
     const sizeLimit = backend === 'cloudinary' ? '100 MB' : '50 MB';
     const sizeFix = backend === 'cloudinary'
