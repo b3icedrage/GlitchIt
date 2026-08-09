@@ -316,7 +316,7 @@
     const capStream = els.canvas.captureStream(30);
     const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
       .find((m) => typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(m)) || '';
-    const rec = new MediaRecorder(capStream, mime ? { mimeType: mime, videoBitsPerSecond: 6_000_000 } : undefined);
+    const rec = new MediaRecorder(capStream, mime ? { mimeType: mime, videoBitsPerSecond: 3_000_000 } : undefined);
     const chunks = [];
     rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
     rec.onstop = () => {
@@ -585,6 +585,7 @@
       if (!res.ok) {
         const e = new Error(res.reason || 'save');
         e.detail = res.detail || '';
+        e.size = res.size || 0;
         throw e;
       }
       if (!isReel) {
@@ -620,6 +621,10 @@
       case 'bucket': return `${what} need the \`glitchit-media\` storage bucket — create it in Supabase (public read).`;
       case 'permission': return `Supabase blocked the save — allow inserts on the \`media\` table (RLS policy) for signed-in users.`;
       case 'upload': return `Couldn’t upload your ${noun} to storage — try a smaller video or check the bucket.`;
+      case 'size': {
+        const mb = err.size ? ` (${(err.size / 1048576).toFixed(1)} MB)` : '';
+        return `Your ${noun} is too large${mb} — the storage limit is 50 MB. Trim the video, or raise the bucket max in Supabase → Storage → bucket settings.`;
+      }
       default: return `Couldn’t share your ${noun} — please try again.`;
     }
   }

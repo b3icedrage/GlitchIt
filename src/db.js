@@ -109,9 +109,11 @@ export async function saveMedia(item) {
       const { error: upErr } = await sb.storage.from('glitchit-media').upload(path, blob, { upsert: false });
       if (upErr) {
         const msg = String(upErr.message || upErr);
-        const reason = /not found|does not exist|no such bucket|bucket/i.test(msg) ? 'bucket' : 'upload';
+        let reason = 'upload';
+        if (/not found|does not exist|no such bucket/i.test(msg)) reason = 'bucket';
+        else if (/entitytoolarge|413|exceeded the maximum|payload too large|too large/i.test(msg)) reason = 'size';
         console.warn('GlitchIt: media upload failed', upErr);
-        return { ok: false, reason, detail: msg };
+        return { ok: false, reason, detail: msg, size: blob.size || 0 };
       }
       const { data } = sb.storage.from('glitchit-media').getPublicUrl(path);
       url = data.publicUrl;
