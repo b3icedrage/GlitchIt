@@ -128,6 +128,21 @@ function isUuid(value) {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
+// Insert a media row, tolerating a missing `verified` column. The app stamps
+// it for GlitchIt Verified uploaders so the ⚡ badge renders next to their
+// avatar everywhere the row appears, but the Supabase table may not have the
+// column created yet — on a column-not-found error the insert retries without
+// it, so posting never breaks while the schema catches up.
+async function insertMediaRow(sb, row) {
+  const { data, error } = await sb.from('media').insert(row).select('id').single();
+  if (error && /PGRST204|could not find|does not exist|column/i.test(String(error.message || error))) {
+    const stripped = { ...row };
+    delete stripped.verified;
+    return await sb.from('media').insert(stripped).select('id').single();
+  }
+  return { data, error };
+}
+
 // ---------- media table (videos + images) ----------
 export async function saveMedia(item) {
   if (!dbAvailable()) return { ok: false, reason: 'config' };
@@ -180,8 +195,12 @@ export async function saveMedia(item) {
       likes: item.likes || 0,
       comments: item.comments || 0,
       shares: item.shares || 0,
+      // GlitchIt Verified: stamped when the uploader holds the Pro entitlement,
+      // so the ⚡ badge follows their posts and reels everywhere. Skipped
+      // gracefully if the column isn't in the media table yet.
+      verified: item.verified ? true : false,
     };
-    const { data, error } = await sb.from('media').insert(row).select('id').single();
+    const { data, error } = await insertMediaRow(sb, row);
     if (error) {
       const msg = String(error.message || error);
       const reason = /could not find the table|does not exist|PGRST205/i.test(msg)
@@ -279,12 +298,18 @@ export async function loadCreators(limit = 30) {
     if (!sb) return [];
     // The real `media` table has no `handle` column; consumers fall back to the
     // owner id slice for a display name, so we only select the columns that exist.
-    const { data, error } = await sb.from('media').select('user, avatar').order('created_at', { ascending: false }).limit(300);
-    if (error) throw error;
+    // `verified` is included when available so Verified creators can show a ⚡.
+    let rows = null;
+    const trySelect = async (cols) => {
+      const res = await sb.from('media').select(cols).order('created_at', { ascending: false }).limit(300);
+      return res.error ? null : res.data;
+    };
+    rows = await trySelect('user, avatar, verified');
+    if (!rows) rows = await trySelect('user, avatar');
     const seen = new Map();
-    (data || []).forEach((row) => {
+    (rows || []).forEach((row) => {
       if (!row.user || !/^[0-9a-f-]{8,}$/i.test(String(row.user))) return;
-      if (!seen.has(row.user)) seen.set(row.user, { id: row.user, handle: '', avatar: row.avatar || '' });
+      if (!seen.has(row.user)) seen.set(row.user, { id: row.user, handle: '', avatar: row.avatar || '', verified: Boolean(row.verified) });
     });
     return [...seen.values()].slice(0, limit);
   } catch (err) {
@@ -304,6 +329,26 @@ export async function countMedia(owner) {
   } catch (err) {
     console.warn('GlitchIt: media count failed', err);
     return 0;
+  }
+}
+
+// Stamp (or clear) the GlitchIt Verified flag on every media row a user has
+// posted, so the ⚡ badge appears on their older posts and reels too. Safe to
+// call when the `verified` column doesn't exist yet — it just no-ops.
+export async function updateMediaVerified(owner, verified = true) {
+  if (!owner) return { ok: false, reason: 'bad-owner' };
+  try {
+    const sb = await getClient();
+    if (!sb) return { ok: false, reason: 'network' };
+    const { error } = await sb.from('media').update({ verified: Boolean(verified) }).eq('user', owner);
+    if (error) {
+      console.warn('GlitchIt: updateMediaVerified failed (verified column exists?)', error);
+      return { ok: false, reason: 'column' };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.warn('GlitchIt: updateMediaVerified threw', err);
+    return { ok: false, reason: 'error' };
   }
 }
 
