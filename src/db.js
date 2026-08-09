@@ -235,6 +235,41 @@ export async function loadMedia(kind, limit = 50) {
   }
 }
 
+// Every row a user has posted (any kind), newest first — powers the grouped
+// Posts/Reels grid on the profile page.
+export async function loadOwnMedia(owner, limit = 100) {
+  try {
+    const sb = await getClient();
+    if (!sb || !owner) return [];
+    const { data, error } = await sb.from('media').select('*').eq('user', owner).order('created_at', { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn('GlitchIt: own media load failed', err);
+    return [];
+  }
+}
+
+// Delete one of the signed-in user's media rows. The Cloudinary object itself
+// stays (unsigned presets can't destroy assets) — the feed row is what's gone.
+export async function deleteMedia(id) {
+  if (!id) return { ok: false, reason: 'bad-id' };
+  try {
+    const sb = await getClient();
+    if (!sb) return { ok: false, reason: 'network' };
+    const { error } = await sb.from('media').delete().eq('id', id);
+    if (error) {
+      const msg = String(error.message || error);
+      console.warn('GlitchIt: media delete failed', error);
+      return { ok: false, reason: /permission denied|row-level security|policy|PGRST301/i.test(msg) ? 'permission' : 'error', detail: msg };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.warn('GlitchIt: media delete threw', err);
+    return { ok: false, reason: 'error', detail: String(err?.message || err) };
+  }
+}
+
 // ---------- real creators (distinct users who have posted) ----------
 // Derives the list of real accounts from the media table (owner uuid, latest
 // handle + avatar) so suggestions and account search never use fake users.

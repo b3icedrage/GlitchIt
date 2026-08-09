@@ -204,18 +204,118 @@ async function hydrateSearchAccounts() {
   }).join('');
 }
 
-// Profile page: fill the post grid with the signed-in user's real media.
+// ---------- Profile media (grouped Posts / Reels, owner-deletable) ----------
+let profileMedia = { posts: [], reels: [], loaded: false, loading: false };
+
+function profileEmpty(label) {
+  if (label === 'reels') return '<p class="profile-empty">No reels yet — record your first reel from the camera.</p>';
+  if (label === 'tagged') return '<p class="profile-empty">No tagged posts yet.</p>';
+  return '<p class="profile-empty">No posts yet — share your first moment.</p>';
+}
+
+function profileTile(r, isReel) {
+  const src = isReel ? (r.poster || r.url) : r.url;
+  const img = `<img src="${escapeHtml(src)}" alt="${escapeHtml(r.title || (isReel ? 'Reel' : 'Post'))}" loading="lazy">`;
+  const play = isReel ? '<span class="profile-tile-play" aria-hidden="true">▶</span>' : '';
+  return `<div class="profile-tile" data-media-id="${r.id}">${img}${play}<button type="button" class="profile-tile-delete" data-delete-id="${r.id}" aria-label="Delete ${escapeHtml(r.title || 'this post')}">🗑</button></div>`;
+}
+
+function updateProfileCounts() {
+  const total = profileMedia.posts.length + profileMedia.reels.length;
+  const postsStat = document.querySelector('[data-stat="posts"]');
+  if (postsStat) postsStat.textContent = String(total);
+  const pc = document.getElementById('profile-count-posts');
+  if (pc) pc.textContent = String(profileMedia.posts.length);
+  const rc = document.getElementById('profile-count-reels');
+  if (rc) rc.textContent = String(profileMedia.reels.length);
+}
+
+function showEndToast(text) {
+  const tip = document.createElement('div');
+  tip.className = 'end-toast show';
+  tip.textContent = text;
+  document.body.appendChild(tip);
+  setTimeout(() => tip.remove(), 2200);
+}
+
+function renderProfileTab(label) {
+  const grid = document.querySelector('.profile-grid');
+  if (!grid || label === 'saved') return;
+  const user = window.GLITCHIT_USER;
+  if (!user || user.guest) {
+    grid.innerHTML = '<p class="profile-empty">Sign in to see and manage your posts & reels.</p>';
+    return;
+  }
+  const isReel = label === 'reels';
+  const rows = isReel ? profileMedia.reels : profileMedia.posts;
+  if (!rows.length) { grid.innerHTML = profileEmpty(label); return; }
+  grid.innerHTML = rows.map((r) => profileTile(r, isReel)).join('');
+  grid.querySelectorAll('.profile-tile-delete').forEach((btn) => {
+    btn.addEventListener('click', () => confirmDeleteMedia(btn));
+  });
+}
+
+async function confirmDeleteMedia(btn) {
+  if (!btn.classList.contains('confirm')) {
+    btn.classList.add('confirm');
+    btn.textContent = 'Sure?';
+    btn.setAttribute('aria-label', 'Confirm delete');
+    setTimeout(() => {
+      if (btn.classList.contains('confirm') && !btn.dataset.deleting) {
+        btn.classList.remove('confirm');
+        btn.textContent = '🗑';
+      }
+    }, 3000);
+    return;
+  }
+  const id = btn.dataset.deleteId;
+  const tile = btn.closest('.profile-tile');
+  btn.dataset.deleting = '1';
+  btn.disabled = true;
+  const res = DB ? await DB.deleteMedia(id) : { ok: false };
+  if (res.ok) {
+    if (tile) tile.remove();
+    profileMedia.posts = profileMedia.posts.filter((r) => String(r.id) !== String(id));
+    profileMedia.reels = profileMedia.reels.filter((r) => String(r.id) !== String(id));
+    updateProfileCounts();
+    const grid = document.querySelector('.profile-grid');
+    if (grid && !grid.querySelector('.profile-tile')) {
+      const active = document.querySelector('.profile-tab.active');
+      renderProfileTab((active && active.getAttribute('aria-label') || 'posts').toLowerCase());
+    }
+    showEndToast('Deleted');
+  } else {
+    btn.classList.remove('confirm');
+    btn.dataset.deleting = '';
+    btn.disabled = false;
+    btn.textContent = '🗑';
+    showEndToast(res.reason === 'permission'
+      ? 'Delete blocked by Supabase (RLS) — allow deletes on the media table.'
+      : 'Couldn’t delete — try again.');
+  }
+}
+
+// Profile page: fill the grouped Posts/Reels grid with the signed-in user's real media.
 async function hydrateProfileGrid() {
   const grid = document.querySelector('.profile-grid');
   const user = window.GLITCHIT_USER;
-  if (!grid || !user || user.guest) return;
-  const rows = DB ? await DB.loadMedia('image') : [];
-  const mine = rows.filter((r) => r.user === user.id);
-  if (!mine.length) {
-    grid.innerHTML = '<p class="profile-empty">No posts yet — share your first moment.</p>';
+  if (!grid || profileMedia.loading) return;
+  if (!user || user.guest) {
+    grid.innerHTML = '<p class="profile-empty">Sign in to see and manage your posts & reels.</p>';
     return;
   }
-  grid.innerHTML = mine.slice(0, 12).map((r) => `<img src="${escapeHtml(r.url)}" alt="Post" loading="lazy">`).join('');
+  profileMedia.loading = true;
+  try {
+    const rows = DB ? await DB.loadOwnMedia(user.id, 100) : [];
+    profileMedia.posts = rows.filter((r) => r.kind !== 'video');
+    profileMedia.reels = rows.filter((r) => r.kind === 'video');
+    profileMedia.loaded = true;
+    updateProfileCounts();
+    const active = document.querySelector('.profile-tab.active');
+    renderProfileTab(active ? (active.getAttribute('aria-label') || 'posts').toLowerCase() : 'posts');
+  } finally {
+    profileMedia.loading = false;
+  }
 }
 
 // ---------- Shop page: real creators + real media + your storefront ----------
@@ -339,7 +439,7 @@ function returnToPage() {
 // ---------- Supabase database (optional — see src/config.js) ----------
 // Loaded lazily so the app works identically when no keys are configured.
 let DB = null;
-import('./db.js?v=3').then((mod) => { DB = mod; }).catch((err) => { DB = null; if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'db-load' }); });
+import('./db.js?v=4').then((mod) => { DB = mod; }).catch((err) => { DB = null; if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'db-load' }); });
 
 // ---------- Shared state (persisted across pages) ----------
 const UPLOADS_KEY = 'glitchit.uploads.v1';
@@ -1058,7 +1158,10 @@ function attachProfileTabs() {
         }
         grid.innerHTML = saved.map((s) => `<img class="saved-thumb" src="${s.poster || s.url}" alt="${escapeHtml(s.title || 'Saved video')}" loading="lazy">`).join('');
       }
-      // Posts / Reels / Tagged keep the static grid already in the HTML
+      else if (label === 'posts' || label === 'reels' || label === 'tagged') {
+        if (!profileMedia.loaded) await hydrateProfileGrid();
+        renderProfileTab(label);
+      }
     });
   });
 }
@@ -1351,7 +1454,7 @@ function attachAuthPage(auth) {
     try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
     window.GLITCHIT_USER = res.user;
     auth.setHandle(auth.userHandle(res.user));
-    import('./db.js?v=3').then((db) => db.setCurrentUser?.({ id: res.user.id, username: auth.userHandle(res.user) })).catch(() => {});
+    import('./db.js?v=4').then((db) => db.setCurrentUser?.({ id: res.user.id, username: auth.userHandle(res.user) })).catch(() => {});
     location.href = returnToPage() || 'index.html';
   });
 }
@@ -1392,7 +1495,7 @@ async function boot() {
   try { guest = localStorage.getItem(GUEST_KEY) === '1'; } catch (err) { /* ignore */ }
   const dbReady = async () => {
     if (DB) return DB;
-    try { return await import('./db.js?v=3'); } catch (err) { return null; }
+    try { return await import('./db.js?v=4'); } catch (err) { return null; }
   };
   if (auth && auth.authAvailable()) {
     if (isAuthPage) {
