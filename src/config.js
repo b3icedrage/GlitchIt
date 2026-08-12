@@ -24,12 +24,6 @@ export const CLOUDINARY_UPLOAD_PRESET = 'glitchit';
 // monitoring. Set to '' to turn monitoring off.
 export const SENTRY_DSN = 'https://939ccfce91ed2bac818479f05a2ff492@o4511871344508928.ingest.us.sentry.io/4511871351980032';
 
-// GlitchIt — subscriptions (RevenueCat). Public *web* API key — designed to
-// ship in the browser like the Supabase anon key (it identifies your app, not
-// a secret). Set to '' to turn billing off. Test keys (test_…) work against
-// RevenueCat's sandbox; swap in your production key when you go live.
-export const REVENUECAT_API_KEY = 'test_ptQnnsUijXxVUzEytwLiwoGITDQ';
-
 // GlitchIt — IntaSend payments (Kenya: M-Pesa + cards, payouts to Kenyan banks).
 // The publishable key is client-safe (same rule as the Supabase anon key) and
 // powers the inline checkout. The secret key stays server-side only (env vars,

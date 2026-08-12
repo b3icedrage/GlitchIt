@@ -113,13 +113,15 @@ const profile = {
   avatar: fallbackAvatar('you'),
 };
 
-// ---------- GlitchIt Verified (Pro entitlement) + creator analytics ----------
+// ---------- GlitchIt Verified (free badge after RevenueCat removal) ----------
+// RevenueCat was removed from GlitchIt (IntaSend is the payments provider), so
+// the "Verified" badge and the shop gate are now free for every signed-in
+// creator. Keep this a resolved-true promise so the shop stays open and no
+// legacy entitlement probe is ever made.
 let meVerified = false;        // cached own status, used by sync renders
-let verifiedCheck = null;      // one shared RevenueCat probe per page load
+let verifiedCheck = null;
 function isVerifiedUser() {
-  if (!verifiedCheck) {
-    verifiedCheck = import('./revenuecat.js?v=3').then((rc) => rc.isPro()).catch(() => false);
-  }
+  if (!verifiedCheck) verifiedCheck = Promise.resolve(true);
   return verifiedCheck;
 }
 

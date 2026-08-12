@@ -55,7 +55,6 @@
               <span></span>
               <p>Your bio will appear here — tap Edit profile to add one.</p>
             </div>
-            <a class="pro-dashboard" href="activity.html"><span><b>Professional dashboard</b><em>New tools are now available.</em></span><i aria-hidden="true"></i></a>
             <div class="profile-actions-row">
               <button type="button" class="settings-button">Edit profile</button>
               <button type="button" id="share-profile">Share profile</button>
@@ -83,12 +82,6 @@
 
               <div class="settings-scroll">
                 <button type="button" class="auth-logout" id="auth-logout">Log out</button>
-                <div class="settings-group settings-pro-group">
-                  <button type="button" class="settings-row settings-row-tall" id="pro-row">
-                    <span class="setting-icon" aria-hidden="true">✦</span>
-                    <span class="setting-copy"><strong>GlitchIt Pro</strong><em id="pro-status">Checking…</em></span>
-                  </button>
-                </div>
                 <div class="settings-account-card">
                   <button type="button" class="settings-row" data-setting="profiles">
                     <span class="setting-icon" aria-hidden="true">♧</span>
@@ -146,15 +139,6 @@
                   <button type="button" class="settings-add-account" data-setting="add-account">Add more accounts</button>
                 </div>
 
-                <div class="settings-group settings-pro-account-group">
-                  <label class="settings-row settings-row-tall settings-pro-account-row">
-                    <span class="setting-icon" aria-hidden="true">⚡</span>
-                    <span class="setting-copy"><strong>Professional account</strong><em id="pro-account-status">Switch to access creator earnings</em></span>
-                    <input type="checkbox" id="pro-account-toggle" aria-label="Professional account">
-                    <span class="setting-switch" aria-hidden="true"><i></i></span>
-                  </label>
-                </div>
-
                 <div class="settings-group">
                   <button type="button" class="settings-row settings-row-tall" data-ai-support>
                     <span class="setting-icon" aria-hidden="true">ϟ</span>
@@ -190,15 +174,6 @@
               <div class="account-sheet-footer"><span class="glitchit-mark" aria-hidden="true">ϟ</span><span>GlitchIt</span></div>
             </section>
 
-            <div class="prodash-backdrop" id="prodash-backdrop" hidden></div>
-            <section class="prodash-sheet" id="prodash-sheet" role="dialog" aria-modal="true" aria-label="Professional dashboard" hidden>
-              <header class="prodash-topbar">
-                <button type="button" class="prodash-close" id="prodash-close" aria-label="Close">×</button>
-                <div class="glitchit-wordmark"><span class="glitchit-mark" aria-hidden="true">ϟ</span><strong>Professional dashboard</strong></div>
-                <span class="settings-top-spacer" aria-hidden="true"></span>
-              </header>
-              <div class="prodash-body" id="prodash-body"></div>
-            </section>
           </div>
         </section>
       </main>
