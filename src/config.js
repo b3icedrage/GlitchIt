@@ -9,3 +9,10 @@ export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // browser like the anon key above) enabling error tracking + performance
 // monitoring. Set to '' to turn monitoring off.
 export const SENTRY_DSN = 'https://939ccfce91ed2bac818479f05a2ff492@o4511871344508928.ingest.us.sentry.io/4511871351980032';
+
+// GlitchIt — IntaSend payments (Kenya: M-Pesa + cards, payouts to Kenyan banks).
+// The publishable key is client-safe (same rule as the Supabase anon key) and
+// powers the inline checkout. The secret key stays server-side only (env vars,
+// never shipped to the browser) for future webhook/verification work.
+export const INTASEND_PUBLIC_KEY = 'ISPubKey_test_107a363e-ffcd-42a9-ba74-02af95f60914';
+export const INTASEND_LIVE = false; // set true when you swap in a live key

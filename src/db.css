@@ -11,3 +11,19 @@
 @media (max-width: 760px) {
   .reel-save svg { width: 24px; height: 24px; }
 }
+
+/* ============ IntaSend shop: product card thumbnails ============ */
+/* Draft listings render into the shop feed as .product cards; the thumb is a
+   branded gradient tile with the product's initial (no fake images). */
+.product-thumb {
+  width: 100%;
+  aspect-ratio: 1.1 / 1;
+  display: grid;
+  place-items: center;
+  font-size: 44px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+}
+:root[data-theme='dark'] .product-thumb { background: linear-gradient(135deg, #e1306c, #5b4fd8); }
