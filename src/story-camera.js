@@ -637,8 +637,8 @@
       const handle = (user.user_metadata && user.user_metadata.username) || user.email?.split('@')[0] || '';
       const avatar = (user.user_metadata && user.user_metadata.avatar) || '';
       const baseCaption = target === 'reel' ? 'Reel moment' : target === 'post' ? 'Post moment' : 'Story moment';
-      // GlitchIt Verified uploaders stamp ⚡ on their media rows (free badge
-      // since RevenueCat was removed — every signed-in creator is verified).
+      // GlitchIt Verified uploaders stamp ⚡ on their media rows (free badge —
+      // every signed-in creator is verified).
       let verified = true;
       const res = await db.saveMedia({
         type: kind,

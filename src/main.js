@@ -113,17 +113,9 @@ const profile = {
   avatar: fallbackAvatar('you'),
 };
 
-// ---------- GlitchIt Verified (free badge after RevenueCat removal) ----------
-// RevenueCat was removed from GlitchIt (IntaSend is the payments provider), so
-// the "Verified" badge and the shop gate are now free for every signed-in
-// creator. Keep this a resolved-true promise so the shop stays open and no
-// legacy entitlement probe is ever made.
-let meVerified = false;        // cached own status, used by sync renders
-let verifiedCheck = null;
-function isVerifiedUser() {
-  if (!verifiedCheck) verifiedCheck = Promise.resolve(true);
-  return verifiedCheck;
-}
+// GlitchIt Verified: a free marker for every creator — no paywall (IntaSend is
+// the only payments provider). Own content renders with the bolt automatically.
+let meVerified = false;
 
 const fmtCount = (n) => {
   const v = Number(n) || 0;
@@ -132,14 +124,8 @@ const fmtCount = (n) => {
   return String(Math.round(v));
 };
 
-// Professional-account qualification thresholds.
-const PRO_FOLLOWERS_MIN = 100000;
-const PRO_WATCH_HOURS_MIN = 5000;
-const PRO_VIEWS_MIN = 500000;
-
 // Creator analytics live in localStorage per owner (client-side, no backend
-// needed at this stage). Defaults are honest zeros, so the professional
-// dashboard shows real progress until the thresholds are met.
+// needed at this stage). Defaults are honest zeros.
 const PRO_STATS_KEY = (userId) => `glitchit.pro.stats.${userId}`;
 function readProfileStats(userId) {
   if (!userId) return { followers: 0, watchHours: 0, views: 0 };
@@ -807,7 +793,7 @@ function pauseGlitchVideo(video, byScroll = false) {
 
 function playGlitchVideo(video) {
   if (video.dataset.userPaused === 'true') return;
-  // Track engagement for the professional dashboard (views + watch hours).
+  // Track engagement for creator stats (views + watch hours).
   const owner = video.closest('.video-card')?.dataset.owner;
   if (owner && !video.dataset.viewCounted) { video.dataset.viewCounted = '1'; recordView(owner); }
   video.dataset.lastTs = String(Date.now());
@@ -1439,7 +1425,6 @@ function runPage() {
     attachSettingsDrawer();
     attachProfileTabs();
     attachProfileAuth();
-    attachProfessional();
     document.getElementById('share-song')?.addEventListener('click', () => openNoteComposer());
     document.getElementById('share-profile')?.addEventListener('click', () => {
       const url = location.href;
@@ -1455,18 +1440,16 @@ function runPage() {
       }
     });
   }
-  if (page === 'shop') { attachShopTabs(); attachShopFilters(); attachStoryLinks(); attachGlitchAutoplay(); attachShopGuards(); gateShop(); }
+  if (page === 'shop') { attachShopTabs(); attachShopFilters(); attachStoryLinks(); attachGlitchAutoplay(); }
 
   if (page === 'search') hydrateSearchAccounts();
   if (page === 'profile') hydrateProfileGrid();
   hydrateRail();
-  // GlitchIt Verified: badge on the own avatar + backfill ⚡ onto existing posts.
-  isVerifiedUser().then((verified) => {
-    meVerified = verified;
-    applyVerifiedBadges(verified);
-    const user = window.GLITCHIT_USER;
-    if (verified && DB && user && !user.guest) DB.updateMediaVerified(user.id, true).catch(() => {});
-  });
+  // GlitchIt Verified: free marker — badge on the own avatar + backfill ⚡ onto existing posts.
+  meVerified = true;
+  applyVerifiedBadges(true);
+  const user = window.GLITCHIT_USER;
+  if (DB && user && !user.guest) DB.updateMediaVerified(user.id, true).catch(() => {});
 
   attachGuestGuards();
   window.addEventListener('scroll', updateGlitchPlayback, { passive: true });
@@ -1604,64 +1587,6 @@ function attachProfileAuth() {
       location.href = 'auth.html';
     });
   }
-  // GlitchIt Pro status — reflects the RevenueCat entitlement in real time.
-  const proStatus = document.getElementById('pro-status');
-  if (proStatus) {
-    const proRow = proStatus.closest('.settings-row');
-    let proUser = false;
-    let proToastTimer = null;
-    const applyPro = (pro) => {
-      proUser = Boolean(pro);
-      proStatus.textContent = pro ? 'Active — thanks for supporting GlitchIt ✦' : 'Unlock premium features';
-      proRow?.classList.toggle('pro-active', proUser);
-    };
-    const proToast = (message) => {
-      let toast = document.getElementById('end-toast');
-      if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'end-toast';
-        toast.className = 'end-toast';
-        toast.setAttribute('role', 'status');
-        document.body.appendChild(toast);
-      }
-      toast.innerHTML = `<span class="end-toast-mark">✦</span><span class="end-toast-text">${message}</span>`;
-      toast.classList.remove('show');
-      void toast.offsetWidth; // restart the animation
-      toast.classList.add('show');
-      clearTimeout(proToastTimer);
-      proToastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
-    };
-    import('./revenuecat.js?v=3')
-      .then((rc) => rc.isPro())
-      .then(applyPro)
-      .catch(() => { proStatus.textContent = 'Unavailable'; });
-    // Tap the row to open RevenueCat's hosted paywall (requires a paywall
-    // attached to the offering in the RevenueCat dashboard).
-    proRow?.addEventListener('click', async () => {
-      if (proUser) return;
-      proStatus.textContent = 'Opening…';
-      try {
-        const rc = await import('./revenuecat.js?v=3');
-        const result = await rc.presentPaywall();
-        if (!result) { applyPro(false); return; }
-        const pro = await rc.isPro();
-        applyPro(pro);
-        proToast(pro ? 'Welcome to GlitchIt Pro ✦' : 'Purchase not completed yet');
-      } catch (err) {
-        console.warn('GlitchIt: paywall failed', err);
-        applyPro(false);
-        const message = (err && err.message) || '';
-        if (!/cancel/i.test(message)) {
-          if (message.includes('paywall attached') || message.includes('No offering')) {
-            proStatus.textContent = 'Setup needed';
-            proToast('Pro isn’t ready yet — build & publish a paywall in RevenueCat → Paywalls.');
-          } else {
-            proToast('Couldn’t open the paywall — try again.');
-          }
-        }
-      }
-    });
-  }
   if (!user || user.guest) return;
   const handle = user.user_metadata?.username || user.email?.split('@')[0] || '';
   const top = document.querySelector('.profile-topbar strong');
@@ -1672,215 +1597,6 @@ function attachProfileAuth() {
   }
   const me = document.querySelector('.me strong');
   if (me && handle) me.textContent = handle;
-}
-
-// Check whether this device is signed in before showing any app page.
-// ---------- Shop gate + professional dashboard (GlitchIt Verified) ----------
-const PRO_MODE_KEY = 'glitchit.pro.mode';
-
-function readProMode() {
-  try { return localStorage.getItem(PRO_MODE_KEY) === '1'; } catch (e) { return false; }
-}
-function writeProMode(on) {
-  try { localStorage.setItem(PRO_MODE_KEY, on ? '1' : '0'); } catch (e) { /* ignore */ }
-}
-
-// Branded toast that stays on the page (the guest-gate variant redirects).
-function glitchToast(message) {
-  const tip = document.createElement('div');
-  tip.className = 'end-toast show';
-  tip.setAttribute('role', 'status');
-  tip.innerHTML = `<span class="end-toast-mark">${icon('⚡')}</span><span class="end-toast-text">${escapeHtml(message)}</span>`;
-  document.body.appendChild(tip);
-  setTimeout(() => tip.remove(), 2200);
-}
-
-// Opens RevenueCat's hosted paywall from any gate CTA, then refreshes gates.
-async function openVerifiedPaywall() {
-  try {
-    const rc = await import('./revenuecat.js?v=3');
-    const result = await rc.presentPaywall();
-    if (!result) return;
-    const pro = await rc.isPro();
-    if (!pro) { glitchToast('Verification not completed yet'); return; }
-    meVerified = true;
-    applyVerifiedBadges(true);
-    const user = window.GLITCHIT_USER;
-    if (user && !user.guest && DB) DB.updateMediaVerified(user.id, true).catch(() => {});
-    glitchToast('Welcome to GlitchIt Verified ⚡');
-    gateShop();
-    writeProMode(true);
-    const sheet = document.getElementById('prodash-sheet');
-    const backdrop = document.getElementById('prodash-backdrop');
-    if (sheet && backdrop && !sheet.hidden) {
-      const stats = readProfileStats(user && !user.guest ? user.id : null);
-      document.getElementById('prodash-body').innerHTML = proDashStatsHtml(stats);
-    }
-    const toggle = document.getElementById('pro-account-toggle');
-    if (toggle && !toggle.checked) toggle.checked = true;
-    const status = document.getElementById('pro-account-status');
-    if (status) status.textContent = 'Professional mode is on — dashboard unlocked';
-    document.querySelector('.pro-dashboard')?.classList.add('prodash-unlocked');
-  } catch (err) {
-    console.warn('GlitchIt: paywall failed', err);
-    const message = (err && err.message) || '';
-    if (!/cancel/i.test(message)) glitchToast('Couldn’t open the paywall — try again.');
-  }
-}
-
-// Shop is Verified-only: show the gate card and hide the shop feed otherwise.
-async function gateShop() {
-  const gate = document.getElementById('shop-verified-gate');
-  if (!gate) return;
-  const user = window.GLITCHIT_USER;
-  const verified = meVerified || await isVerifiedUser();
-  const locked = !verified || Boolean(user && user.guest);
-  gate.hidden = !locked;
-  document.body.classList.toggle('shop-gated', locked);
-  if (locked) {
-    document.getElementById('shop-gate-cta')?.addEventListener('click', openVerifiedPaywall);
-  }
-}
-
-// Belt-and-braces: block shop interactions for unverified users.
-function attachShopGuards() {
-  const user = window.GLITCHIT_USER;
-  if (user && user.guest) return;
-  isVerifiedUser().then((verified) => {
-    if (verified || meVerified) return;
-    const block = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      glitchToast('The Shop is for GlitchIt Verified members ⚡');
-    };
-    document.getElementById('list-product')?.addEventListener('submit', block);
-    document.querySelectorAll('#list-product button[type="button"], .primary-action[href="#list-product"], .store-follow').forEach((el) => el.addEventListener('click', block));
-  });
-}
-
-// Professional account: settings toggle + gated dashboard sheet.
-function attachProfessional() {
-  const link = document.querySelector('.pro-dashboard');
-  const toggle = document.getElementById('pro-account-toggle');
-  const status = document.getElementById('pro-account-status');
-  const backdrop = document.getElementById('prodash-backdrop');
-  const sheet = document.getElementById('prodash-sheet');
-  const closeBtn = document.getElementById('prodash-close');
-
-  if (toggle) toggle.checked = readProMode();
-
-  toggle?.addEventListener('change', async () => {
-    const on = toggle.checked;
-    if (!on) {
-      writeProMode(false);
-      if (status) status.textContent = 'Switch to access creator earnings';
-      link?.classList.remove('prodash-unlocked');
-      return;
-    }
-    const verified = meVerified || await isVerifiedUser();
-    if (!verified) {
-      toggle.checked = false;
-      openProDashGate();
-      return;
-    }
-    writeProMode(true);
-    if (status) status.textContent = 'Professional mode is on — dashboard unlocked';
-    link?.classList.add('prodash-unlocked');
-    glitchToast('Professional account switched on ⚡');
-  });
-
-  link?.addEventListener('click', (e) => {
-    e.preventDefault();
-    if (!readProMode()) {
-      glitchToast('Switch to a professional account in Settings → Access first');
-      document.body.classList.add('settings-open');
-      return;
-    }
-    openProDashSheet();
-  });
-
-  closeBtn?.addEventListener('click', closeProDashSheet);
-  backdrop?.addEventListener('click', closeProDashSheet);
-
-  if (link && readProMode()) {
-    isVerifiedUser().then((verified) => {
-      link.classList.toggle('prodash-unlocked', Boolean(verified));
-      if (status) status.textContent = verified ? 'Professional mode is on — dashboard unlocked' : 'Switch to access creator earnings';
-    });
-  }
-}
-
-function openProDashGate() {
-  const backdrop = document.getElementById('prodash-backdrop');
-  const sheet = document.getElementById('prodash-sheet');
-  if (!backdrop || !sheet) return;
-  document.getElementById('prodash-body').innerHTML = proDashLockedHtml();
-  document.getElementById('prodash-verify-cta')?.addEventListener('click', openVerifiedPaywall);
-  backdrop.hidden = false;
-  sheet.hidden = false;
-}
-
-function openProDashSheet() {
-  const backdrop = document.getElementById('prodash-backdrop');
-  const sheet = document.getElementById('prodash-sheet');
-  if (!backdrop || !sheet) return;
-  const user = window.GLITCHIT_USER;
-  const body = document.getElementById('prodash-body');
-  isVerifiedUser().then((verified) => {
-    if (!verified) {
-      body.innerHTML = proDashLockedHtml();
-      document.getElementById('prodash-verify-cta')?.addEventListener('click', openVerifiedPaywall);
-    } else {
-      const stats = readProfileStats(user && !user.guest ? user.id : null);
-      body.innerHTML = proDashStatsHtml(stats);
-    }
-    backdrop.hidden = false;
-    sheet.hidden = false;
-  });
-}
-
-function closeProDashSheet() {
-  const backdrop = document.getElementById('prodash-backdrop');
-  const sheet = document.getElementById('prodash-sheet');
-  if (backdrop) backdrop.hidden = true;
-  if (sheet) sheet.hidden = true;
-}
-
-function proDashLockedHtml() {
-  return `
-    <div class="prodash-locked">
-      <span class="prodash-lock-mark" aria-hidden="true">⚡</span>
-      <h3>Verification required</h3>
-      <p>Your professional dashboard is locked. Become GlitchIt Verified to unlock earnings, analytics, and creator tools.</p>
-      <button type="button" class="prodash-cta" id="prodash-verify-cta">Get GlitchIt Verified</button>
-    </div>`;
-}
-
-function proDashStatsHtml(stats) {
-  const qualified = stats.followers >= PRO_FOLLOWERS_MIN && stats.watchHours >= PRO_WATCH_HOURS_MIN && stats.views >= PRO_VIEWS_MIN;
-  const pct = (v, max) => Math.min(100, Math.round((Number(v) / max) * 100));
-  const row = (label, value, max, unit) => `
-    <div class="prodash-stat">
-      <div class="prodash-stat-head"><span>${label}</span><b>${fmtCount(value)}${unit}</b></div>
-      <div class="prodash-bar"><i style="width:${pct(value, max)}%"></i></div>
-      <em>Goal: ${fmtCount(max)}${unit}</em>
-    </div>`;
-  return `
-    <div class="prodash-hero ${qualified ? 'qualified' : ''}">
-      <span class="prodash-hero-mark" aria-hidden="true">${qualified ? '🏆' : '⚡'}</span>
-      <div><h3>${qualified ? 'You’re eligible to earn on GlitchIt' : 'Keep creating to unlock earnings'}</h3>
-      <p>${qualified ? 'All requirements met — monetization is unlocked.' : 'Reach 100K followers, 5,000 watch hours and 500K views to start earning from the app.'}</p></div>
-    </div>
-    <div class="prodash-stats">
-      ${row('Followers', stats.followers, PRO_FOLLOWERS_MIN, '')}
-      ${row('Watch hours', stats.watchHours, PRO_WATCH_HOURS_MIN, 'h')}
-      ${row('Views', stats.views, PRO_VIEWS_MIN, '')}
-    </div>
-    <div class="prodash-checklist">
-      <p class="${stats.followers >= PRO_FOLLOWERS_MIN ? 'met' : ''}"><i aria-hidden="true">${stats.followers >= PRO_FOLLOWERS_MIN ? '✓' : '○'}</i>100K followers <b>${fmtCount(stats.followers)}</b></p>
-      <p class="${stats.watchHours >= PRO_WATCH_HOURS_MIN ? 'met' : ''}"><i aria-hidden="true">${stats.watchHours >= PRO_WATCH_HOURS_MIN ? '✓' : '○'}</i>5,000 watch hours <b>${fmtCount(stats.watchHours)}h</b></p>
-      <p class="${stats.views >= PRO_VIEWS_MIN ? 'met' : ''}"><i aria-hidden="true">${stats.views >= PRO_VIEWS_MIN ? '✓' : '○'}</i>500K views <b>${fmtCount(stats.views)}</b></p>
-    </div>`;
 }
 
 async function boot() {
@@ -1932,12 +1648,7 @@ async function boot() {
   }
   runPage();
 
-  // Kick off RevenueCat (subscriptions) in the background — non-blocking, so
-  // a missing key or CDN outage never affects the rest of the app. Uses the
-  // signed-in account id when available, else a persisted anonymous id.
-  import('./revenuecat.js?v=3')
-    .then((rc) => rc.initRevenueCat(window.GLITCHIT_USER?.id))
-    .catch(() => {});
+
 }
 
 boot();
