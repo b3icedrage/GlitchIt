@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Story camera · GlitchIt</title>
+    <link rel="stylesheet" href="src/story-camera.css" />
+  </head>
+  <body>
+    <div class="cam" id="cam">
+      <!-- Live viewfinder -->
+      <video class="cam-video" id="cam-video" playsinline muted autoplay></video>
+      <canvas class="cam-canvas" id="cam-canvas" width="720" height="1280" aria-hidden="true"></canvas>
+      <div class="cam-grid" id="cam-grid" hidden aria-hidden="true"></div>
+
+      <!-- Camera permission / fallback -->
+      <div class="cam-off" id="cam-off" hidden>
+        <span class="cam-off-ic" aria-hidden="true">ϟ</span>
+        <h1>Your camera</h1>
+        <p id="cam-off-msg">Grant camera access to snap a story.</p>
+        <button type="button" class="cam-off-btn" id="cam-off-retry">Allow camera</button>
+        <button type="button" class="cam-off-btn ghost" id="cam-off-gallery">Choose from gallery</button>
+      </div>
+
+      <!-- Top control bar -->
+      <header class="cam-top">
+        <button type="button" class="cam-top-btn" id="cam-dismiss" aria-label="Close camera">✕</button>
+        <button type="button" class="cam-top-btn cam-flash" id="cam-flash" data-state="off" aria-label="Flash off">
+          <span aria-hidden="true">⚡</span><i class="cam-flash-line" aria-hidden="true">/</i>
+        </button>
+        <button type="button" class="cam-top-btn" id="cam-settings" aria-label="Camera settings">⚙</button>
+      </header>
+
+      <!-- Reel recording timer -->
+      <div class="cam-reel-timer" id="cam-reel-timer" hidden aria-hidden="true">
+        <span class="cam-reel-dot" aria-hidden="true"></span>
+        <b id="cam-reel-time">0:00</b>
+        <span>REC</span>
+      </div>
+
+      <!-- Left create tools menu -->
+      <nav class="cam-menu" id="cam-menu" hidden aria-label="Create tools">
+        <button type="button" class="cam-menu-item is-current" data-tool="create"><span class="cam-menu-ic" aria-hidden="true">Aa</span><span>Create</span></button>
+        <button type="button" class="cam-menu-item" data-tool="take"><span class="cam-menu-ic" aria-hidden="true">▶</span><span>Take</span></button>
+        <button type="button" class="cam-menu-item" data-tool="music"><span class="cam-menu-ic" aria-hidden="true">♪</span><span>Music</span></button>
+        <button type="button" class="cam-menu-item" data-tool="boomerang"><span class="cam-menu-ic" aria-hidden="true">∞</span><span>Boomerang</span></button>
+        <button type="button" class="cam-menu-item" data-tool="layout"><span class="cam-menu-ic" aria-hidden="true">⊞</span><span>Layout</span></button>
+        <button type="button" class="cam-menu-item" data-tool="hands"><span class="cam-menu-ic" aria-hidden="true">◎</span><span>Hands-free</span></button>
+        <button type="button" class="cam-menu-item cam-menu-close" id="cam-menu-close"><span class="cam-menu-ic" aria-hidden="true">⌃</span><span>Close</span></button>
+      </nav>
+
+      <!-- Bottom controls: tools / shutter / filters -->
+      <footer class="cam-controls">
+        <div class="cam-left">
+          <button type="button" class="cam-trigger" id="cam-trigger" aria-label="Open create tools" aria-expanded="false">Aa</button>
+          <button type="button" class="cam-gallery" id="cam-gallery" aria-label="Choose from gallery"><span aria-hidden="true">▤</span></button>
+        </div>
+        <button type="button" class="cam-shutter" id="cam-shutter" aria-label="Take a photo"></button>
+        <div class="cam-filters" id="cam-filters" role="listbox" aria-label="Filters"></div>
+      </footer>
+
+      <!-- Post mode bar -->
+      <nav class="cam-modes" aria-label="Posting mode">
+        <button type="button" data-mode="post">POST</button>
+        <button type="button" class="active" data-mode="story">STORY</button>
+        <button type="button" data-mode="reel">REEL</button>
+        <button type="button" data-mode="live">LIVE</button>
+        <button type="button" class="cam-refresh" id="cam-refresh" aria-label="Refresh camera">↻</button>
+      </nav>
+
+      <!-- Capture preview -->
+      <section class="cam-preview" id="cam-preview" hidden>
+        <div class="cam-preview-stage">
+          <img class="cam-preview-img" id="cam-preview-img" alt="Your story preview">
+          <video class="cam-preview-video" id="cam-preview-video" playsinline muted loop autoplay hidden></video>
+          <div class="cam-preview-layers" id="cam-text-layers" aria-label="Text overlays"></div>
+        </div>
+        <div class="cam-preview-top">
+          <button type="button" class="cam-top-btn" id="cam-preview-back" aria-label="Retake">✕</button>
+          <strong class="cam-preview-title" id="cam-preview-title">Your story</strong>
+          <span class="cam-preview-top-actions">
+            <button type="button" class="cam-top-btn" id="cam-text-tool" aria-label="Add text">Aa</button>
+            <button type="button" class="cam-top-btn" id="cam-music-tool" aria-label="Add music">♪</button>
+            <button type="button" class="cam-top-btn" id="cam-preview-settings" aria-label="More options">•••</button>
+          </span>
+        </div>
+        <div class="cam-preview-bottom">
+          <button type="button" class="cam-audio-chip" id="cam-audio-chip" aria-label="Choose audio">Original audio</button>
+          <button type="button" class="cam-save" id="cam-save"><span id="cam-save-to">Send to</span><b id="cam-save-target">Your story</b><i aria-hidden="true">→</i></button>
+        </div>
+      </section>
+
+      <!-- Text composer -->
+      <div class="cam-composer" id="cam-composer" hidden>
+        <input class="cam-composer-input" id="cam-composer-input" maxlength="90" placeholder="Type something…" autocomplete="off" />
+        <div class="cam-composer-colors" id="cam-composer-colors" role="radiogroup" aria-label="Text color"></div>
+        <div class="cam-composer-row">
+          <input class="cam-composer-size" id="cam-composer-size" type="range" min="18" max="120" value="44" aria-label="Text size" />
+          <button type="button" class="cam-composer-done" id="cam-composer-done">Done</button>
+        </div>
+      </div>
+
+      <!-- Hands-free countdown -->
+      <div class="cam-countdown" id="cam-countdown" hidden aria-hidden="true"><b>3</b></div>
+
+      <!-- Music sheet -->
+      <div class="cam-music" id="cam-music" hidden>
+        <div class="cam-music-card" role="dialog" aria-label="Add music">
+          <header class="cam-music-head"><strong>Add music</strong><button type="button" class="cam-music-close" id="cam-music-close" aria-label="Close music">×</button></header>
+          <div class="cam-music-choice" role="tablist" aria-label="Audio">
+            <button type="button" class="cam-music-choice-btn is-current" id="cam-audio-original">Original audio</button>
+            <button type="button" class="cam-music-choice-btn" id="cam-audio-music">♪ Music</button>
+          </div>
+          <input class="cam-music-search" id="cam-music-search" placeholder="Search songs or artists…" autocomplete="off" />
+          <div class="cam-music-tabs" role="tablist">
+            <button type="button" class="is-current" data-mtab="trending">Trending</button>
+            <button type="button" data-mtab="search">Search</button>
+          </div>
+          <div class="cam-music-list" id="cam-music-list"></div>
+          <button type="button" class="cam-music-done" id="cam-music-done">Done</button>
+        </div>
+      </div>
+
+      <!-- Settings sheet -->
+      <div class="cam-sheet" id="cam-sheet" hidden>
+        <div class="cam-sheet-card" role="dialog" aria-label="Camera settings">
+          <h2>Camera settings</h2>
+          <label class="cam-sheet-row"><span>Camera</span><button type="button" id="cam-set-flip">Front</button></label>
+          <label class="cam-sheet-row"><span>Grid lines</span><button type="button" class="cam-switch" id="cam-set-grid" role="switch" aria-checked="false"></button></label>
+          <label class="cam-sheet-row"><span>Flash</span><button type="button" id="cam-set-flash">Off</button></label>
+          <label class="cam-sheet-row"><span>Hands-free timer</span><button type="button" id="cam-set-timer">3s</button></label>
+          <button type="button" class="cam-sheet-close" id="cam-sheet-close">Close</button>
+        </div>
+      </div>
+
+      <div class="cam-toast" id="cam-toast" role="status"></div>
+      <input type="file" id="cam-file" accept="image/*,video/*" hidden />
+    </div>
+    <script src="src/story-camera.js" defer></script>
+  </body>
+</html>

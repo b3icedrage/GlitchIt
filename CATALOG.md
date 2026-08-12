@@ -2,9 +2,9 @@
 
 Category-by-category map of the infrastructure catalog to what GlitchIt actually
 runs today, with notes on what is intentionally deferred. GlitchIt is a static
-vanilla-JS multi-page app (12 screens, no framework, no build step) backed by
-Supabase for auth, database, and storage — so a lot of the catalog is "handled
-for us" rather than self-managed.
+vanilla-JS multi-page app (11 screens, no framework, no build step) backed by
+Supabase for auth and database plus Cloudinary for media storage — so a lot of
+the catalog is "handled for us" rather than self-managed.
 
 ---
 
@@ -21,7 +21,7 @@ for us" rather than self-managed.
 | Catalog item | GlitchIt today |
 | --- | --- |
 | Databases (Postgres, Redis…) | **Supabase Postgres.** The `media` table (owner, url, type, caption, title, likes…) is the source of truth for the home feed, glitches/reels, search accounts, creators, profile grids, shop storefronts, and saved videos. Accounts live in `auth.users`. |
-| Object Storage (S3 buckets) | **Supabase Storage.** Photos and videos captured in the create camera are uploaded as objects and served back through public URLs. |
+| Object Storage (S3 buckets) | **Cloudinary (free tier).** Photos and videos are uploaded browser-direct via an unsigned upload preset (`src/config.js` → `CLOUDINARY_CLOUD_NAME`/`CLOUDINARY_UPLOAD_PRESET`) and served back through Cloudinary's CDN — 100 MB per file, 25 GB free storage. Until Cloudinary is configured, `src/db.js` falls back to the old **Supabase Storage** bucket (`glitchit-media`). |
 | Caching (in-memory stores) | **Three HTTP/cache layers** (see CDN & Edge): `server.js` Cache-Control + ETag revalidation + gzip, the `sw.js` service worker (stale-while-revalidate), and Supabase's edge cache on stored media. No Redis needed at this scale. |
 
 ## Backend & Logic
@@ -35,7 +35,7 @@ for us" rather than self-managed.
 
 | Catalog item | GlitchIt today |
 | --- | --- |
-| Presentation Layer (web/mobile UI) | **Vanilla HTML/CSS/JS multi-page app** — home, search, glitches, messages, chat, live, activity, shop, profile, create, auth, and settings screens sharing one `src/main.js` (per-page hydration via `<body data-page>`). |
+| Presentation Layer (web/mobile UI) | **Vanilla HTML/CSS/JS multi-page app** — home, search, glitches, messages, chat, live, activity, shop, profile, auth, and settings screens sharing one `src/main.js` (per-page hydration via `<body data-page>`). |
 | CDN & Edge (cache assets close to users) | **Three layers**: (1) the hosting platform's CDN for static assets, (2) `sw.js` browser cache — precached app shell + stale-while-revalidate assets + budgeted Supabase image cache, with network-first navigations so deploys propagate instantly, (3) Supabase's CDN for uploaded media. Vendor libraries (supabase-js) are loaded from jsDelivr/esm.sh CDNs with multi-mirror fallbacks. |
 
 ## Network & Traffic Control

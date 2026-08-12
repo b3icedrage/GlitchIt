@@ -2,7 +2,7 @@
 // Loaded from main.js via dynamic import. When the config is empty or the
 // network fails, every function degrades gracefully (no-op / localStorage)
 // so the app keeps working exactly as it did before.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=4';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from './config.js?v=6';
 
 const SAVED_KEY = 'glitchit.saved.v1';
 let client = null;
@@ -47,6 +47,47 @@ export function dbAvailable() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
 
+// Media blobs are uploaded to Cloudinary (unsigned preset — no secret on the
+// page) when it's configured; otherwise we fall back to Supabase Storage.
+export function mediaBackend() {
+  return Boolean(CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET) ? 'cloudinary' : 'supabase';
+}
+function cloudinaryConfigured() {
+  return mediaBackend() === 'cloudinary';
+}
+
+// Upload a Blob straight to Cloudinary and return its public CDN URL.
+// Free-tier limits: 100 MB per file (unsigned uploads), 25 GB total.
+async function uploadToCloudinary(blob, kind) {
+  const resource = /^video\//i.test(blob.type) ? 'video' : /^image\//i.test(blob.type) ? 'image' : 'auto';
+  const ext = (blob.type.split('/')[1] || (kind === 'video' ? 'webm' : 'jpg')).replace(/[^a-z0-9]/gi, '');
+  const name = `glitchit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const fd = new FormData();
+  fd.append('file', blob, name);
+  fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  fd.append('folder', `glitchit/${kind}`);
+  try {
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(CLOUDINARY_CLOUD_NAME)}/${resource}/upload`, {
+      method: 'POST',
+      body: fd,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.secure_url) {
+      const msg = String(data?.error?.message || `Cloudinary upload failed (${res.status})`);
+      let reason = 'upload';
+      if (/invalid upload preset|unknown preset|not found|invalid cloud/i.test(msg) || res.status === 401 || res.status === 404) reason = 'config';
+      else if (/too large|limit|exceed/i.test(msg)) reason = 'size';
+      console.warn('GlitchIt: Cloudinary upload failed', data || res.status);
+      return { ok: false, reason, detail: msg, size: blob.size || 0 };
+    }
+    return { ok: true, url: data.secure_url, publicId: data.public_id };
+  } catch (err) {
+    const msg = String(err?.message || err);
+    console.warn('GlitchIt: Cloudinary request failed', err);
+    return { ok: false, reason: /failed to fetch|network|timeout|CORS/i.test(msg) ? 'network' : 'upload', detail: msg, size: blob.size || 0 };
+  }
+}
+
 function getClient() {
   if (!dbAvailable()) return Promise.resolve(null);
   if (client) return Promise.resolve(client);
@@ -87,23 +128,55 @@ function isUuid(value) {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
+// Insert a media row, tolerating a missing `verified` column. The app stamps
+// it for GlitchIt Verified uploaders so the ⚡ badge renders next to their
+// avatar everywhere the row appears, but the Supabase table may not have the
+// column created yet — on a column-not-found error the insert retries without
+// it, so posting never breaks while the schema catches up.
+async function insertMediaRow(sb, row) {
+  const { data, error } = await sb.from('media').insert(row).select('id').single();
+  if (error && /PGRST204|could not find|does not exist|column/i.test(String(error.message || error))) {
+    const stripped = { ...row };
+    delete stripped.verified;
+    return await sb.from('media').insert(stripped).select('id').single();
+  }
+  return { data, error };
+}
+
 // ---------- media table (videos + images) ----------
 export async function saveMedia(item) {
   if (!dbAvailable()) return { ok: false, reason: 'config' };
   try {
     const sb = await getClient();
     if (!sb) return { ok: false, reason: 'network' };
-    const kind = item.type === 'video' ? 'video' : 'image';
+    const kind = item.type === 'video' ? 'video' : (item.kind === 'story' ? 'story' : 'image');
     const owner = item.user || currentOwner;
     if (!owner) return { ok: false, reason: 'auth' };
     let url = item.preview || item.src || item.url || '';
     let poster = item.poster || null;
     const blob = toBlob(item.file) || toBlob(item.preview);
-    if (blob && url.startsWith('data:')) {
-      const ext = (blob.type.split('/')[1] || (kind === 'video' ? 'webm' : 'jpg')).replace(/[^a-z0-9]/gi, '');
-      const path = `${kind}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: upErr } = await sb.storage.from('glitchit-media').upload(path, blob, { upsert: false });
-      if (!upErr) {
+    // Upload anything that isn't already a hosted public URL. Camera photos come
+    // in as data: URLs, camera videos as blob: URLs, gallery files as Blobs —
+    // every one of those must be pushed to storage so the feed row points at a
+    // real, shareable file instead of an empty or throwaway URL.
+    if (blob && !/^https?:\/\//i.test(url)) {
+      if (cloudinaryConfigured()) {
+        const up = await uploadToCloudinary(blob, kind);
+        if (!up.ok) return up;
+        url = up.url;
+      } else {
+        // Fallback: Supabase Storage (previous behavior) until Cloudinary is set up.
+        const ext = (blob.type.split('/')[1] || (kind === 'video' ? 'webm' : 'jpg')).replace(/[^a-z0-9]/gi, '');
+        const path = `${kind}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: upErr } = await sb.storage.from('glitchit-media').upload(path, blob, { upsert: false });
+        if (upErr) {
+          const msg = String(upErr.message || upErr);
+          let reason = 'upload';
+          if (/not found|does not exist|no such bucket/i.test(msg)) reason = 'bucket';
+          else if (/entitytoolarge|413|exceeded the maximum|payload too large|too large/i.test(msg)) reason = 'size';
+          console.warn('GlitchIt: media upload failed', upErr);
+          return { ok: false, reason, detail: msg, size: blob.size || 0 };
+        }
         const { data } = sb.storage.from('glitchit-media').getPublicUrl(path);
         url = data.publicUrl;
       }
@@ -115,26 +188,41 @@ export async function saveMedia(item) {
       url,
       poster,
       user: owner,
-      handle: item.handle || '',
+      // Note: the real `media` table has no `handle` column — display names are
+      // derived from the auth user (see displayUser in main.js), so `handle` is
+      // intentionally not written. Do not add it back unless the table changes.
       avatar: item.avatar || '',
       likes: item.likes || 0,
       comments: item.comments || 0,
       shares: item.shares || 0,
+      // GlitchIt Verified: stamped when the uploader holds the Pro entitlement,
+      // so the ⚡ badge follows their posts and reels everywhere. Skipped
+      // gracefully if the column isn't in the media table yet.
+      verified: item.verified ? true : false,
     };
-    const { data, error } = await sb.from('media').insert(row).select('id').single();
-    if (error) throw new Error(error.message || 'insert failed');
+    const { data, error } = await insertMediaRow(sb, row);
+    if (error) {
+      const msg = String(error.message || error);
+      const reason = /could not find the table|does not exist|PGRST205/i.test(msg)
+        ? 'table'
+        : /permission denied|row-level security|policy|PGRST301/i.test(msg)
+          ? 'permission'
+          : 'error';
+      console.warn('GlitchIt: media insert failed', error);
+      return { ok: false, reason, detail: msg };
+    }
     return { ok: true, id: data.id, url, poster };
   } catch (err) {
     const msg = String(err?.message || err);
     const reason = /could not find the table|does not exist|PGRST205/i.test(msg) ? 'table' : 'error';
     console.warn('GlitchIt: media save failed', err);
-    return { ok: false, reason };
+    return { ok: false, reason, detail: msg };
   }
 }
 
 // Probe the project and report exactly which pieces are missing.
 export async function checkSetup() {
-  const out = { configured: dbAvailable(), mediaTable: false, savedTable: false, bucket: false };
+  const out = { configured: dbAvailable(), mediaTable: false, savedTable: false, bucket: false, cloudinary: cloudinaryConfigured() };
   if (!out.configured) return out;
   try {
     const sb = await getClient();
@@ -166,6 +254,41 @@ export async function loadMedia(kind, limit = 50) {
   }
 }
 
+// Every row a user has posted (any kind), newest first — powers the grouped
+// Posts/Reels grid on the profile page.
+export async function loadOwnMedia(owner, limit = 100) {
+  try {
+    const sb = await getClient();
+    if (!sb || !owner) return [];
+    const { data, error } = await sb.from('media').select('*').eq('user', owner).order('created_at', { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn('GlitchIt: own media load failed', err);
+    return [];
+  }
+}
+
+// Delete one of the signed-in user's media rows. The Cloudinary object itself
+// stays (unsigned presets can't destroy assets) — the feed row is what's gone.
+export async function deleteMedia(id) {
+  if (!id) return { ok: false, reason: 'bad-id' };
+  try {
+    const sb = await getClient();
+    if (!sb) return { ok: false, reason: 'network' };
+    const { error } = await sb.from('media').delete().eq('id', id);
+    if (error) {
+      const msg = String(error.message || error);
+      console.warn('GlitchIt: media delete failed', error);
+      return { ok: false, reason: /permission denied|row-level security|policy|PGRST301/i.test(msg) ? 'permission' : 'error', detail: msg };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.warn('GlitchIt: media delete threw', err);
+    return { ok: false, reason: 'error', detail: String(err?.message || err) };
+  }
+}
+
 // ---------- real creators (distinct users who have posted) ----------
 // Derives the list of real accounts from the media table (owner uuid, latest
 // handle + avatar) so suggestions and account search never use fake users.
@@ -173,12 +296,20 @@ export async function loadCreators(limit = 30) {
   try {
     const sb = await getClient();
     if (!sb) return [];
-    const { data, error } = await sb.from('media').select('user, handle, avatar').order('created_at', { ascending: false }).limit(300);
-    if (error) throw error;
+    // The real `media` table has no `handle` column; consumers fall back to the
+    // owner id slice for a display name, so we only select the columns that exist.
+    // `verified` is included when available so Verified creators can show a ⚡.
+    let rows = null;
+    const trySelect = async (cols) => {
+      const res = await sb.from('media').select(cols).order('created_at', { ascending: false }).limit(300);
+      return res.error ? null : res.data;
+    };
+    rows = await trySelect('user, avatar, verified');
+    if (!rows) rows = await trySelect('user, avatar');
     const seen = new Map();
-    (data || []).forEach((row) => {
+    (rows || []).forEach((row) => {
       if (!row.user || !/^[0-9a-f-]{8,}$/i.test(String(row.user))) return;
-      if (!seen.has(row.user)) seen.set(row.user, { id: row.user, handle: row.handle || '', avatar: row.avatar || '' });
+      if (!seen.has(row.user)) seen.set(row.user, { id: row.user, handle: '', avatar: row.avatar || '', verified: Boolean(row.verified) });
     });
     return [...seen.values()].slice(0, limit);
   } catch (err) {
@@ -198,6 +329,26 @@ export async function countMedia(owner) {
   } catch (err) {
     console.warn('GlitchIt: media count failed', err);
     return 0;
+  }
+}
+
+// Stamp (or clear) the GlitchIt Verified flag on every media row a user has
+// posted, so the ⚡ badge appears on their older posts and reels too. Safe to
+// call when the `verified` column doesn't exist yet — it just no-ops.
+export async function updateMediaVerified(owner, verified = true) {
+  if (!owner) return { ok: false, reason: 'bad-owner' };
+  try {
+    const sb = await getClient();
+    if (!sb) return { ok: false, reason: 'network' };
+    const { error } = await sb.from('media').update({ verified: Boolean(verified) }).eq('user', owner);
+    if (error) {
+      console.warn('GlitchIt: updateMediaVerified failed (verified column exists?)', error);
+      return { ok: false, reason: 'column' };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.warn('GlitchIt: updateMediaVerified threw', err);
+    return { ok: false, reason: 'error' };
   }
 }
 
