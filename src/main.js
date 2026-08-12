@@ -71,6 +71,11 @@
   document.head.appendChild(bundle);
 })();
 
+// IntaSend payments (M-Pesa + cards, Kenya): shop checkout, draft listings, and
+// the live badge purchase. The module self-wires on every page; the publishable
+// key ships in src/config.js while the secret key stays server-side.
+import('./intasend.js?v=1').catch((err) => { console.warn('GlitchIt: payments module unavailable', err); });
+
 const icon = (name) => `<span class="icon" aria-hidden="true">${name}</span>`;
 
 // Instagram-Reels style line icons (heart / comment / send) used on glitch cards.

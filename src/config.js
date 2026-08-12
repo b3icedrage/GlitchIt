@@ -29,3 +29,10 @@ export const SENTRY_DSN = 'https://939ccfce91ed2bac818479f05a2ff492@o45118713445
 // a secret). Set to '' to turn billing off. Test keys (test_…) work against
 // RevenueCat's sandbox; swap in your production key when you go live.
 export const REVENUECAT_API_KEY = 'test_ptQnnsUijXxVUzEytwLiwoGITDQ';
+
+// GlitchIt — IntaSend payments (Kenya: M-Pesa + cards, payouts to Kenyan banks).
+// The publishable key is client-safe (same rule as the Supabase anon key) and
+// powers the inline checkout. The secret key stays server-side only (env vars,
+// never shipped to the browser) for future webhook/verification work.
+export const INTASEND_PUBLIC_KEY = 'ISPubKey_test_107a363e-ffcd-42a9-ba74-02af95f60914';
+export const INTASEND_LIVE = false; // set true when you swap in a live key

@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Shop · GlitchIt</title>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6585667805986181" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="src/styles.css" />
     <link rel="stylesheet" href="src/bottombar.css?v=2" />
     <link rel="stylesheet" href="src/db.css" />
@@ -65,9 +66,9 @@
             <form class="listing-form" id="list-product">
               <h3>Market your product</h3>
               <p>Create a storefront-ready listing for the GlitchIt Shop.</p>
-              <div><input aria-label="Product name"><input aria-label="Price"></div>
-              <textarea aria-label="Product story"></textarea>
-              <button type="button">Save draft listing</button>
+              <div><input id="listing-name" aria-label="Product name" placeholder="Product name"><input id="listing-price" aria-label="Price in KES" placeholder="Price (KES)" inputmode="numeric"></div>
+              <textarea id="listing-story" aria-label="Product story" placeholder="Tell buyers the story behind this drop"></textarea>
+              <button type="button" id="save-listing">Save draft listing</button>
             </form>
           </div>
 
