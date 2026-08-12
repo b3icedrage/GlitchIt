@@ -867,10 +867,6 @@ a, .tag-row a, .comment-box button, .text-button a, .profile-insights a { color:
 .profile-bio span { display: block; font-weight: 600; }
 .profile-bio p { margin: 6px 0 0; color: #262626; }
 .profile-link { display: inline-block; margin-top: 4px; color: #0095f6; font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-.pro-dashboard { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: #262626; color: #fff; text-decoration: none; }
-.pro-dashboard b { display: block; font-size: 14px; }
-.pro-dashboard em { display: block; margin-top: 2px; color: rgba(255, 255, 255, .75); font-size: 12px; font-style: normal; }
-.pro-dashboard i { width: 9px; height: 9px; border-radius: 50%; background: #0095f6; flex: 0 0 auto; }
 .profile-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .profile-actions-row button { border: 1px solid #dbdbdb; border-radius: 8px; padding: 8px 12px; background: #fff; color: #262626; font-weight: 700; font-size: 14px; }
 .profile-actions-row button:active { background: #fafafa; }
@@ -892,7 +888,6 @@ a, .tag-row a, .comment-box button, .text-button a, .profile-insights a { color:
 :root[data-theme="dark"] .share-song { background: #262626; color: #f5f5f5; }
 :root[data-theme="dark"] .share-song::after { border-top-color: #262626; }
 :root[data-theme="dark"] .profile-bio p { color: #f5f5f5; }
-:root[data-theme="dark"] .pro-dashboard { background: #262626; }
 :root[data-theme="dark"] .profile-actions-row button { border-color: #363636; background: #000; color: #f5f5f5; }
 :root[data-theme="dark"] .highlight span { border-color: #363636; }
 :root[data-theme="dark"] .highlight img { border-color: #000; }
