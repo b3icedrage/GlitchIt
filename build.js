@@ -15,6 +15,7 @@ const OUT = join(ROOT, 'dist');
 // hosting; the static hosting ignores what it does not need.
 const ENTRIES = [
   'index.html',
+  'heleket_158295cf.html',
   'search.html',
   'glitches.html',
   'messages.html',
