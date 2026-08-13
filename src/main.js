@@ -344,7 +344,7 @@ function srAccountRow(c) {
   const bolt = c.verified ? verifiedBolt('verified-bolt-inline') : '';
   const followers = Number(c.followers) || 0;
   const meta = followers > 0 ? `${fmtCount(followers)} followers` : 'No followers yet';
-  return `<a class="sr-acct" href="user.html?id=${encodeURIComponent(c.id)}"><span class="sr-avatar">${avatar}</span><span class="sr-info"><span class="sr-name">${handle}${bolt}</span><span class="sr-meta">${meta}</span></span></a>`;
+  return `<a class="sr-acct" href="user.html?id=${encodeURIComponent(c.id)}&name=${encodeURIComponent(c.handle || '')}"><span class="sr-avatar">${avatar}</span><span class="sr-info"><span class="sr-name">${handle}${bolt}</span><span class="sr-meta">${meta}</span></span></a>`;
 }
 
 // Shared renderer, also driven by the search input in search.html. Empty
@@ -372,7 +372,24 @@ window.renderSearchAccounts = function renderSearchAccounts(query) {
 async function hydrateSearchAccounts() {
   const list = document.getElementById('sr-accounts');
   if (!list) return;
-  const creators = DB ? await DB.loadCreators(30) : [];
+  let creators = [];
+  // Prefer the real account registry — every registered user with their actual
+  // username — via the serverless endpoint (it uses the Supabase Admin API;
+  // the browser anon key cannot read auth.users). Falls back to the
+  // media-derived creator list when the endpoint is unavailable.
+  try {
+    const res = await fetch('/api/accounts', { cache: 'no-store' });
+    const data = await res.json().catch(() => null);
+    if (data && data.ok && Array.isArray(data.accounts) && data.accounts.length) {
+      creators = data.accounts.map((a) => ({
+        id: a.id,
+        handle: a.username || '',
+        avatar: a.avatar || '',
+        verified: false,
+      }));
+    }
+  } catch (err) { /* registry unavailable — fall through to media-derived */ }
+  if (!creators.length) creators = DB ? await DB.loadCreators(30) : [];
   searchAccounts.creators = creators.map((c) => ({
     id: c.id,
     handle: c.handle || '',
@@ -391,7 +408,9 @@ async function hydrateSearchAccounts() {
 // post counts, a persistent Follow/Following toggle, and their media grid.
 // Viewing your own id redirects to the own-profile page.
 async function hydrateUserPage() {
-  const targetId = String(new URLSearchParams(location.search).get('id') || '').trim();
+  const params = new URLSearchParams(location.search);
+  const targetId = String(params.get('id') || '').trim();
+  const nameParam = String(params.get('name') || '').trim();
   const me = window.GLITCHIT_USER;
   if (!targetId || (me && !me.guest && targetId === me.id)) {
     location.replace('profile.html');
@@ -417,9 +436,9 @@ async function hydrateUserPage() {
   const posts = rows.filter((r) => r.kind !== 'video');
   const reels = rows.filter((r) => r.kind === 'video');
   const stats = readProfileStats(targetId);
-  // Media rows don't carry a handle — same short-id display the search page
-  // uses until a real username registry exists.
-  const handle = String(targetId).slice(0, 8);
+  // Prefer the username the search page linked us with (real registry name),
+  // then fall back to the short-id display used for media-derived accounts.
+  const handle = nameParam || String(targetId).slice(0, 8);
   const esc = escapeHtml(handle);
 
   if (topName) topName.textContent = handle;
