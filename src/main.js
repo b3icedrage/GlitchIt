@@ -135,15 +135,16 @@ const PRO_VIEWS_MIN = 500000;
 // dashboard shows real progress until the thresholds are met.
 const PRO_STATS_KEY = (userId) => `glitchit.pro.stats.${userId}`;
 function readProfileStats(userId) {
-  if (!userId) return { followers: 0, watchHours: 0, views: 0 };
+  if (!userId) return { followers: 0, following: 0, watchHours: 0, views: 0 };
   try {
     const s = JSON.parse(localStorage.getItem(PRO_STATS_KEY(userId)) || '{}') || {};
     return {
       followers: Math.max(0, Number(s.followers) || 0),
+      following: Math.max(0, Number(s.following) || 0),
       watchHours: Math.max(0, Number(s.watchHours) || 0),
       views: Math.max(0, Number(s.views) || 0),
     };
-  } catch (e) { return { followers: 0, watchHours: 0, views: 0 }; }
+  } catch (e) { return { followers: 0, following: 0, watchHours: 0, views: 0 }; }
 }
 function writeProfileStats(userId, stats) {
   try { localStorage.setItem(PRO_STATS_KEY(userId), JSON.stringify(stats)); } catch (e) { /* ignore */ }
@@ -153,6 +154,46 @@ function recordFollow(targetId) {
   const s = readProfileStats(targetId);
   s.followers += 1;
   writeProfileStats(targetId, s);
+}
+
+// Persistent follow state for the signed-in user (who they follow), so the
+// Follow/Following toggle survives navigation and every follow button in the
+// app agrees on the same state.
+const FOLLOWING_KEY = (myId) => `glitchit.following.${myId}`;
+function readFollowing() {
+  const me = window.GLITCHIT_USER;
+  if (!me || me.guest) return [];
+  try {
+    const arr = JSON.parse(localStorage.getItem(FOLLOWING_KEY(me.id)) || '[]');
+    return Array.isArray(arr) ? arr.map(String).filter(Boolean) : [];
+  } catch (e) { return []; }
+}
+function isFollowing(targetId) {
+  return readFollowing().includes(String(targetId));
+}
+// Follow (on=true) or unfollow (on=false) a creator. Persists the list, bumps
+// the target's follower count, and adjusts the signed-in user's own following
+// count so both profiles stay honest.
+function setFollowing(targetId, on) {
+  const me = window.GLITCHIT_USER;
+  if (!me || me.guest || !targetId || targetId === me.id) return false;
+  const id = String(targetId);
+  let list = readFollowing();
+  const was = list.includes(id);
+  if (on === was) return true;
+  list = on ? [...list, id] : list.filter((x) => x !== id);
+  try { localStorage.setItem(FOLLOWING_KEY(me.id), JSON.stringify(list)); } catch (e) { /* ignore */ }
+  const mine = readProfileStats(me.id);
+  mine.following = Math.max(0, (Number(mine.following) || 0) + (on ? 1 : -1));
+  writeProfileStats(me.id, mine);
+  if (on) {
+    recordFollow(targetId);
+  } else {
+    const theirs = readProfileStats(targetId);
+    theirs.followers = Math.max(0, (Number(theirs.followers) || 0) - 1);
+    writeProfileStats(targetId, theirs);
+  }
+  return true;
 }
 function recordView(ownerId) {
   if (!ownerId) return;
@@ -276,10 +317,17 @@ async function hydrateRail() {
     return `<div class="seller" data-owner="${escapeHtml(c.id)}"><div><strong>${handle}${c.verified ? verifiedBolt('verified-bolt-inline') : ''}</strong><span>Creator</span></div><button type="button">Follow</button></div>`;
   }).join('');
   list.querySelectorAll('.seller button').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const on = btn.classList.toggle('following');
+    const ownerId = btn.closest('.seller')?.dataset.owner;
+    const syncBtn = () => {
+      const on = isFollowing(ownerId);
+      btn.classList.toggle('following', on);
       btn.textContent = on ? 'Following' : 'Follow';
-      recordFollow(btn.closest('.seller')?.dataset.owner);
+    };
+    syncBtn();
+    btn.addEventListener('click', () => {
+      if (!ownerId) return;
+      setFollowing(ownerId, !isFollowing(ownerId));
+      syncBtn();
     });
   });
 }
@@ -296,7 +344,7 @@ function srAccountRow(c) {
   const bolt = c.verified ? verifiedBolt('verified-bolt-inline') : '';
   const followers = Number(c.followers) || 0;
   const meta = followers > 0 ? `${fmtCount(followers)} followers` : 'No followers yet';
-  return `<a class="sr-acct" href="profile.html"><span class="sr-avatar">${avatar}</span><span class="sr-info"><span class="sr-name">${handle}${bolt}</span><span class="sr-meta">${meta}</span></span></a>`;
+  return `<a class="sr-acct" href="user.html?id=${encodeURIComponent(c.id)}"><span class="sr-avatar">${avatar}</span><span class="sr-info"><span class="sr-name">${handle}${bolt}</span><span class="sr-meta">${meta}</span></span></a>`;
 }
 
 // Shared renderer, also driven by the search input in search.html. Empty
@@ -336,6 +384,95 @@ async function hydrateSearchAccounts() {
   // have fired before the accounts finished loading).
   const box = document.getElementById('sr-query');
   window.renderSearchAccounts(box ? box.value : '');
+}
+
+// ---------- Outside profile view (user.html?id=...) ----------
+// Public profile of another creator: avatar, handle, follower / following /
+// post counts, a persistent Follow/Following toggle, and their media grid.
+// Viewing your own id redirects to the own-profile page.
+async function hydrateUserPage() {
+  const targetId = String(new URLSearchParams(location.search).get('id') || '').trim();
+  const me = window.GLITCHIT_USER;
+  if (!targetId || (me && !me.guest && targetId === me.id)) {
+    location.replace('profile.html');
+    return;
+  }
+  document.getElementById('user-back')?.addEventListener('click', () => {
+    if (history.length > 1) history.back();
+    else location.href = 'search.html';
+  });
+
+  const topName = document.getElementById('user-top-name');
+  const nameEl = document.getElementById('user-name');
+  const avatarEl = document.getElementById('user-avatar');
+  const postsEl = document.querySelector('[data-u-stat="posts"]');
+  const followersEl = document.querySelector('[data-u-stat="followers"]');
+  const followingEl = document.querySelector('[data-u-stat="following"]');
+  const btn = document.getElementById('user-follow-btn');
+  const grid = document.getElementById('user-grid');
+
+  const rows = DB ? await DB.loadOwnMedia(targetId, 100) : [];
+  const avatar = (rows.find((r) => r.avatar) || {}).avatar || '';
+  const verified = Boolean(rows.find((r) => r.verified)?.verified);
+  const posts = rows.filter((r) => r.kind !== 'video');
+  const reels = rows.filter((r) => r.kind === 'video');
+  const stats = readProfileStats(targetId);
+  // Media rows don't carry a handle — same short-id display the search page
+  // uses until a real username registry exists.
+  const handle = String(targetId).slice(0, 8);
+  const esc = escapeHtml(handle);
+
+  if (topName) topName.textContent = handle;
+  if (nameEl) nameEl.innerHTML = `${esc}${verified ? verifiedBolt('verified-bolt-inline') : ''}`;
+  if (avatarEl) { avatarEl.src = avatar || fallbackAvatar(handle); avatarEl.alt = `${handle} profile picture`; }
+  if (postsEl) postsEl.textContent = String(posts.length);
+  if (followersEl) followersEl.textContent = fmtCount(stats.followers);
+  if (followingEl) followingEl.textContent = fmtCount(stats.following);
+  const countPosts = document.getElementById('user-count-posts');
+  const countReels = document.getElementById('user-count-reels');
+  if (countPosts) countPosts.textContent = String(posts.length);
+  if (countReels) countReels.textContent = String(reels.length);
+
+  const renderBtn = () => {
+    if (!btn) return;
+    const on = isFollowing(targetId);
+    btn.textContent = on ? 'Following' : 'Follow';
+    btn.classList.toggle('following', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  };
+  renderBtn();
+  if (btn) {
+    btn.addEventListener('click', () => {
+      setFollowing(targetId, !isFollowing(targetId));
+      renderBtn();
+      if (followersEl) followersEl.textContent = fmtCount(readProfileStats(targetId).followers);
+      showEndToast(isFollowing(targetId) ? `You're now following @${handle}` : `You unfollowed @${handle}`);
+    });
+  }
+
+  const renderGrid = (label) => {
+    if (!grid) return;
+    const isReel = label === 'reels';
+    const items = isReel ? reels : posts;
+    if (!items.length) {
+      grid.innerHTML = `<p class="profile-empty">${isReel ? 'No reels yet.' : 'No posts yet.'}</p>`;
+      return;
+    }
+    grid.innerHTML = items.map((r) => profileTile(r, isReel)).join('');
+    // Outside viewers never see delete controls.
+    grid.querySelectorAll('.profile-tile-delete').forEach((b) => b.remove());
+  };
+  const tabs = document.querySelectorAll('.profile-tab');
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      tabs.forEach((t) => {
+        t.classList.toggle('active', t === tab);
+        t.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+      });
+      renderGrid((tab.getAttribute('aria-label') || 'posts').toLowerCase());
+    });
+  });
+  renderGrid('posts');
 }
 
 // ---------- Profile media (grouped Posts / Reels, owner-deletable) ----------
@@ -1039,10 +1176,17 @@ function attachReelsActions() {
   document.querySelectorAll('.reel-follow').forEach((btn) => {
     if (btn.dataset.followReady) return;
     btn.dataset.followReady = 'true';
-    btn.addEventListener('click', () => {
-      const on = btn.classList.toggle('following');
+    const ownerId = btn.closest('.video-card')?.dataset.owner;
+    const syncBtn = () => {
+      const on = isFollowing(ownerId);
+      btn.classList.toggle('following', on);
       btn.textContent = on ? 'Following' : 'Follow';
-      recordFollow(btn.closest('.video-card')?.dataset.owner);
+    };
+    syncBtn();
+    btn.addEventListener('click', () => {
+      if (!ownerId) return;
+      setFollowing(ownerId, !isFollowing(ownerId));
+      syncBtn();
     });
   });
   document.querySelectorAll('.reel-save').forEach((btn) => {
@@ -1608,6 +1752,7 @@ function runPage() {
   if (page === 'shop') { attachShopTabs(); attachShopFilters(); attachStoryLinks(); attachGlitchAutoplay(); attachShopGuards(); gateShop(); }
 
   if (page === 'search') hydrateSearchAccounts();
+  if (page === 'user') hydrateUserPage();
   if (page === 'profile') hydrateProfileGrid();
   hydrateRail();
   // GlitchIt Verified: badge on the own avatar + backfill ⚡ onto existing posts.
@@ -1632,6 +1777,7 @@ const GUEST_GATED_SELECTOR = [
   '.comment-box', '.text-button',
   '.post .actions',
   '.seller button',
+  '.user-follow-btn',
   '.note-add',
   '.live-comment-form', '.live-buy', '.live-heart-btn',
 ].join(',');
