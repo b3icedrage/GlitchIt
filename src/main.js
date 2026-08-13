@@ -284,21 +284,58 @@ async function hydrateRail() {
   });
 }
 
-// Search page: real accounts derived from the media table, or an empty state.
+// Search page: real accounts derived from the media table. By default they are
+// ranked by follower count (most -> lowest); once the user types a query they
+// are filtered and re-sorted alphabetically. Follower counts come from the
+// same per-creator analytics used by the professional dashboard.
+const searchAccounts = { creators: [] };
+
+function srAccountRow(c) {
+  const handle = escapeHtml(c.handle || String(c.id).slice(0, 8));
+  const avatar = c.avatar ? `<img src="${escapeHtml(c.avatar)}" alt="${handle} avatar" loading="lazy">` : `<span class="badge" aria-hidden="true"><i>${escapeHtml(handle[0]?.toUpperCase() || 'G')}</i></span>`;
+  const bolt = c.verified ? verifiedBolt('verified-bolt-inline') : '';
+  const followers = Number(c.followers) || 0;
+  const meta = followers > 0 ? `${fmtCount(followers)} followers` : 'No followers yet';
+  return `<a class="sr-acct" href="profile.html"><span class="sr-avatar">${avatar}</span><span class="sr-info"><span class="sr-name">${handle}${bolt}</span><span class="sr-meta">${meta}</span></span></a>`;
+}
+
+// Shared renderer, also driven by the search input in search.html. Empty
+// query: every account ranked by followers. Non-empty query: matches only,
+// sorted alphabetically by display name.
+window.renderSearchAccounts = function renderSearchAccounts(query) {
+  const list = document.getElementById('sr-accounts');
+  if (!list) return;
+  const q = String(query || '').trim().toLowerCase();
+  const nameOf = (c) => (c.handle || String(c.id).slice(0, 8)).toLowerCase();
+  let rows = searchAccounts.creators;
+  if (q) {
+    rows = rows.filter((c) => nameOf(c).includes(q));
+    rows = rows.slice().sort((a, b) => nameOf(a).localeCompare(nameOf(b), undefined, { sensitivity: 'base' }));
+  }
+  if (!rows.length) {
+    list.innerHTML = q
+      ? `<div class="sr-empty"><span class="sr-empty-mark">⌕</span><h3>No accounts found</h3><p>No one matches “${escapeHtml(q)}” yet.</p></div>`
+      : '<div class="sr-empty"><span class="sr-empty-mark">⌕</span><h3>No accounts yet</h3><p>Accounts that post on GlitchIt will show up here.</p></div>';
+    return;
+  }
+  list.innerHTML = rows.map(srAccountRow).join('');
+};
+
 async function hydrateSearchAccounts() {
   const list = document.getElementById('sr-accounts');
   if (!list) return;
   const creators = DB ? await DB.loadCreators(30) : [];
-  if (!creators.length) {
-    list.innerHTML = '<div class="sr-empty"><span class="sr-empty-mark">⌕</span><h3>No accounts yet</h3><p>Accounts that post on GlitchIt will show up here.</p></div>';
-    return;
-  }
-  list.innerHTML = creators.map((c) => {
-    const handle = escapeHtml(c.handle || String(c.id).slice(0, 8));
-    const avatar = c.avatar ? `<img src="${escapeHtml(c.avatar)}" alt="${handle} avatar" loading="lazy">` : `<span class="badge" aria-hidden="true"><i>${escapeHtml(handle[0]?.toUpperCase() || 'G')}</i></span>`;
-    const bolt = c.verified ? verifiedBolt('verified-bolt-inline') : '';
-    return `<a class="sr-acct" href="profile.html"><span class="sr-avatar">${avatar}</span><span class="sr-info"><span class="sr-name">${handle}${bolt}</span><span class="sr-meta">Creator on GlitchIt</span></span></a>`;
-  }).join('');
+  searchAccounts.creators = creators.map((c) => ({
+    id: c.id,
+    handle: c.handle || '',
+    avatar: c.avatar || '',
+    verified: Boolean(c.verified),
+    followers: readProfileStats(c.id).followers,
+  })).sort((a, b) => b.followers - a.followers);
+  // Re-apply whatever is currently in the search box (the inline script may
+  // have fired before the accounts finished loading).
+  const box = document.getElementById('sr-query');
+  window.renderSearchAccounts(box ? box.value : '');
 }
 
 // ---------- Profile media (grouped Posts / Reels, owner-deletable) ----------
