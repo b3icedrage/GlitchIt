@@ -1,8 +1,0 @@
-# GlitchIt — Netlify config.
-# The payment proxy is a Netlify function (netlify/functions/heleket.js) that
-# reuses the api/heleket.js handler. Rewrite the /api/heleket/* paths the app
-# calls so they reach that function instead of 404ing.
-[[redirects]]
-  from = "/api/heleket/*"
-  to = "/.netlify/functions/heleket/:splat"
-  status = 200

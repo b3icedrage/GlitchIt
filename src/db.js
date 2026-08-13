@@ -342,26 +342,6 @@ export async function countMedia(owner) {
   }
 }
 
-// Stamp (or clear) the GlitchIt Verified flag on every media row a user has
-// posted, so the ⚡ badge appears on their older posts and reels too. Safe to
-// call when the `verified` column doesn't exist yet — it just no-ops.
-export async function updateMediaVerified(owner, verified = true) {
-  if (!owner) return { ok: false, reason: 'bad-owner' };
-  try {
-    const sb = await getClient();
-    if (!sb) return { ok: false, reason: 'network' };
-    const { error } = await sb.from('media').update({ verified: Boolean(verified) }).eq('user', owner);
-    if (error) {
-      console.warn('GlitchIt: updateMediaVerified failed (verified column exists?)', error);
-      return { ok: false, reason: 'column' };
-    }
-    return { ok: true };
-  } catch (err) {
-    console.warn('GlitchIt: updateMediaVerified threw', err);
-    return { ok: false, reason: 'error' };
-  }
-}
-
 // ---------- saved videos (cloud table + localStorage mirror) ----------
 function localSaved() {
   try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch (e) { return []; }

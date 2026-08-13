@@ -19,8 +19,6 @@ const zlib = require('node:zlib');
 const { readFile, stat } = require('node:fs/promises');
 const { join, normalize, extname, resolve, sep, basename } = require('node:path');
 
-// Heleket crypto-payment proxy (same handler the Vercel build runs).
-const heleketHandler = require('./lib/heleket-core.js');
 // Account registry (lists every registered user via the Supabase Admin API).
 const accountsHandler = require('./api/accounts.js');
 
@@ -487,10 +485,6 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === 'GET' && new URL(req.url, 'http://glitchit.local').pathname === '/api/accounts') {
     await accountsHandler(req, res);
-    return;
-  }
-  if (req.method === 'POST' && new URL(req.url, 'http://glitchit.local').pathname.startsWith('/api/heleket')) {
-    await heleketHandler(req, res);
     return;
   }
 

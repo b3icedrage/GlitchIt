@@ -39,7 +39,6 @@ const SHELL_URLS = [
   './src/main.js?v=26',
   './src/story-features.js',
   './src/story-extras.css',
-  './src/heleket.js?v=1',
   './src/story-swipe.js',
   './src/music-ui.js?v=2',
   './src/profile-avatar.js',

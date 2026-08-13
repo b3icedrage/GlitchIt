@@ -641,13 +641,8 @@
       const handle = (user.user_metadata && user.user_metadata.username) || user.email?.split('@')[0] || '';
       const avatar = (user.user_metadata && user.user_metadata.avatar) || '';
       const baseCaption = target === 'reel' ? 'Reel moment' : target === 'post' ? 'Post moment' : 'Story moment';
-      // GlitchIt Verified uploaders stamp ⚡ on their media rows (graceful if
-      // RevenueCat is unreachable — posts still go through, just unbadged).
-      let verified = false;
-      try {
-        const rc = await import('./revenuecat.js?v=5');
-        verified = await rc.isPro();
-      } catch (e) { verified = false; }
+      // Paid verification was removed — uploads are always unbadged now.
+      const verified = false;
       const res = await db.saveMedia({
         type: kind,
         kind: target === 'story' ? 'story' : kind,
