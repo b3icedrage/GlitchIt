@@ -589,27 +589,146 @@ function attachStoryLinks() {
       const image = storyLink.dataset.storyImage;
       const live = storyLink.dataset.storyLive === 'true';
       const ownStory = storyLink.dataset.storyOwn === 'true';
-      document.getElementById('story-viewer')?.remove();
-      const deleteAction = ownStory ? '<button type="button" class="story-delete-action" data-story-delete>Delete story</button>' : '';
-      document.body.insertAdjacentHTML('beforeend', `<div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="${escapeHtml(name)} story"><button type="button" class="story-close" aria-label="Close story">×</button><div><img src="${image}" alt="${escapeHtml(name)} story"><span>${live ? 'Live now' : 'Story'}</span><h2>${escapeHtml(name)}</h2><p>Tap through creator updates, product teasers, and behind-the-scenes moments.</p>${deleteAction}<a class="primary-action" href="profile.html">View profile</a></div></div>`);
-      document.querySelector('[data-story-delete]')?.addEventListener('click', () => {
-        if (isGuest()) { showGuestGate('Sign in to manage your story'); return; }
-        if (!window.confirm('Delete your latest story?')) return;
-        userUploads.stories.shift();
-        saveUploads();
-        clearStoryLatest();
-        document.getElementById('story-viewer')?.remove();
-        hydrateStoryShelf();
-      });
-      document.querySelector('.story-close')?.focus();
+      openStoryViewer(name, image, live, ownStory);
     });
   });
   if (!document.body.dataset.storyDismissReady) {
     document.body.dataset.storyDismissReady = 'true';
     document.addEventListener('click', (event) => {
-      if (event.target.matches('.story-viewer, .story-close')) document.getElementById('story-viewer')?.remove();
+      if (event.target.matches('.story-viewer, .story-close, .sv-backdrop')) document.getElementById('story-viewer')?.remove();
     });
   }
+}
+
+// Frames-style story viewer: full-screen with a progress bar, a tilted polaroid
+// that starts fogged, and a shake-to-reveal mechanic (device motion on phones;
+// tap the pill anywhere else). Auto-advances and closes like Instagram.
+function openStoryViewer(name, image, live, ownStory) {
+  document.getElementById('story-viewer')?.remove();
+
+  const now = new Date();
+  const dateLine = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    + ' • ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const timeLine = live
+    ? '<i class="sv-live-pill">LIVE</i>'
+    : '<span class="sv-time">now</span>';
+  const moreMenu = ownStory
+    ? `<span class="sv-more-wrap"><button type="button" class="sv-more" aria-label="Story options" aria-expanded="false">⋯</button><span class="sv-menu" hidden><button type="button" data-story-delete>Delete story</button></span></span>`
+    : `<span class="sv-more-wrap"><button type="button" class="sv-more" aria-label="Story options" aria-expanded="false">⋯</button><span class="sv-menu" hidden><button type="button" data-story-report>Report</button></span></span>`;
+
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="${escapeHtml(name)} story">
+      <div class="sv-progress" aria-hidden="true"><i></i></div>
+      <div class="sv-backdrop" aria-hidden="true" style="background-image:url('${image}')"></div>
+      <header class="sv-head">
+        <a class="sv-id" href="profile.html">
+          <span class="sv-avatar"><img src="${image}" alt=""></span>
+          <span class="sv-id-meta"><strong>${escapeHtml(name)}</strong>${timeLine}</span>
+        </a>
+        <span class="sv-frames"><i aria-hidden="true">✦</i>Frames by GlitchIt</span>
+        <span class="sv-actions">${moreMenu}<button type="button" class="story-close" aria-label="Close story">✕</button></span>
+      </header>
+      <main class="sv-stage">
+        <figure class="sv-polaroid">
+          <div class="sv-photo"><span class="sv-fog" aria-hidden="true">✦</span><img src="${image}" alt="${escapeHtml(name)} story"></div>
+          <figcaption class="sv-caption"><strong>${escapeHtml(name)}</strong><span>${dateLine}</span></figcaption>
+        </figure>
+        <button type="button" class="sv-shake"><i aria-hidden="true">⚡</i>Shake to reveal</button>
+      </main>
+      <footer class="sv-bar">
+        <form class="sv-msg" data-sv-msg><input type="text" placeholder="Send message" aria-label="Send message" autocomplete="off"></form>
+        <button type="button" class="sv-like" aria-label="Like this story">♥</button>
+        <button type="button" class="sv-share" aria-label="Share this story"><i aria-hidden="true">➤</i></button>
+      </footer>
+    </div>`);
+
+  const viewer = document.getElementById('story-viewer');
+  const polaroid = viewer.querySelector('.sv-polaroid');
+  const shakeBtn = viewer.querySelector('.sv-shake');
+
+  // Reveal the polaroid photo (once).
+  let revealed = false;
+  const reveal = () => {
+    if (revealed) return;
+    revealed = true;
+    polaroid.classList.add('revealed');
+    shakeBtn.innerHTML = '<i aria-hidden="true">✓</i>Revealed';
+    shakeBtn.classList.add('done');
+    if (navigator.vibrate) { try { navigator.vibrate(18); } catch (err) { /* ignore */ } }
+  };
+  shakeBtn.addEventListener('click', reveal);
+
+  // Shake detection: a sharp jump in device motion reveals the photo. iOS 13+
+  // asks for permission first, so tap-to-reveal is always the fallback.
+  let lastMag = null;
+  const onMotion = (e) => {
+    const a = e.accelerationIncludingGravity;
+    if (!a) return;
+    const mag = Math.abs(a.x || 0) + Math.abs(a.y || 0) + Math.abs(a.z || 0);
+    if (lastMag !== null && mag - lastMag > 14) reveal();
+    lastMag = mag;
+  };
+  if (window.DeviceMotionEvent && typeof window.DeviceMotionEvent.requestPermission === 'function') {
+    window.DeviceMotionEvent.requestPermission().then((res) => {
+      if (res === 'granted') window.addEventListener('devicemotion', onMotion);
+    }).catch(() => { /* permission denied — tap to reveal still works */ });
+  } else {
+    window.addEventListener('devicemotion', onMotion);
+  }
+
+  // Auto-advance: the progress bar fills, then the story closes like Instagram.
+  const autoTimer = setTimeout(() => viewer.remove(), 8000);
+
+  const moreBtn = viewer.querySelector('.sv-more');
+  if (moreBtn) {
+    moreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const menu = moreBtn.parentElement.querySelector('.sv-menu');
+      const open = menu.hidden;
+      menu.hidden = !open;
+      moreBtn.setAttribute('aria-expanded', String(open));
+    });
+  }
+  viewer.querySelector('[data-story-delete]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (isGuest()) { showGuestGate('Sign in to manage your story'); return; }
+    if (!window.confirm('Delete your latest story?')) return;
+    clearTimeout(autoTimer);
+    userUploads.stories.shift();
+    saveUploads();
+    clearStoryLatest();
+    viewer.remove();
+    hydrateStoryShelf();
+  });
+  viewer.querySelector('[data-story-report]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    clearTimeout(autoTimer);
+    viewer.remove();
+    glitchToast('Thanks — we’ll take a look at this story.');
+  });
+
+  const msgForm = viewer.querySelector('[data-sv-msg]');
+  msgForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = msgForm.querySelector('input');
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    glitchToast(`Message sent to ${name}`);
+  });
+  viewer.querySelector('.sv-like')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.currentTarget.classList.toggle('on');
+    if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) { /* ignore */ } }
+  });
+  viewer.querySelector('.sv-share')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const share = e.currentTarget;
+    share.classList.add('pop');
+    setTimeout(() => share.classList.remove('pop'), 320);
+  });
+
+  viewer.querySelector('.story-close')?.focus();
 }
 
 // The user's most recently shared story (mirrored from the story camera page).
