@@ -641,7 +641,7 @@
       // RevenueCat is unreachable — posts still go through, just unbadged).
       let verified = false;
       try {
-        const rc = await import('./revenuecat.js?v=4');
+        const rc = await import('./revenuecat.js?v=5');
         verified = await rc.isPro();
       } catch (e) { verified = false; }
       const res = await db.saveMedia({

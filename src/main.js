@@ -113,7 +113,7 @@ let meVerified = false;        // cached own status, used by sync renders
 let verifiedCheck = null;      // one shared RevenueCat probe per page load
 function isVerifiedUser() {
   if (!verifiedCheck) {
-    verifiedCheck = import('./revenuecat.js?v=4').then((rc) => rc.isPro()).catch(() => false);
+    verifiedCheck = import('./revenuecat.js?v=5').then((rc) => rc.isPro()).catch(() => false);
   }
   return verifiedCheck;
 }
@@ -1625,7 +1625,7 @@ function attachProfileAuth() {
       clearTimeout(proToastTimer);
       proToastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
     };
-    import('./revenuecat.js?v=4')
+    import('./revenuecat.js?v=5')
       .then((rc) => rc.isPro())
       .then(applyPro)
       .catch(() => { proStatus.textContent = 'Unavailable'; });
@@ -1635,7 +1635,7 @@ function attachProfileAuth() {
       if (proUser) return;
       proStatus.textContent = 'Opening…';
       try {
-        const rc = await import('./revenuecat.js?v=4');
+        const rc = await import('./revenuecat.js?v=5');
         const result = await rc.presentPaywall();
         if (!result) { applyPro(false); return; }
         const pro = await rc.isPro();
@@ -1694,7 +1694,7 @@ function glitchToast(message) {
 // Opens RevenueCat's hosted paywall from any gate CTA, then refreshes gates.
 async function openVerifiedPaywall() {
   try {
-    const rc = await import('./revenuecat.js?v=4');
+    const rc = await import('./revenuecat.js?v=5');
     const result = await rc.presentPaywall();
     if (!result) return;
     const pro = await rc.isPro();
@@ -1937,7 +1937,7 @@ async function boot() {
   // Kick off RevenueCat (subscriptions) in the background — non-blocking, so
   // a missing key or CDN outage never affects the rest of the app. Uses the
   // signed-in account id when available, else a persisted anonymous id.
-  import('./revenuecat.js?v=4')
+  import('./revenuecat.js?v=5')
     .then((rc) => rc.initRevenueCat(window.GLITCHIT_USER?.id))
     .catch(() => {});
 }

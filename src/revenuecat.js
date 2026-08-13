@@ -241,6 +241,7 @@ async function showBrandedPaywall(instance) {
   if (selected < 0) selected = 0;
   let busy = false;
   let pollTimer = null;
+  let countdownTimer = null;
   let settled = false;
 
   const settleOnce = (result) => {
@@ -250,8 +251,10 @@ async function showBrandedPaywall(instance) {
   };
   const fail = (message) => { error.textContent = message; error.hidden = false; };
   const stopPolling = () => { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } };
+  const stopCountdown = () => { if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; } };
 
   const showPlans = () => {
+    stopCountdown();
     plansEl.innerHTML = plans.map((p, i) => `
       <button type="button" class="paywall-plan${p.best ? ' best' : ''}" data-plan="${i}" role="radio" aria-checked="${i === selected}">
         ${p.best ? '<em class="paywall-plan-tag">Best value</em>' : ''}
@@ -274,17 +277,38 @@ async function showBrandedPaywall(instance) {
     cardBtn.onclick = () => runRc(plans[selected].id);
   };
 
+  const PAYMENT_WINDOW_SECONDS = 60; // user can pay for 1 minute before the order is cancelled
+
   const showWaiting = (orderId, planId) => {
     plansEl.innerHTML = `
       <div class="paywall-waiting">
         <span class="paywall-spinner" aria-hidden="true"></span>
         <b>Waiting for payment</b>
-        <p>Complete the payment in the opened Heleket window. Your GlitchIt Verified badge activates automatically once the network confirms the payment.</p>
+        <p>Complete the payment in the opened Heleket window before the timer runs out. Your GlitchIt Verified badge activates automatically once the network confirms the payment.</p>
+        <div class="paywall-timer" id="paywall-timer" aria-live="polite"><span id="paywall-timer-count">1:00</span></div>
         <button type="button" class="paywall-check" id="paywall-check">Check payment status</button>
       </div>`;
     cta.textContent = 'Checking…';
     cta.disabled = true;
     alt.hidden = true;
+    let secondsLeft = PAYMENT_WINDOW_SECONDS;
+    const renderCountdown = () => {
+      const el = document.getElementById('paywall-timer-count');
+      if (!el) return;
+      const mins = Math.floor(secondsLeft / 60);
+      const secs = String(secondsLeft % 60).padStart(2, '0');
+      el.textContent = `${mins}:${secs}`;
+      const timer = document.getElementById('paywall-timer');
+      if (timer) timer.classList.toggle('warning', secondsLeft <= 10);
+    };
+    // The user delayed too long — cancel this order so they start all over.
+    const cancelPayment = () => {
+      stopCountdown();
+      stopPolling();
+      clearPending();
+      fail('Payment time ran out — your order was cancelled. Please try again.');
+      showPlans();
+    };
     const check = async () => {
       if (busy) return;
       busy = true;
@@ -295,12 +319,14 @@ async function showBrandedPaywall(instance) {
         if (res && res.ok && res.paid) {
           saveVerified(orderId, planId);
           stopPolling();
+          stopCountdown();
           finishPro();
           return;
         }
         if (res && res.ok && ['fail', 'cancel', 'system_fail'].includes(res.status)) {
           clearPending();
           stopPolling();
+          stopCountdown();
           fail('Payment was not completed — you can try again.');
           showPlans();
           return;
@@ -314,16 +340,37 @@ async function showBrandedPaywall(instance) {
       }
     };
     document.getElementById('paywall-check')?.addEventListener('click', check);
-    // Auto-check every 4s while the payment is pending (crypto confirmations
-    // can take a couple of minutes); the button above resumes after a pause.
+    // Auto-check every 4s while the payment is pending; the button above
+    // resumes after a pause. The countdown below cancels the order at 0:00.
     stopPolling();
     pollTimer = setInterval(check, 4000);
+    stopCountdown();
+    renderCountdown();
+    countdownTimer = setInterval(() => {
+      secondsLeft -= 1;
+      if (secondsLeft <= 0) { cancelPayment(); return; }
+      renderCountdown();
+    }, 1000);
   };
 
   const finishPro = () => {
     stopPolling();
-    settleOnce({ ok: true });
-    closePaywall(root);
+    stopCountdown();
+    // Stop the timer and show the user a success message before closing.
+    plansEl.innerHTML = `
+      <div class="paywall-success">
+        <span class="paywall-success-mark" aria-hidden="true">✓</span>
+        <b>Payment verified!</b>
+        <p>You're now GlitchIt Verified ⚡ — the full GlitchIt experience is unlocked.</p>
+      </div>`;
+    cta.textContent = 'Done';
+    cta.disabled = true;
+    alt.hidden = true;
+    restore.disabled = true;
+    setTimeout(() => {
+      settleOnce({ ok: true });
+      closePaywall(root);
+    }, 1400);
   };
 
   // --- Heleket (primary): create an invoice, open the payment window, poll ---
