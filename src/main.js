@@ -113,7 +113,7 @@ let meVerified = false;        // cached own status, used by sync renders
 let verifiedCheck = null;      // one shared RevenueCat probe per page load
 function isVerifiedUser() {
   if (!verifiedCheck) {
-    verifiedCheck = import('./revenuecat.js?v=3').then((rc) => rc.isPro()).catch(() => false);
+    verifiedCheck = import('./revenuecat.js?v=4').then((rc) => rc.isPro()).catch(() => false);
   }
   return verifiedCheck;
 }
@@ -1624,7 +1624,7 @@ function attachProfileAuth() {
       clearTimeout(proToastTimer);
       proToastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
     };
-    import('./revenuecat.js?v=3')
+    import('./revenuecat.js?v=4')
       .then((rc) => rc.isPro())
       .then(applyPro)
       .catch(() => { proStatus.textContent = 'Unavailable'; });
@@ -1634,12 +1634,14 @@ function attachProfileAuth() {
       if (proUser) return;
       proStatus.textContent = 'Opening…';
       try {
-        const rc = await import('./revenuecat.js?v=3');
+        const rc = await import('./revenuecat.js?v=4');
         const result = await rc.presentPaywall();
         if (!result) { applyPro(false); return; }
         const pro = await rc.isPro();
         applyPro(pro);
-        proToast(pro ? 'Welcome to GlitchIt Pro ✦' : 'Purchase not completed yet');
+        if (pro) proToast('Welcome to GlitchIt Pro ✦');
+        else if (typeof rc.rcTestMode === 'function' && rc.rcTestMode()) proToast('Test mode: use a Stripe test card (4242 4242 4242 4242) — real cards are declined.');
+        else proToast('Purchase not completed yet');
       } catch (err) {
         console.warn('GlitchIt: paywall failed', err);
         applyPro(false);
@@ -1691,11 +1693,17 @@ function glitchToast(message) {
 // Opens RevenueCat's hosted paywall from any gate CTA, then refreshes gates.
 async function openVerifiedPaywall() {
   try {
-    const rc = await import('./revenuecat.js?v=3');
+    const rc = await import('./revenuecat.js?v=4');
     const result = await rc.presentPaywall();
     if (!result) return;
     const pro = await rc.isPro();
-    if (!pro) { glitchToast('Verification not completed yet'); return; }
+    if (!pro) {
+      const testHint = (typeof rc.rcTestMode === 'function' && rc.rcTestMode())
+        ? 'Payment not verified — test mode only accepts Stripe test cards (4242 4242 4242 4242). Real cards are rejected until the production API key is in use.'
+        : 'Payment not verified — please try again in a moment.';
+      glitchToast(testHint);
+      return;
+    }
     meVerified = true;
     applyVerifiedBadges(true);
     const user = window.GLITCHIT_USER;
@@ -1928,7 +1936,7 @@ async function boot() {
   // Kick off RevenueCat (subscriptions) in the background — non-blocking, so
   // a missing key or CDN outage never affects the rest of the app. Uses the
   // signed-in account id when available, else a persisted anonymous id.
-  import('./revenuecat.js?v=3')
+  import('./revenuecat.js?v=4')
     .then((rc) => rc.initRevenueCat(window.GLITCHIT_USER?.id))
     .catch(() => {});
 }

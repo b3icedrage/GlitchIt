@@ -39,6 +39,15 @@ export function rcAvailable() {
   return Boolean(REVENUECAT_API_KEY);
 }
 
+// True when the configured key is a RevenueCat sandbox key (test_…). Web
+// checkouts in test mode only accept Stripe *test* cards — real cards are
+// rejected with a "payment not verified" error, which is the #1 cause of
+// failed purchases during development. Exposed so the UI can show a clear
+// hint instead of a cryptic failure.
+export function rcTestMode() {
+  return /^test_/i.test(String(REVENUECAT_API_KEY || ''));
+}
+
 // Configure once (per page load) and return the shared instance.
 // Pass the signed-in account id (e.g. the Supabase user id) when available so
 // entitlements follow the account; otherwise a persisted anonymous id is used.
