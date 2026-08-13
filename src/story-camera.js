@@ -657,6 +657,10 @@
         handle,
         avatar,
         verified,
+        // Story-only flags, mirrored to the media row so other users' shelves
+        // can replay the effect and honor close-friends-only visibility.
+        reveal: revealEffect,
+        closeFriends: closeFriendsOnly,
       });
       if (!res.ok) {
         const e = new Error(res.reason || 'save');

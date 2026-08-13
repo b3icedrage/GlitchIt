@@ -991,6 +991,7 @@ function openStoryViewer(input, startTray = 0) {
     .map((tray) => ({
       creator: tray.creator || (tray.stories[0] && tray.stories[0].name) || 'Story',
       avatar: tray.avatar || (tray.stories[0] && tray.stories[0].image) || '',
+      creatorId: tray.creatorId || '',
       stories: (tray.stories || []).filter((s) => s && !storyExpired(s)),
     }))
     .filter((tray) => tray.stories.length);
@@ -1104,6 +1105,16 @@ function openStoryViewer(input, startTray = 0) {
     viewer.querySelector('.sv-backdrop').style.backgroundImage = `url('${s.image}')`;
     viewer.querySelector('.sv-avatar img').src = s.image;
     viewer.querySelector('.sv-id-meta strong').textContent = tray.creator;
+    // The header links to the story creator's outside profile when the tray
+    // knows who that is (DB-backed trays); own/local trays go to own profile.
+    const me = window.GLITCHIT_USER;
+    const myIdNow = me && !me.guest ? me.id : '';
+    const idLink = viewer.querySelector('.sv-id');
+    if (tray.creatorId && tray.creatorId !== myIdNow) {
+      idLink.href = `user.html?id=${encodeURIComponent(tray.creatorId)}&name=${encodeURIComponent(tray.creator)}`;
+    } else {
+      idLink.href = 'profile.html';
+    }
     viewer.querySelector('.sv-id-meta .sv-time-wrap').innerHTML = timeLine + views + cf;
     viewer.querySelector('.sv-photo img').src = s.image;
     viewer.querySelector('.sv-photo img').alt = `${tray.creator} story`;

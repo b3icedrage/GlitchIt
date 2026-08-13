@@ -90,26 +90,38 @@
     // Rows past the 24h window are skipped.
     if (DB) {
       DB.loadMedia('story', 60).then((rows) => {
-        const byCreator = new Map();
+        // Group by the owner uuid (stable) with a display name per group, so
+        // each tray can carry the creatorId the viewer needs for its profile
+        // link — two accounts with the same short-id label never collide.
+        const byOwner = new Map();
         (rows || []).forEach((row) => {
-          if (!row || !row.url || (myId && row.user === myId)) return;
+          if (!row || !row.url || !row.user || (myId && row.user === myId)) return;
           const at = Date.parse(row.created_at || '') || Date.now();
           if (!Number.isFinite(at) || Date.now() - at > STORY_TTL) return;
           const creator = displayUser(row.user) || String(row.user).slice(0, 8);
-          if (!byCreator.has(creator)) byCreator.set(creator, []);
-          byCreator.get(creator).push({
+          const reveal = Boolean(row.reveal);
+          const closeFriends = Boolean(row.close_friends);
+          // Close-friends stories only surface for accounts on the viewer's
+          // close-friends list (same rule the legacy demo stories use).
+          if (closeFriends && !canViewStory({ closeFriends: true }, creator)) return;
+          let group = byOwner.get(row.user);
+          if (!group) {
+            group = { creator, items: [] };
+            byOwner.set(row.user, group);
+          }
+          group.items.push({
             name: creator,
             image: row.poster || row.url,
             live: false,
             own: false,
-            reveal: false,
-            closeFriends: false,
+            reveal,
+            closeFriends,
             key: 'db:' + row.id,
           });
         });
-        byCreator.forEach((items, creator) => {
-          const trayIndex = pushTray({ creator, avatar: items[0].image, stories: items });
-          shelf.appendChild(trayRing(trayIndex, creator, items));
+        byOwner.forEach((group, ownerId) => {
+          const trayIndex = pushTray({ creator: group.creator, avatar: group.items[0].image, creatorId: ownerId, stories: group.items });
+          shelf.appendChild(trayRing(trayIndex, group.creator, group.items));
         });
         attachStoryLinks();
       });
