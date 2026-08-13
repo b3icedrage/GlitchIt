@@ -20,7 +20,7 @@ const { readFile, stat } = require('node:fs/promises');
 const { join, normalize, extname, resolve, sep, basename } = require('node:path');
 
 // Heleket crypto-payment proxy (same handler the Vercel build runs).
-const heleketHandler = require('./api/heleket.js');
+const heleketHandler = require('./lib/heleket-core.js');
 
 const ROOT = resolve(__dirname);
 const PORT = Number(process.env.PORT || 4173);

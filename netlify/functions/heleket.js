@@ -2,13 +2,13 @@
 // Netlify only auto-serves functions from netlify/functions/ (the repo's api/
 // directory is the Vercel convention and 404s on Netlify). This is a thin
 // adapter: it translates Netlify's (event, context) signature into the Node
-// (req, res) handler used by api/heleket.js so there is exactly one source of
-// truth for the signing logic and env vars:
+// (req, res) handler used by lib/heleket-core.js so there is exactly one
+// source of truth for the signing logic and env vars:
 //   HELEKET_API_KEY     - your Heleket payment API key
 //   HELEKET_MERCHANT_ID - the merchant uuid from your Heleket account settings
 'use strict';
 
-const heleketHandler = require('../../api/heleket.js');
+const heleketHandler = require('../../lib/heleket-core.js');
 
 // Normalize whatever path Netlify hands us back to the /api/heleket/… form the
 // core handler expects (it may arrive as /api/heleket/create or, after the
