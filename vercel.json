@@ -11,6 +11,10 @@
     {
       "source": "/api/chat",
       "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    },
+    {
+      "source": "/api/heleket",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
     }
   ]
 }

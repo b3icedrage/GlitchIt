@@ -1,11 +1,24 @@
-// GlitchIt — RevenueCat subscriptions (client-side, no build step).
+// GlitchIt — billing: Heleket (crypto, primary) + RevenueCat (cards, fallback).
 // Loaded from main.js via dynamic import, same pattern as auth.js/db.js.
-// The API key is RevenueCat's public *web* key — it is designed to ship in the
-// browser (like the Supabase anon key) and identifies your app; it is not a
-// secret. When the key is empty or the CDN is unreachable, everything here
-// degrades gracefully (helpers return empty/false) so billing never blocks
-// the rest of the app.
+//
+// Payments now run through Heleket: the branded paywall sheet creates a Heleket
+// invoice (via our /api/heleket proxy, which holds the secret key server-side)
+// and the user pays with crypto. RevenueCat remains as the "pay with card"
+// option for users who prefer it, and its entitlements still count toward
+// GlitchIt Verified. When neither is configured everything degrades gracefully
+// (helpers return empty/false) so billing never blocks the rest of the app.
 import { REVENUECAT_API_KEY } from './config.js?v=6';
+import {
+  HELEKET_PLANS,
+  createInvoice,
+  checkStatus,
+  makeOrderId,
+  savePending,
+  readPending,
+  clearPending,
+  saveVerified,
+  isHeleketVerified,
+} from './heleket.js?v=1';
 
 let purchases = null;
 let purchasesPromise = null;
@@ -39,11 +52,10 @@ export function rcAvailable() {
   return Boolean(REVENUECAT_API_KEY);
 }
 
-// True when the configured key is a RevenueCat sandbox key (test_…). Web
+// True when the configured RevenueCat key is a sandbox key (test_…). Web
 // checkouts in test mode only accept Stripe *test* cards — real cards are
-// rejected with a "payment not verified" error, which is the #1 cause of
-// failed purchases during development. Exposed so the UI can show a clear
-// hint instead of a cryptic failure.
+// rejected with a "payment not verified" error. Exposed so the UI can show a
+// clear hint instead of a cryptic failure.
 export function rcTestMode() {
   return /^test_/i.test(String(REVENUECAT_API_KEY || ''));
 }
@@ -118,34 +130,31 @@ export async function getOfferings() {
 // The entitlement id as configured in the RevenueCat dashboard.
 export const PRO_ENTITLEMENT_ID = 'GlitchIt  Pro';
 
-// Whether the user currently has the GlitchIt Pro entitlement. Matches the
-// exact id first, then falls back to a whitespace-normalized comparison in
-// case the dashboard id differs only in spacing/case.
+// Whether the user currently has GlitchIt Verified. Matches the RevenueCat
+// entitlement exactly first, then falls back to a whitespace-normalized
+// comparison, and finally counts a paid Heleket purchase (local record, or a
+// pending order that Heleket now reports as paid).
 export async function isPro() {
   const active = await activeEntitlements();
   if (active[PRO_ENTITLEMENT_ID]) return true;
   const norm = (s) => String(s).replace(/\s+/g, ' ').trim().toLowerCase();
   const target = norm(PRO_ENTITLEMENT_ID);
-  return Object.keys(active).some((k) => norm(k) === target);
+  if (Object.keys(active).some((k) => norm(k) === target)) return true;
+  try {
+    if (await isHeleketVerified()) return true;
+  } catch (err) { /* billing must never break the app */ }
+  return false;
 }
 
-// ---------- Branded in-app paywall (the "payment page") ----------
-// presentPaywall() now opens a GlitchIt-branded plan picker instead of the
-// hosted RevenueCat paywall. Plans and prices are loaded from the real
-// RevenueCat offering, and the purchase itself still runs through the SDK
-// (purchasePackage), so nothing about billing is faked. If the sheet can't be
-// built (no document) it falls back to the hosted paywall.
+// ---------- Branded in-app paywall (Heleket first, cards fallback) ----------
+// presentPaywall() opens a GlitchIt-branded plan picker. The primary checkout
+// is Heleket crypto (invoice created through /api/heleket, paid in the opened
+// Heleket window, verified by polling /status). A "pay with card" link falls
+// back to RevenueCat's SDK when a key is configured. If the sheet can't be
+// built (no document) it falls back to the hosted RevenueCat paywall.
 
-const RC_PLAN_ORDER = ['WEEKLY', 'MONTHLY', 'TWO_MONTH', 'THREE_MONTH', 'SIX_MONTH', 'ANNUAL', 'LIFETIME'];
-const RC_PLAN_LABEL = {
-  WEEKLY: 'Weekly', MONTHLY: 'Monthly', TWO_MONTH: '2 months', THREE_MONTH: '3 months',
-  SIX_MONTH: '6 months', ANNUAL: 'Yearly', LIFETIME: 'Lifetime',
-};
-const RC_PLAN_PER = {
-  WEEKLY: 'per week', MONTHLY: 'per month', TWO_MONTH: 'every 2 months', THREE_MONTH: 'every 3 months',
-  SIX_MONTH: 'every 6 months', ANNUAL: 'per year', LIFETIME: 'one-time',
-};
-const RC_BEST_PLAN = 'ANNUAL';
+const RC_PLAN_MAP = { monthly: 'MONTHLY', quarterly: 'THREE_MONTH', yearly: 'ANNUAL' };
+const RC_BEST_PLAN = 'yearly';
 
 function escHtml(str) {
   return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => (
@@ -166,8 +175,11 @@ function paywallSheetHtml() {
         </div>
         <div class="paywall-plans" id="paywall-plans" role="radiogroup" aria-label="Plans"></div>
         <button type="button" class="paywall-cta" id="paywall-cta">Loading plans…</button>
+        <div class="paywall-alt" id="paywall-alt" hidden>
+          <button type="button" id="paywall-card">Pay with card instead</button>
+        </div>
         <button type="button" class="paywall-restore" id="paywall-restore">Restore purchase</button>
-        <p class="paywall-legal">Subscriptions auto-renew until cancelled. Cancel anytime from your RevenueCat dashboard.</p>
+        <p class="paywall-legal">Subscriptions auto-renew until cancelled. Crypto payments are processed by Heleket; card payments by RevenueCat.</p>
         <p class="paywall-error" id="paywall-error" role="alert" hidden></p>
       </section>
     </div>`;
@@ -203,7 +215,7 @@ function settlePaywall(root, result) {
 }
 
 // Renders the plan picker and waits for the user. Resolves with:
-//   { ok: true }              -> purchase completed and entitlement is active
+//   { ok: true }              -> purchase completed and Verified is active
 //   { ok: false, reason }     -> purchase attempted but not verified yet
 //   null                      -> dismissed (or checkout cancelled)
 //   undefined                 -> sheet could not be built (caller falls back)
@@ -212,99 +224,172 @@ async function showBrandedPaywall(instance) {
   const root = paywallEls();
   const plansEl = root.querySelector('#paywall-plans');
   const cta = root.querySelector('#paywall-cta');
+  const alt = root.querySelector('#paywall-alt');
+  const cardBtn = root.querySelector('#paywall-card');
   const restore = root.querySelector('#paywall-restore');
   const error = root.querySelector('#paywall-error');
+  const legal = root.querySelector('.paywall-legal');
 
   // Fresh state for this open.
   error.hidden = true;
+  alt.hidden = !rcAvailable();
+  legal.textContent = 'Subscriptions auto-renew until cancelled. Crypto payments are processed by Heleket; card payments by RevenueCat.';
   root.querySelectorAll('.paywall-test-hint').forEach((el) => el.remove());
 
-  // Load real plans from the RevenueCat offering (defensive: no SDK/key -> []).
-  let packages = [];
-  try {
-    const offerings = await instance.getOfferings();
-    const current = offerings && offerings.current;
-    packages = (current && current.availablePackages) || [];
-  } catch (err) { packages = []; }
-  packages = packages
-    .map((p) => ({
-      pkg: p,
-      type: String((p && p.packageType) || 'UNKNOWN').toUpperCase(),
-      name: (p.product && p.product.title) || '',
-      price: (p.product && p.product.priceString) || '',
-      intro: (p.product && p.product.introPrice && p.product.introPrice.priceString) || '',
-    }))
-    .sort((a, b) => {
-      const ia = RC_PLAN_ORDER.indexOf(a.type);
-      const ib = RC_PLAN_ORDER.indexOf(b.type);
-      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-    });
-
-  let selected = -1;
+  const plans = HELEKET_PLANS;
+  let selected = plans.findIndex((p) => p.best);
+  if (selected < 0) selected = 0;
   let busy = false;
-  const select = (index) => {
-    selected = index;
-    [...plansEl.children].forEach((el, i) => el.classList.toggle('selected', i === index));
-    cta.disabled = selected < 0 || busy;
+  let pollTimer = null;
+  let settled = false;
+
+  const settleOnce = (result) => {
+    if (settled) return;
+    settled = true;
+    settlePaywall(root, result);
   };
   const fail = (message) => { error.textContent = message; error.hidden = false; };
+  const stopPolling = () => { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } };
 
-  if (packages.length) {
-    plansEl.innerHTML = packages.map((p, i) => `
-      <button type="button" class="paywall-plan${p.type === RC_BEST_PLAN ? ' best' : ''}" data-plan="${i}" role="radio" aria-checked="false">
-        ${p.type === RC_BEST_PLAN ? '<em class="paywall-plan-tag">Best value</em>' : ''}
-        <span class="paywall-plan-name">${escHtml(RC_PLAN_LABEL[p.type] || p.name || p.type.toLowerCase())}</span>
-        <span class="paywall-plan-price">${p.intro ? `<i>${escHtml(p.intro)}</i>` : ''}${escHtml(p.price)}</span>
-        <span class="paywall-plan-per">${escHtml(RC_PLAN_PER[p.type] || '')}</span>
+  const showPlans = () => {
+    plansEl.innerHTML = plans.map((p, i) => `
+      <button type="button" class="paywall-plan${p.best ? ' best' : ''}" data-plan="${i}" role="radio" aria-checked="${i === selected}">
+        ${p.best ? '<em class="paywall-plan-tag">Best value</em>' : ''}
+        <span class="paywall-plan-name">${escHtml(p.name)}</span>
+        <span class="paywall-plan-price">${escHtml(p.price)}</span>
+        <span class="paywall-plan-per">${escHtml(p.per)}</span>
       </button>`).join('');
     plansEl.querySelectorAll('.paywall-plan').forEach((el) => {
       el.addEventListener('click', () => {
-        plansEl.querySelectorAll('.paywall-plan').forEach((x, i) => x.setAttribute('aria-checked', String(i === Number(el.dataset.plan))));
-        select(Number(el.dataset.plan));
+        selected = Number(el.dataset.plan);
+        plansEl.querySelectorAll('.paywall-plan').forEach((x, i) => x.setAttribute('aria-checked', String(i === selected)));
+        [...plansEl.children].forEach((x, i) => x.classList.toggle('selected', i === selected));
       });
     });
-    const best = packages.findIndex((p) => p.type === RC_BEST_PLAN);
-    select(best >= 0 ? best : 0);
-    cta.textContent = 'Get GlitchIt Verified';
-  } else {
-    plansEl.innerHTML = '<div class="paywall-plans-empty"><span aria-hidden="true">✦</span><p>Plans aren’t available right now — open the RevenueCat checkout to subscribe.</p></div>';
-    cta.textContent = 'Open RevenueCat checkout';
+    [...plansEl.children].forEach((x, i) => x.classList.toggle('selected', i === selected));
+    cta.textContent = 'Pay with crypto';
     cta.disabled = false;
-  }
+    cta.onclick = () => runHeleket(plans[selected].id);
+    alt.hidden = !rcAvailable();
+    cardBtn.onclick = () => runRc(plans[selected].id);
+  };
 
-  const testMode = rcTestMode();
-  if (testMode) {
-    root.querySelector('.paywall-legal').insertAdjacentHTML('beforebegin', '<p class="paywall-test-hint">Test mode: only Stripe test cards work — 4242 4242 4242 4242</p>');
-  }
+  const showWaiting = (orderId, planId) => {
+    plansEl.innerHTML = `
+      <div class="paywall-waiting">
+        <span class="paywall-spinner" aria-hidden="true"></span>
+        <b>Waiting for payment</b>
+        <p>Complete the payment in the opened Heleket window. Your GlitchIt Verified badge activates automatically once the network confirms the payment.</p>
+        <button type="button" class="paywall-check" id="paywall-check">Check payment status</button>
+      </div>`;
+    cta.textContent = 'Checking…';
+    cta.disabled = true;
+    alt.hidden = true;
+    const check = async () => {
+      if (busy) return;
+      busy = true;
+      cta.disabled = true;
+      error.hidden = true;
+      try {
+        const res = await checkStatus(orderId);
+        if (res && res.ok && res.paid) {
+          saveVerified(orderId, planId);
+          stopPolling();
+          finishPro();
+          return;
+        }
+        if (res && res.ok && ['fail', 'cancel', 'system_fail'].includes(res.status)) {
+          clearPending();
+          stopPolling();
+          fail('Payment was not completed — you can try again.');
+          showPlans();
+          return;
+        }
+        if (!res.ok && res.error) fail(res.error);
+      } catch (err) {
+        fail('Could not check the payment — try again in a moment.');
+      } finally {
+        busy = false;
+        cta.disabled = true;
+      }
+    };
+    document.getElementById('paywall-check')?.addEventListener('click', check);
+    // Auto-check every 4s while the payment is pending (crypto confirmations
+    // can take a couple of minutes); the button above resumes after a pause.
+    stopPolling();
+    pollTimer = setInterval(check, 4000);
+  };
 
-  const purchase = async () => {
+  const finishPro = () => {
+    stopPolling();
+    settleOnce({ ok: true });
+    closePaywall(root);
+  };
+
+  // --- Heleket (primary): create an invoice, open the payment window, poll ---
+  const runHeleket = async (planId) => {
     if (busy) return;
     busy = true;
     cta.disabled = true;
     const original = cta.textContent;
-    cta.textContent = 'Processing…';
+    cta.textContent = 'Opening payment…';
     error.hidden = true;
+    let orderId = (readPending() && readPending().orderId) || makeOrderId();
+    savePending(orderId, planId);
     try {
-      if (packages.length && selected >= 0) await instance.purchasePackage(packages[selected].pkg);
-      else await instance.presentPaywall(); // hosted fallback checkout
-      const pro = await isPro();
-      if (pro) {
-        closePaywall(root);
-        settlePaywall(root, { ok: true });
+      const res = await createInvoice(planId, orderId);
+      if (!res.ok) {
+        // Heleket isn't wired up (no key/merchant on the server) — point the
+        // user at the card fallback instead of leaving them stuck.
+        fail(res.error || 'Crypto payments are not available right now.');
+        showPlans();
         return;
       }
-      fail(testMode
-        ? 'Payment not verified — test mode only accepts Stripe test cards (4242 4242 4242 4242). Real cards are rejected.'
-        : 'Payment not verified — please try again in a moment.');
-      settlePaywall(root, { ok: false, reason: 'not-verified' });
+      if (res.url) window.open(res.url, '_blank', 'noopener');
+      showWaiting(orderId, planId);
     } catch (err) {
-      const message = (err && err.message) || '';
-      if (/cancel/i.test(message)) settlePaywall(root, null);
-      else { fail('Couldn’t complete the payment — try again.'); settlePaywall(root, { ok: false, reason: 'error' }); }
+      fail('Could not create the payment — try again.');
+      showPlans();
     } finally {
       busy = false;
       cta.textContent = original;
-      cta.disabled = packages.length ? selected < 0 : false;
+    }
+  };
+
+  // --- RevenueCat (fallback): card checkout for the chosen plan ---
+  const runRc = async (planId) => {
+    if (busy) return;
+    busy = true;
+    cta.disabled = true;
+    const original = cta.textContent;
+    cta.textContent = 'Opening card payment…';
+    error.hidden = true;
+    try {
+      const offerings = await instance.getOfferings();
+      const current = offerings && offerings.current;
+      const packages = (current && current.availablePackages) || [];
+      const wanted = RC_PLAN_MAP[planId];
+      const pkg = packages.find((p) => String(p.packageType).toUpperCase() === wanted) || packages[0];
+      if (pkg) await instance.purchasePackage(pkg);
+      else await instance.presentPaywall(); // hosted RevenueCat checkout
+      const pro = await isPro();
+      if (pro) { finishPro(); return; }
+      fail(rcTestMode()
+        ? 'Payment not verified — test mode only accepts Stripe test cards (4242 4242 4242 4242). Real cards are rejected.'
+        : 'Payment not verified — please try again in a moment.');
+      settleOnce({ ok: false, reason: 'not-verified' });
+    } catch (err) {
+      const message = (err && err.message) || '';
+      if (/cancel/i.test(message)) settleOnce(null);
+      else { fail('Couldn’t complete the payment — try again.'); settleOnce({ ok: false, reason: 'error' }); }
+    } finally {
+      busy = false;
+      cta.textContent = original;
+      showPlans();
+      cta.disabled = false;
+      cta.onclick = () => runHeleket(plans[selected].id);
+      alt.hidden = !rcAvailable();
+      cardBtn.onclick = () => runRc(plans[selected].id);
     }
   };
 
@@ -315,11 +400,7 @@ async function showBrandedPaywall(instance) {
     error.hidden = true;
     try {
       const pro = await isPro();
-      if (pro) {
-        closePaywall(root);
-        settlePaywall(root, { ok: true });
-        return;
-      }
+      if (pro) { finishPro(); return; }
       fail('No active purchase found on this account.');
     } catch (err) {
       fail('Couldn’t check your purchase — try again.');
@@ -329,18 +410,24 @@ async function showBrandedPaywall(instance) {
     }
   };
 
-  cta.onclick = purchase;
   root._settle = null;
+  settled = false;
+  // Resume an interrupted checkout if one is pending.
+  const pending = readPending();
+  if (pending && pending.orderId) {
+    showWaiting(pending.orderId, pending.planId || 'monthly');
+  } else {
+    showPlans();
+  }
   root.classList.add('open');
   return new Promise((resolve) => { root._settle = resolve; });
 }
 
-// Present RevenueCat's paywall for the current offering. Opens the branded
-// GlitchIt paywall sheet when possible (it auto-fills real plans/prices from
-// the offering and completes the purchase through the SDK); otherwise falls
-// back to the hosted RevenueCat paywall. Resolves with the purchase outcome
-// ({ ok, reason }), null when the user dismisses, or rejects when the offering
-// itself is missing.
+// Present the paywall for the current offering. Opens the branded GlitchIt
+// paywall sheet (Heleket crypto first, RevenueCat cards as a fallback); falls
+// back to the hosted RevenueCat paywall when the sheet can't be built. Resolves
+// with the purchase outcome ({ ok, reason }), null when the user dismisses, or
+// rejects when the offering itself is missing.
 export async function presentPaywall(opts = {}) {
   const p = await getInstance();
   if (!p) return null;

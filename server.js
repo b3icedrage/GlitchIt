@@ -19,6 +19,9 @@ const zlib = require('node:zlib');
 const { readFile, stat } = require('node:fs/promises');
 const { join, normalize, extname, resolve, sep, basename } = require('node:path');
 
+// Heleket crypto-payment proxy (same handler the Vercel build runs).
+const heleketHandler = require('./api/heleket.js');
+
 const ROOT = resolve(__dirname);
 const PORT = Number(process.env.PORT || 4173);
 
@@ -477,6 +480,10 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === 'GET' && new URL(req.url, 'http://glitchit.local').pathname === '/api/music') {
     await handleMusicRequest(req, res);
+    return;
+  }
+  if (req.method === 'POST' && new URL(req.url, 'http://glitchit.local').pathname.startsWith('/api/heleket')) {
+    await heleketHandler(req, res);
     return;
   }
 

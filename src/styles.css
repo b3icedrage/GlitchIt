@@ -249,6 +249,109 @@ main { height: 100vh; overflow-y: auto; padding: 28px 0 56px; scrollbar-width: t
 .paywall-error { margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; color: #ffb3c1; font-size: 12.5px; line-height: 1.5; text-align: center; background: rgba(255, 48, 64, .12); }
 .paywall-error[hidden] { display: none; }
 
+/* Paywall: Heleket waiting state + card fallback link (src/revenuecat.js) */
+.paywall-alt { margin-top: 10px; text-align: center; }
+.paywall-alt[hidden] { display: none; }
+.paywall-alt button { border: 0; background: transparent; color: #9f9ab4; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; text-decoration: underline; }
+.paywall-alt button:hover { color: #fff; }
+.paywall-waiting { display: grid; justify-items: center; gap: 10px; padding: 26px 10px; text-align: center; color: #a6a1ba; font-size: 13px; line-height: 1.55; }
+.paywall-waiting b { color: #fff; font-size: 16px; }
+.paywall-waiting p { margin: 0; max-width: 300px; }
+.paywall-spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .15); border-top-color: #d62976; animation: paywallSpin .8s linear infinite; }
+@keyframes paywallSpin { to { transform: rotate(360deg); } }
+.paywall-check { margin-top: 4px; padding: 10px 20px; border: 0; border-radius: 999px; color: #fff; font: inherit; font-weight: 800; background: linear-gradient(135deg, #d62976, #4f5bd5); cursor: pointer; box-shadow: 0 10px 26px rgba(214, 41, 118, .35); }
+.paywall-check:active { transform: scale(.96); }
+
+/* ---------- Graphics polish & rendering speed ----------
+   Higher-quality feel: soft hover lifts, press feedback, richer video
+   overlays, an ambient brand glow behind the page — while keeping every
+   animation on cheap composited properties (opacity/transform) and letting
+   the browser skip painting off-screen feed cards (content-visibility). */
+html { scroll-behavior: smooth; }
+main, .stories, .notes-shelf, #glitches-reel { -webkit-overflow-scrolling: touch; }
+::selection { background: rgba(214, 41, 118, .2); }
+:focus-visible { outline: 3px solid rgba(79, 91, 213, .5); outline-offset: 2px; }
+
+/* Off-screen cards: skip painting until they scroll into view (big win on
+   long feeds), with intrinsic sizing so scroll position never jumps. */
+.post, .product, .store-card, .message-card, .activity-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 560px;
+}
+.profile-grid .profile-tile, .product-grid .product { contain-intrinsic-size: auto 220px; }
+
+/* Ambient brand glow behind the app — a fixed, GPU-composited layer. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 30% at 12% 8%, rgba(214, 41, 118, .07), transparent 60%),
+    radial-gradient(34% 28% at 88% 12%, rgba(79, 91, 213, .08), transparent 60%),
+    radial-gradient(28% 26% at 50% 96%, rgba(79, 91, 213, .05), transparent 60%);
+  opacity: .8;
+  animation: ambientGlow 16s ease-in-out infinite alternate;
+  will-change: opacity;
+}
+@keyframes ambientGlow {
+  from { opacity: .55; }
+  to { opacity: 1; }
+}
+
+/* Cards: soft lift + shadow on hover, press-down on tap. */
+.post, .stories, .message-card, .activity-card, .product, .store-card, .video-card, .page-intro {
+  transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease;
+}
+.post:hover, .message-card:hover, .activity-card:hover, .product:hover, .store-card:hover, .page-intro:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .09);
+}
+.post:active, .product:active, .store-card:active { transform: translateY(0) scale(.995); }
+
+/* Story rings: hover glow + lift, press pop. */
+.story-ring, .note-ring { transition: transform .22s ease, box-shadow .22s ease; }
+.story:hover .story-ring, .note:hover .note-ring { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(214, 41, 118, .3); }
+.story:active .story-ring { transform: scale(.94); }
+
+/* Icon & button press feedback everywhere. */
+.actions svg, .reel-action, .sound-toggle, .video-toggle, .top-activity-btn, .top-dm-btn {
+  transition: transform .15s ease, opacity .15s ease, background .2s ease, filter .2s ease;
+}
+.actions svg:active, .reel-action:active, .top-activity-btn:active, .top-dm-btn:active { transform: scale(.85); }
+.sound-toggle:active, .video-toggle:active { transform: scale(.92); }
+.primary-action, .product button, .listing-form button, .seller button, .store-follow, .settings-button, .cam-save, .reel-follow {
+  transition: transform .15s ease, box-shadow .2s ease, background .2s ease, filter .2s ease;
+}
+.primary-action:active, .product button:active, .listing-form button:active, .seller button:active,
+.store-follow:active, .settings-button:active, .cam-save:active, .reel-follow:active { transform: scale(.96); }
+.primary-action:hover, .reel-follow:hover { box-shadow: 0 10px 26px rgba(0, 149, 246, .35); }
+
+/* Reels: richer bottom fade + hover glow on the action rail. */
+.video-card .video-overlay {
+  background: linear-gradient(transparent 0%, rgba(0, 0, 0, .32) 44%, rgba(0, 0, 0, .88) 100%);
+}
+.reel-rail .reel-action:hover { filter: drop-shadow(0 0 8px rgba(255, 255, 255, .55)); transform: scale(1.06); }
+.video-card:hover .video-toggle, .video-card:hover .sound-toggle { background: rgba(0, 0, 0, .66); }
+
+/* Grid images: skip painting off-screen tiles on long grids. */
+.post img, .profile-grid img, .profile-tile img, .store-card img, .sr-thumb img, .highlight img {
+  content-visibility: auto;
+}
+
+/* Lightbox-style story viewer: scale-in instead of a plain pop. */
+.story-viewer > div { animation: storyCardIn .28s cubic-bezier(.22, .61, .36, 1); }
+@keyframes storyCardIn {
+  from { opacity: 0; transform: translateY(16px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  body::before, .story-viewer > div, .post, .stories, .message-card, .activity-card, .product, .store-card, .video-card, .page-intro { animation: none; transition: none; }
+}
+
 .post { margin-bottom: 22px; overflow: hidden; }
 .post header, .actions, .tag-row, .comment-box { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; }
 .profile, .me { display: flex; align-items: center; gap: 12px; }
