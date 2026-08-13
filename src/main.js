@@ -773,16 +773,26 @@ function renderUploads(type) {
 
 // ---------- Stories ----------
 function attachStoryLinks() {
-  document.querySelectorAll('.story[data-story-name]').forEach((storyLink) => {
+  document.querySelectorAll('.story[data-story-name], .story[data-story-list]').forEach((storyLink) => {
     if (storyLink.dataset.storyReady) return;
     storyLink.dataset.storyReady = 'true';
     storyLink.addEventListener('click', (event) => {
       event.preventDefault();
-      const name = storyLink.dataset.storyName;
-      const image = storyLink.dataset.storyImage;
-      const live = storyLink.dataset.storyLive === 'true';
-      const ownStory = storyLink.dataset.storyOwn === 'true';
-      openStoryViewer(name, image, live, ownStory);
+      let stories = null;
+      if (storyLink.dataset.storyList) {
+        try { stories = JSON.parse(storyLink.dataset.storyList); } catch (e) { stories = null; }
+      }
+      if (!stories || !stories.length) {
+        stories = [{
+          name: storyLink.dataset.storyName,
+          image: storyLink.dataset.storyImage,
+          live: storyLink.dataset.storyLive === 'true',
+          own: storyLink.dataset.storyOwn === 'true',
+          reveal: storyLink.dataset.storyReveal === 'true',
+          key: storyLink.dataset.storyKey || '',
+        }];
+      }
+      openStoryViewer(stories);
     });
   });
   if (!document.body.dataset.storyDismissReady) {
@@ -793,38 +803,44 @@ function attachStoryLinks() {
   }
 }
 
-// Frames-style story viewer: full-screen with a progress bar, a tilted polaroid
-// that starts fogged, and a shake-to-reveal mechanic (device motion on phones;
-// tap the pill anywhere else). Auto-advances and closes like Instagram.
-function openStoryViewer(name, image, live, ownStory) {
+// Frames-style story viewer: full-screen with a segmented progress bar, a
+// tilted polaroid, and — only when the creator picked the effect — a fogged
+// photo that reveals on shake (device motion on phones; tap the pill anywhere
+// else). Plays every story from the same creator in sequence: when a segment's
+// loading bar finishes it auto-advances to their next story, then closes.
+function openStoryViewer(stories) {
+  if (!stories || !stories.length) return;
   document.getElementById('story-viewer')?.remove();
 
-  const now = new Date();
-  const dateLine = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
-    + ' • ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  const timeLine = live
-    ? '<i class="sv-live-pill">LIVE</i>'
-    : '<span class="sv-time">now</span>';
+  const STORY_MS = 8000;
+  let index = 0;
+  let revealed = false;
+  let autoTimer = null;
+  let lastMag = null;
+
+  const current = () => stories[index] || {};
+  const segHtml = stories.map(() => '<i></i>').join('');
+  const ownStory = stories.some((s) => s.own);
   const moreMenu = ownStory
     ? `<span class="sv-more-wrap"><button type="button" class="sv-more" aria-label="Story options" aria-expanded="false">⋯</button><span class="sv-menu" hidden><button type="button" data-story-delete>Delete story</button></span></span>`
     : `<span class="sv-more-wrap"><button type="button" class="sv-more" aria-label="Story options" aria-expanded="false">⋯</button><span class="sv-menu" hidden><button type="button" data-story-report>Report</button></span></span>`;
 
   document.body.insertAdjacentHTML('beforeend', `
-    <div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="${escapeHtml(name)} story">
-      <div class="sv-progress" aria-hidden="true"><i></i></div>
-      <div class="sv-backdrop" aria-hidden="true" style="background-image:url('${image}')"></div>
+    <div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="${escapeHtml(stories[0].name)} story">
+      <div class="sv-progress" aria-hidden="true">${segHtml}</div>
+      <div class="sv-backdrop" aria-hidden="true"></div>
       <header class="sv-head">
         <a class="sv-id" href="profile.html">
-          <span class="sv-avatar"><img src="${image}" alt=""></span>
-          <span class="sv-id-meta"><strong>${escapeHtml(name)}</strong>${timeLine}</span>
+          <span class="sv-avatar"><img alt=""></span>
+          <span class="sv-id-meta"><strong></strong><span class="sv-time-wrap"></span></span>
         </a>
         <span class="sv-frames"><i aria-hidden="true">✦</i>Frames by GlitchIt</span>
         <span class="sv-actions">${moreMenu}<button type="button" class="story-close" aria-label="Close story">✕</button></span>
       </header>
       <main class="sv-stage">
         <figure class="sv-polaroid">
-          <div class="sv-photo"><span class="sv-fog" aria-hidden="true">✦</span><img src="${image}" alt="${escapeHtml(name)} story"></div>
-          <figcaption class="sv-caption"><strong>${escapeHtml(name)}</strong><span>${dateLine}</span></figcaption>
+          <div class="sv-photo"><span class="sv-fog" aria-hidden="true">✦</span><img alt=""></div>
+          <figcaption class="sv-caption"><strong></strong><span></span></figcaption>
         </figure>
         <button type="button" class="sv-shake"><i aria-hidden="true">⚡</i>Shake to reveal</button>
       </main>
@@ -838,9 +854,66 @@ function openStoryViewer(name, image, live, ownStory) {
   const viewer = document.getElementById('story-viewer');
   const polaroid = viewer.querySelector('.sv-polaroid');
   const shakeBtn = viewer.querySelector('.sv-shake');
+  const segments = [...viewer.querySelectorAll('.sv-progress i')];
 
-  // Reveal the polaroid photo (once).
-  let revealed = false;
+  // Render the story at `index`: polaroid photo, header, and the reveal state.
+  function renderStory() {
+    const s = current();
+    if (!s.name && !s.image) return;
+    const now = new Date();
+    const dateLine = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+      + ' • ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const timeLine = s.live
+      ? '<i class="sv-live-pill">LIVE</i>'
+      : '<span class="sv-time">now</span>';
+    viewer.querySelector('.sv-backdrop').style.backgroundImage = `url('${s.image}')`;
+    viewer.querySelector('.sv-avatar img').src = s.image;
+    viewer.querySelector('.sv-id-meta strong').textContent = s.name;
+    viewer.querySelector('.sv-id-meta .sv-time-wrap').innerHTML = timeLine;
+    viewer.querySelector('.sv-photo img').src = s.image;
+    viewer.querySelector('.sv-photo img').alt = `${s.name} story`;
+    viewer.querySelector('.sv-caption strong').textContent = s.name;
+    viewer.querySelector('.sv-caption span').textContent = dateLine;
+    // Segmented progress: finished segments stay full, the active one animates
+    // only while its loading bar is actually running (reveal stories hold until
+    // the polaroid is revealed).
+    segments.forEach((seg, i) => {
+      seg.classList.toggle('done', i < index);
+      seg.classList.toggle('active', false);
+    });
+    // Shake-to-reveal is an opt-in effect the creator chose on the camera page.
+    revealed = false;
+    polaroid.classList.remove('revealed');
+    if (s.reveal) {
+      polaroid.classList.add('reveal-mode');
+      shakeBtn.hidden = false;
+      shakeBtn.innerHTML = '<i aria-hidden="true">⚡</i>Shake to reveal';
+      shakeBtn.classList.remove('done');
+      stopTimer(); // hold until revealed
+    } else {
+      polaroid.classList.remove('reveal-mode');
+      shakeBtn.hidden = true;
+      startTimer();
+    }
+  }
+
+  function stopTimer() { clearTimeout(autoTimer); autoTimer = null; }
+  function startTimer() {
+    stopTimer();
+    const seg = segments[index];
+    if (seg) seg.classList.add('active');
+    autoTimer = setTimeout(() => {
+      // Loading bar finished → switch to the next story by the same creator.
+      if (index + 1 < stories.length) {
+        index += 1;
+        renderStory();
+      } else {
+        viewer.remove();
+      }
+    }, STORY_MS);
+  }
+
+  // Reveal the polaroid photo (once) — only meaningful when the effect is on.
   const reveal = () => {
     if (revealed) return;
     revealed = true;
@@ -848,13 +921,15 @@ function openStoryViewer(name, image, live, ownStory) {
     shakeBtn.innerHTML = '<i aria-hidden="true">✓</i>Revealed';
     shakeBtn.classList.add('done');
     if (navigator.vibrate) { try { navigator.vibrate(18); } catch (err) { /* ignore */ } }
+    startTimer(); // revealed → let the loading bar finish and advance
   };
   shakeBtn.addEventListener('click', reveal);
 
   // Shake detection: a sharp jump in device motion reveals the photo. iOS 13+
   // asks for permission first, so tap-to-reveal is always the fallback.
-  let lastMag = null;
   const onMotion = (e) => {
+    const s = current();
+    if (!s.reveal || revealed) return;
     const a = e.accelerationIncludingGravity;
     if (!a) return;
     const mag = Math.abs(a.x || 0) + Math.abs(a.y || 0) + Math.abs(a.z || 0);
@@ -869,9 +944,6 @@ function openStoryViewer(name, image, live, ownStory) {
     window.addEventListener('devicemotion', onMotion);
   }
 
-  // Auto-advance: the progress bar fills, then the story closes like Instagram.
-  const autoTimer = setTimeout(() => viewer.remove(), 8000);
-
   const moreBtn = viewer.querySelector('.sv-more');
   if (moreBtn) {
     moreBtn.addEventListener('click', (e) => {
@@ -885,17 +957,37 @@ function openStoryViewer(name, image, live, ownStory) {
   viewer.querySelector('[data-story-delete]')?.addEventListener('click', (e) => {
     e.stopPropagation();
     if (isGuest()) { showGuestGate('Sign in to manage your story'); return; }
-    if (!window.confirm('Delete your latest story?')) return;
-    clearTimeout(autoTimer);
-    userUploads.stories.shift();
-    saveUploads();
-    clearStoryLatest();
-    viewer.remove();
+    const s = current();
+    if (!window.confirm('Delete this story?')) return;
+    stopTimer();
+    if (s.key && s.key.startsWith('mine:')) {
+      // Remove exactly this story from the creator's story list.
+      const at = Number(s.key.slice(5));
+      let mine = [];
+      try { mine = JSON.parse(localStorage.getItem(STORY_MINE_KEY) || '[]'); } catch (err) { mine = []; }
+      mine = mine.filter((m) => m.at !== at);
+      try { localStorage.setItem(STORY_MINE_KEY, JSON.stringify(mine)); } catch (err) { /* ignore */ }
+      if (mine.length) {
+        try { localStorage.setItem(STORY_LATEST_KEY, JSON.stringify(mine[0])); } catch (err) { /* ignore */ }
+      } else {
+        clearStoryLatest();
+      }
+    } else {
+      userUploads.stories.shift();
+      saveUploads();
+      clearStoryLatest();
+    }
+    stories.splice(index, 1);
+    if (!stories.length) { viewer.remove(); }
+    else {
+      if (index >= stories.length) index = stories.length - 1;
+      renderStory();
+    }
     hydrateStoryShelf();
   });
   viewer.querySelector('[data-story-report]')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    clearTimeout(autoTimer);
+    stopTimer();
     viewer.remove();
     glitchToast('Thanks — we’ll take a look at this story.');
   });
@@ -907,7 +999,7 @@ function openStoryViewer(name, image, live, ownStory) {
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
-    glitchToast(`Message sent to ${name}`);
+    glitchToast(`Message sent to ${current().name}`);
   });
   viewer.querySelector('.sv-like')?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -921,16 +1013,31 @@ function openStoryViewer(name, image, live, ownStory) {
     setTimeout(() => share.classList.remove('pop'), 320);
   });
 
+  renderStory();
   viewer.querySelector('.story-close')?.focus();
 }
 
-// The user's most recently shared story (mirrored from the story camera page).
+// The user's story records (mirrored from the story camera page): the newest
+// single story (thumb for the "Your story" ring) plus the full per-user list
+// so the viewer can auto-advance through every story they shared.
 const STORY_LATEST_KEY = 'glitchit.story.latest';
+const STORY_MINE_KEY = 'glitchit.story.mine';
 function storyLatest() {
   try { return JSON.parse(localStorage.getItem(STORY_LATEST_KEY) || 'null'); } catch (e) { return null; }
 }
+function storyMine() {
+  try {
+    const list = JSON.parse(localStorage.getItem(STORY_MINE_KEY) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch (e) { return []; }
+}
 function clearStoryLatest() {
   try { localStorage.removeItem(STORY_LATEST_KEY); } catch (e) { /* ignore */ }
+}
+
+// Encode a list of story items for a `data-story-list` attribute (JSON).
+function storyListAttr(stories) {
+  return escapeHtml(JSON.stringify(stories));
 }
 
 function hydrateStoryShelf() {
@@ -938,24 +1045,47 @@ function hydrateStoryShelf() {
   if (!shelf) return;
   shelf.querySelectorAll('.story[data-story-dynamic="true"]').forEach((link) => link.remove());
   // Entry ring for the story camera: the "Your story" ring shows the latest
-  // shared story (or your avatar). Creating happens from the create tab on
-  // the right edge of the home page (see index.html).
-  const latest = storyLatest();
+  // shared story (or your avatar) and plays every story you've shared in
+  // sequence. Creating happens from the create tab on the right edge of the
+  // home page (see index.html).
+  const mine = storyMine();
+  const latest = mine[0] || storyLatest();
   const avatar = profile.avatar || fallbackAvatar(profile.username || 'You');
-  const selfRing = latest
-    ? `<a class="story story-self" data-story-dynamic="true" data-story-name="Your story" data-story-image="${latest.poster || latest.url}" data-story-own="true" aria-label="View your story"><span class="story-ring live"><img src="${latest.poster || latest.url}" alt="Your story"></span><span>Your story</span></a>`
-    : `<a class="story story-self" data-story-dynamic="true" href="camera.html" aria-label="Create a story"><span class="story-ring live"><img src="${avatar}" alt="You"><i class="story-self-badge" aria-hidden="true">＋</i></span><span>Your story</span></a>`;
+  let selfRing;
+  if (mine.length) {
+    const list = mine.map((m) => ({
+      name: 'Your story',
+      image: m.poster || m.url,
+      live: false,
+      own: true,
+      reveal: Boolean(m.reveal),
+      key: 'mine:' + m.at,
+    }));
+    const thumb = list[0].image;
+    selfRing = `<a class="story story-self" data-story-dynamic="true" data-story-list='${storyListAttr(list)}' aria-label="View your stories"><span class="story-ring live"><img src="${thumb}" alt="Your story">${mine.length > 1 ? `<i class="story-count" aria-hidden="true">${mine.length}</i>` : ''}</span><span>Your story</span></a>`;
+  } else if (latest) {
+    selfRing = `<a class="story story-self" data-story-dynamic="true" data-story-list='${storyListAttr([{ name: 'Your story', image: latest.poster || latest.url, live: false, own: true, reveal: Boolean(latest.reveal), key: 'mine:' + latest.at }])}' aria-label="View your story"><span class="story-ring live"><img src="${latest.poster || latest.url}" alt="Your story"></span><span>Your story</span></a>`;
+  } else {
+    selfRing = `<a class="story story-self" data-story-dynamic="true" href="camera.html" aria-label="Create a story"><span class="story-ring live"><img src="${avatar}" alt="You"><i class="story-self-badge" aria-hidden="true">＋</i></span><span>Your story</span></a>`;
+  }
   shelf.insertAdjacentHTML('afterbegin', selfRing);
+  // Group every story by its creator so one ring plays all of that user's
+  // stories back-to-back (each story is a segment in the viewer's loading bar).
+  const byCreator = new Map();
   [...userUploads.stories].reverse().forEach((story) => {
+    const title = story.title || 'Someone';
+    if (!byCreator.has(title)) byCreator.set(title, []);
+    byCreator.get(title).push(story);
+  });
+  byCreator.forEach((list, title) => {
+    const items = list.map((s) => ({ name: title, image: s.preview, live: true, own: false, reveal: false }));
     const link = document.createElement('a');
     link.className = 'story';
     link.href = '#';
     link.dataset.storyDynamic = 'true';
-    link.dataset.storyName = story.title;
-    link.dataset.storyImage = story.preview;
-    link.dataset.storyLive = 'true';
-    link.setAttribute('aria-label', `Open ${story.title}'s story`);
-    link.innerHTML = `<span class="story-ring live"><img src="${story.preview}" alt="${escapeHtml(story.title)} avatar"></span><span>${escapeHtml(story.title)}</span>`;
+    link.dataset.storyList = JSON.stringify(items);
+    link.setAttribute('aria-label', `Open ${title}'s stories`);
+    link.innerHTML = `<span class="story-ring live"><img src="${list[0].preview}" alt="${escapeHtml(title)} avatar">${list.length > 1 ? `<i class="story-count" aria-hidden="true">${list.length}</i>` : ''}</span><span>${escapeHtml(title)}</span>`;
     shelf.appendChild(link);
   });
   attachStoryLinks();

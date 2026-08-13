@@ -26,6 +26,7 @@
     countdown: $('cam-countdown'),
     sheet: $('cam-sheet'), sheetClose: $('cam-sheet-close'),
     setFlip: $('cam-set-flip'), setGrid: $('cam-set-grid'), setFlash: $('cam-set-flash'), setTimer: $('cam-set-timer'),
+    setReveal: $('cam-set-reveal'),
     toast: $('cam-toast'), file: $('cam-file'),
   };
 
@@ -61,6 +62,7 @@
   let preview = null;  // { kind: 'image'|'video', url, blob?, poster?, canvas? }
   let curColor = '#ffffff';
   let recording = false;
+  let revealEffect = false; // "Shake to reveal" story effect (saved on the story record)
   let auth = null;
   let db = null;
   let user = null;
@@ -662,12 +664,22 @@
       }
       if (target === 'story') {
         try {
-          localStorage.setItem('glitchit.story.latest', JSON.stringify({
+          const record = {
             url: res.url,
             poster: kind === 'video' ? poster : res.url,
             kind,
             at: Date.now(),
-          }));
+            reveal: revealEffect,
+          };
+          // Keep the newest as the shelf's "Your story" thumb, and accumulate
+          // every story into a per-user list so the viewer can play them in
+          // sequence (one ring, several stories, auto-advancing).
+          localStorage.setItem('glitchit.story.latest', JSON.stringify(record));
+          let mine = [];
+          try { mine = JSON.parse(localStorage.getItem('glitchit.story.mine') || '[]'); } catch (e) { mine = []; }
+          if (!Array.isArray(mine)) mine = [];
+          mine.unshift(record);
+          localStorage.setItem('glitchit.story.mine', JSON.stringify(mine.slice(0, 12)));
         } catch (e) { /* storage unavailable */ }
       }
       toast(target === 'reel' ? 'Reel shared ✦' : target === 'post' ? 'Post shared ✦' : 'Story shared ✦');
@@ -746,6 +758,8 @@
     els.setGrid.setAttribute('aria-checked', String(gridOn));
     els.setFlash.textContent = flash === 'off' ? 'Off' : flash === 'on' ? 'On' : 'Auto';
     els.setTimer.textContent = `${TIMERS[timerIdx]}s`;
+    els.setReveal.classList.toggle('on', revealEffect);
+    els.setReveal.setAttribute('aria-checked', String(revealEffect));
   }
   els.settings.addEventListener('click', () => { els.sheet.hidden = false; syncSheet(); });
   els.sheet.addEventListener('click', (e) => { if (e.target === els.sheet) els.sheet.hidden = true; });
@@ -766,6 +780,10 @@
   });
   els.setTimer.addEventListener('click', () => {
     timerIdx = (timerIdx + 1) % TIMERS.length;
+    syncSheet();
+  });
+  els.setReveal.addEventListener('click', () => {
+    revealEffect = !revealEffect;
     syncSheet();
   });
 

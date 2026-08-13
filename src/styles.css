@@ -28,13 +28,14 @@ main { height: 100vh; overflow-y: auto; padding: 28px 0 56px; scrollbar-width: t
 .stories, .post, .shop { border: 1px solid #dbdbdb; border-radius: 18px; background: #fff; }
 .stories { display: flex; gap: 18px; overflow-x: auto; padding: 18px; margin-bottom: 18px; }
 .story { display: grid; justify-items: center; gap: 8px; min-width: 72px; border: 0; background: transparent; color: inherit; font-size: 13px; }
-.story-ring { display: grid; place-items: center; width: 74px; height: 74px; border-radius: 50%; background: #ddd; }
+.story-ring { position: relative; display: grid; place-items: center; width: 74px; height: 74px; border-radius: 50%; background: #ddd; }
 .story-ring.live { background: conic-gradient(#feda75, #d62976, #4f5bd5, #feda75); }
 .story img { width: 68px; height: 68px; object-fit: cover; border: 3px solid #fff; border-radius: 50%; }
 .story-create, .story-self { text-decoration: none; }
 .story-create .story-ring, .story-self .story-ring { position: relative; background: linear-gradient(135deg, #d62976, #4f5bd5); }
 .story-create-plus { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 30px; font-style: normal; font-weight: 300; }
 .story-self-badge { position: absolute; right: -2px; bottom: -2px; display: grid; place-items: center; width: 25px; height: 25px; border: 3px solid #fff; border-radius: 50%; color: #fff; font-style: normal; font-weight: 800; font-size: 15px; line-height: 1; background: linear-gradient(135deg, #d62976, #4f5bd5); }
+.story-count { position: absolute; top: -2px; right: -2px; display: grid; place-items: center; min-width: 21px; height: 21px; padding: 0 6px; border: 2.5px solid #fff; border-radius: 999px; color: #fff; font-style: normal; font-weight: 800; font-size: 11px; line-height: 1; background: linear-gradient(135deg, #d62976, #4f5bd5); box-shadow: 0 3px 10px rgba(0,0,0,.35); }
 
 /* Left-edge swipe peek panel: drag from the left edge of the home feed to
    open the story camera (see src/story-swipe.js). */
@@ -586,8 +587,11 @@ body::before {
 /* ---------- Frames-style story viewer: full-screen, polaroid + shake to reveal ---------- */
 .story-viewer { position: fixed; inset: 0; z-index: 10; overflow: hidden; color: #fff; background: #05050a; animation: svFade .22s ease; }
 .sv-backdrop { position: absolute; inset: 0; background-size: cover; background-position: center; filter: blur(26px) brightness(.45) saturate(1.25); transform: scale(1.12); }
-.sv-progress { position: absolute; top: 8px; left: 12px; right: 12px; z-index: 3; height: 3px; border-radius: 99px; background: rgba(255,255,255,.35); overflow: hidden; }
-.sv-progress i { display: block; height: 100%; width: 0; border-radius: 99px; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.8); animation: svProgress 8s linear forwards; }
+.sv-progress { position: absolute; top: 8px; left: 12px; right: 12px; z-index: 3; display: flex; gap: 4px; }
+.sv-progress i { flex: 1; height: 3px; border-radius: 99px; background: rgba(255,255,255,.3); overflow: hidden; }
+.sv-progress i::after { content: ''; display: block; height: 100%; width: 0; border-radius: 99px; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.8); }
+.sv-progress i.done::after { width: 100%; }
+.sv-progress i.active::after { animation: svProgress 8s linear forwards; }
 @keyframes svProgress { to { width: 100%; } }
 .sv-head { position: absolute; top: 0; left: 0; right: 0; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 26px 14px 10px; background: linear-gradient(rgba(0,0,0,.5), transparent); }
 .sv-id { display: flex; align-items: center; gap: 10px; min-width: 0; color: #fff; text-decoration: none; }
@@ -617,14 +621,17 @@ body::before {
 .sv-polaroid.revealed { transform: rotate(0deg) scale(1.02); }
 @keyframes svPolaroidIn { from { opacity: 0; transform: rotate(-10deg) translateY(18px) scale(.9); } }
 .sv-photo { position: relative; aspect-ratio: 4 / 5; overflow: hidden; background: #e8e8ec; }
-.sv-photo img { width: 100%; height: 100%; object-fit: cover; display: block; filter: blur(16px) brightness(1.22) saturate(1.35); transform: scale(1.12); opacity: .9; transition: filter .6s ease, transform .6s ease, opacity .6s ease; }
-.sv-polaroid.revealed .sv-photo img { filter: blur(0) brightness(1) saturate(1); transform: scale(1); opacity: 1; }
-.sv-fog { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.85); font-size: 30px; text-shadow: 0 2px 10px rgba(0,0,0,.35); transition: opacity .45s ease; pointer-events: none; }
-.sv-polaroid.revealed .sv-fog { opacity: 0; }
+.sv-photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: filter .6s ease, transform .6s ease, opacity .6s ease; }
+.sv-polaroid.reveal-mode .sv-photo img { filter: blur(16px) brightness(1.22) saturate(1.35); transform: scale(1.12); opacity: .9; }
+.sv-polaroid.reveal-mode.revealed .sv-photo img { filter: blur(0) brightness(1) saturate(1); transform: scale(1); opacity: 1; }
+.sv-fog { position: absolute; inset: 0; display: none; place-items: center; color: rgba(255,255,255,.85); font-size: 30px; text-shadow: 0 2px 10px rgba(0,0,0,.35); transition: opacity .45s ease; pointer-events: none; }
+.sv-polaroid.reveal-mode .sv-fog { display: grid; }
+.sv-polaroid.reveal-mode.revealed .sv-fog { opacity: 0; }
 .sv-caption { padding: 12px 4px 0; text-align: center; }
 .sv-caption strong { display: block; font-size: 15px; font-weight: 800; letter-spacing: .01em; }
 .sv-caption span { display: block; margin-top: 3px; font-size: 10.5px; color: #737373; }
 .sv-shake { display: inline-flex; align-items: center; gap: 7px; padding: 11px 20px; border: 1px solid rgba(255,255,255,.28); border-radius: 999px; color: #fff; background: rgba(10,10,16,.55); backdrop-filter: blur(6px); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 10px 26px rgba(0,0,0,.35); transition: transform .18s ease, background .18s ease; }
+.sv-shake[hidden] { display: none; }
 .sv-shake i { font-style: normal; }
 .sv-shake:hover { background: rgba(10,10,16,.75); transform: translateY(-1px); }
 .sv-shake:active { transform: scale(.96); }
@@ -643,7 +650,7 @@ body::before {
 @keyframes svHeart { 0%, 100% { transform: scale(1); } 35% { transform: scale(1.3); } 60% { transform: scale(1.1); } }
 @keyframes svFade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .sv-progress i, .sv-polaroid, .sv-live-pill, .sv-menu, .sv-like, .sv-backdrop { animation: none !important; transition: none !important; }
+  .sv-progress i::after, .sv-polaroid, .sv-live-pill, .sv-menu, .sv-like, .sv-backdrop { animation: none !important; transition: none !important; }
 }
 
 :root[data-theme="dark"] { color-scheme: dark; color: #f6f3ff; background: #090912; }
