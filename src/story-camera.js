@@ -27,6 +27,7 @@
     sheet: $('cam-sheet'), sheetClose: $('cam-sheet-close'),
     setFlip: $('cam-set-flip'), setGrid: $('cam-set-grid'), setFlash: $('cam-set-flash'), setTimer: $('cam-set-timer'),
     setReveal: $('cam-set-reveal'),
+    setClose: $('cam-set-close'),
     toast: $('cam-toast'), file: $('cam-file'),
   };
 
@@ -63,6 +64,7 @@
   let curColor = '#ffffff';
   let recording = false;
   let revealEffect = false; // "Shake to reveal" story effect (saved on the story record)
+  let closeFriendsOnly = false; // "Close friends only" story visibility (saved on the story record)
   let auth = null;
   let db = null;
   let user = null;
@@ -670,6 +672,7 @@
             kind,
             at: Date.now(),
             reveal: revealEffect,
+            closeFriends: closeFriendsOnly,
           };
           // Keep the newest as the shelf's "Your story" thumb, and accumulate
           // every story into a per-user list so the viewer can play them in
@@ -760,6 +763,8 @@
     els.setTimer.textContent = `${TIMERS[timerIdx]}s`;
     els.setReveal.classList.toggle('on', revealEffect);
     els.setReveal.setAttribute('aria-checked', String(revealEffect));
+    els.setClose.classList.toggle('on', closeFriendsOnly);
+    els.setClose.setAttribute('aria-checked', String(closeFriendsOnly));
   }
   els.settings.addEventListener('click', () => { els.sheet.hidden = false; syncSheet(); });
   els.sheet.addEventListener('click', (e) => { if (e.target === els.sheet) els.sheet.hidden = true; });
@@ -784,6 +789,10 @@
   });
   els.setReveal.addEventListener('click', () => {
     revealEffect = !revealEffect;
+    syncSheet();
+  });
+  els.setClose.addEventListener('click', () => {
+    closeFriendsOnly = !closeFriendsOnly;
     syncSheet();
   });
 

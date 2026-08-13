@@ -159,6 +159,7 @@ button { font: inherit; cursor: pointer; color: inherit; background: transparent
 .cam-sheet-row:last-of-type { border-bottom: 0; }
 .cam-sheet-row button:not(.cam-switch), .cam-sheet-close { padding: 8px 16px; border-radius: 999px; background: rgba(255, 255, 255, .12); font-weight: 800; font-size: 13px; transition: background .15s ease; }
 .cam-sheet-row button:hover { background: rgba(255, 255, 255, .22); }
+.cam-sheet-note { margin: 8px 2px 0; font-size: 12px; line-height: 1.45; color: rgba(255, 255, 255, .6); font-weight: 500; }
 .cam-sheet-close { width: 100%; margin-top: 14px; background: linear-gradient(135deg, #d62976, #4f5bd5); }
 .cam-sheet-close:hover { filter: brightness(1.1); }
 .cam-switch { position: relative; width: 46px; height: 26px; padding: 0; border-radius: 999px; background: rgba(255, 255, 255, .15); transition: background .2s ease; }

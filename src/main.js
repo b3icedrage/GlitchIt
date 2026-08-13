@@ -772,12 +772,180 @@ function renderUploads(type) {
 }
 
 // ---------- Stories ----------
+// Stories live for 24 hours, carry reactions + views, can be saved to
+// highlights (which never expire), can be restricted to close friends, and
+// play back with swipe-to-switch between creators. Own stories are mirrored
+// in localStorage by the camera page (glitchit.story.mine / .latest) and also
+// stored in the media table (kind='story') so other users' stories can be
+// loaded onto the shelf from the database.
+const STORY_TTL = 24 * 60 * 60 * 1000; // 24h story expiry
+const STORY_REACTIONS_KEY = 'glitchit.story.reactions.v1';
+const STORY_VIEWS_KEY = 'glitchit.story.views.v1';
+const STORY_HIGHLIGHTS_KEY = 'glitchit.story.highlights.v1';
+const STORY_CLOSE_KEY = 'glitchit.story.closefriends.v1';
+const STORY_REACTIONS = ['❤️', '😂', '😮', '😢', '🔥'];
+
+function readStore(key, fallback) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || 'null');
+    return value === null || value === undefined ? fallback : value;
+  } catch (e) { return fallback; }
+}
+function writeStore(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage unavailable */ }
+}
+
+// A story with an `at` timestamp expires 24h after it was shared.
+function storyExpired(story) {
+  return typeof story?.at === 'number' && Date.now() - story.at > STORY_TTL;
+}
+function storyAgeLabel(at) {
+  if (typeof at !== 'number') return 'now';
+  const mins = Math.max(1, Math.round((Date.now() - at) / 60000));
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
+// Stable per-device identity used for story reactions + views (auth id when
+// signed in, otherwise a persisted anonymous id).
+function viewerId() {
+  const user = window.GLITCHIT_USER;
+  if (user && !user.guest && user.id) {
+    return { id: 'u:' + user.id, name: (user.user_metadata && user.user_metadata.username) || String(user.email || '').split('@')[0] || 'You' };
+  }
+  let anon = '';
+  try { anon = localStorage.getItem('glitchit.anon') || ''; } catch (e) { /* ignore */ }
+  if (!anon) {
+    anon = 'a:' + Math.random().toString(36).slice(2, 10);
+    try { localStorage.setItem('glitchit.anon', anon); } catch (e) { /* ignore */ }
+  }
+  return { id: anon, name: 'Guest' };
+}
+
+// ---------- Story reactions (emoji, per story) ----------
+function storyReactionState(key) {
+  return readStore(STORY_REACTIONS_KEY, {})[key] || { counts: {}, mine: null };
+}
+function reactToStory(key, emoji) {
+  if (!key) return;
+  const map = readStore(STORY_REACTIONS_KEY, {});
+  const rec = map[key] || { counts: {}, mine: null };
+  const counts = { ...(rec.counts || {}) };
+  if (rec.mine) {
+    counts[rec.mine] = Math.max(0, (counts[rec.mine] || 1) - 1);
+    if (!counts[rec.mine]) delete counts[rec.mine];
+  }
+  if (rec.mine === emoji) {
+    rec.mine = null; // tap the same reaction again to remove it
+  } else {
+    rec.mine = emoji;
+    counts[emoji] = (counts[emoji] || 0) + 1;
+  }
+  rec.counts = counts;
+  map[key] = rec;
+  writeStore(STORY_REACTIONS_KEY, map);
+}
+
+// ---------- Story views (who watched, when) ----------
+function storyViewRecord(key) {
+  return readStore(STORY_VIEWS_KEY, {})[key] || { count: 0, viewers: [] };
+}
+function storyViewCount(key) {
+  return storyViewRecord(key).count;
+}
+function recordStoryView(story) {
+  if (!story || story.own || !story.key) return;
+  const map = readStore(STORY_VIEWS_KEY, {});
+  const rec = map[story.key] || { count: 0, viewers: [] };
+  const me = viewerId();
+  if (!rec.viewers.some((v) => v.id === me.id)) {
+    rec.viewers.push({ id: me.id, name: me.name, at: Date.now() });
+    rec.count = rec.viewers.length;
+    map[story.key] = rec;
+    writeStore(STORY_VIEWS_KEY, map);
+  }
+}
+
+// ---------- Story highlights (persist beyond 24h) ----------
+function readHighlights() {
+  const list = readStore(STORY_HIGHLIGHTS_KEY, []);
+  return Array.isArray(list) ? list : [];
+}
+function writeHighlights(list) {
+  writeStore(STORY_HIGHLIGHTS_KEY, list);
+}
+function addStoryToHighlights(name, story) {
+  const cleanName = String(name || 'Highlights').trim().slice(0, 24) || 'Highlights';
+  const list = readHighlights();
+  let highlight = list.find((h) => h.name === cleanName);
+  const item = {
+    name: cleanName,
+    image: story.image || story.poster || story.url || '',
+    at: story.at || Date.now(),
+    reveal: Boolean(story.reveal),
+    closeFriends: Boolean(story.closeFriends),
+    key: 'hl:' + cleanName + ':' + Date.now(),
+    own: true,
+  };
+  if (!highlight) {
+    highlight = { name: cleanName, at: item.at, image: item.image, stories: [] };
+    list.unshift(highlight);
+  }
+  highlight.stories.push(item);
+  highlight.at = item.at;
+  highlight.image = item.image;
+  writeHighlights(list);
+  return cleanName;
+}
+function removeStoryFromHighlights(key) {
+  const list = readHighlights();
+  let changed = false;
+  list.forEach((highlight) => {
+    const before = highlight.stories.length;
+    highlight.stories = highlight.stories.filter((s) => s.key !== key);
+    if (highlight.stories.length !== before) changed = true;
+    const last = highlight.stories[highlight.stories.length - 1];
+    if (last) { highlight.at = last.at; highlight.image = last.image; }
+  });
+  if (changed) writeHighlights(list.filter((h) => h.stories.length));
+}
+
+// ---------- Close friends (stories visible only to this list) ----------
+function readCloseFriends() {
+  const list = readStore(STORY_CLOSE_KEY, []);
+  return Array.isArray(list) ? list : [];
+}
+function writeCloseFriends(list) {
+  writeStore(STORY_CLOSE_KEY, list);
+}
+function isCloseFriendOf(creator) {
+  const target = String(creator || '').toLowerCase();
+  return readCloseFriends().some((c) => String(c.name || '').toLowerCase() === target || String(c.id || '') === String(creator));
+}
+function canViewStory(story, creator) {
+  if (!story || !story.closeFriends) return true;
+  if (story.own) return true; // your own close-friends stories are always visible to you
+  return isCloseFriendOf(creator);
+}
+
+// The creator trays for the home shelf — ordered so the viewer can swipe
+// between creators (tray 0 is "Your story").
+let storyTrays = [];
+
 function attachStoryLinks() {
-  document.querySelectorAll('.story[data-story-name], .story[data-story-list]').forEach((storyLink) => {
+  document.querySelectorAll('.story[data-story-name], .story[data-story-list], .story[data-story-tray]').forEach((storyLink) => {
     if (storyLink.dataset.storyReady) return;
     storyLink.dataset.storyReady = 'true';
     storyLink.addEventListener('click', (event) => {
       event.preventDefault();
+      // Swipe-between-creators entry: the shelf ring points at a tray index.
+      if (storyLink.dataset.storyTray !== undefined && storyTrays.length) {
+        const at = Math.max(0, Number(storyLink.dataset.storyTray) || 0);
+        openStoryViewer(storyTrays, at);
+        return;
+      }
       let stories = null;
       if (storyLink.dataset.storyList) {
         try { stories = JSON.parse(storyLink.dataset.storyList); } catch (e) { stories = null; }
@@ -803,31 +971,66 @@ function attachStoryLinks() {
   }
 }
 
-// Frames-style story viewer: full-screen with a segmented progress bar, a
-// tilted polaroid, and — only when the creator picked the effect — a fogged
-// photo that reveals on shake (device motion on phones; tap the pill anywhere
-// else). Plays every story from the same creator in sequence: when a segment's
-// loading bar finishes it auto-advances to their next story, then closes.
-function openStoryViewer(stories) {
-  if (!stories || !stories.length) return;
+// Frames-style story viewer: full-screen with a segmented progress bar and a
+// tilted polaroid. Stories live for 24h, carry emoji reactions and views, can
+// be saved to (never-expiring) highlights, and can be restricted to close
+// friends. Each creator is a "tray" — when a tray's loading bar finishes it
+// advances to the next story, then the next creator's tray; swiping left or
+// right (or using ←/→) jumps between creators manually.
+function openStoryViewer(input, startTray = 0) {
+  if (!Array.isArray(input) || !input.length) return;
+
+  // Accept either a list of creator trays ({ creator, avatar, stories }) or a
+  // flat story list (legacy links) — both normalize to trays.
+  let trays = input;
+  if (!trays[0].stories) {
+    const name = trays[0].name || 'Story';
+    trays = [{ creator: name, avatar: trays[0].image || '', stories: trays }];
+  }
+  trays = trays
+    .map((tray) => ({
+      creator: tray.creator || (tray.stories[0] && tray.stories[0].name) || 'Story',
+      avatar: tray.avatar || (tray.stories[0] && tray.stories[0].image) || '',
+      stories: (tray.stories || []).filter((s) => s && !storyExpired(s)),
+    }))
+    .filter((tray) => tray.stories.length);
+  if (!trays.length) return;
+
   document.getElementById('story-viewer')?.remove();
 
   const STORY_MS = 8000;
+  let trayIndex = Math.max(0, Math.min(startTray || 0, trays.length - 1));
   let index = 0;
   let revealed = false;
   let autoTimer = null;
   let lastMag = null;
+  let swipeX = null;
+  let swipeY = null;
+  let segments = [];
 
-  const current = () => stories[index] || {};
-  const segHtml = stories.map(() => '<i></i>').join('');
-  const ownStory = stories.some((s) => s.own);
-  const moreMenu = ownStory
-    ? `<span class="sv-more-wrap"><button type="button" class="sv-more" aria-label="Story options" aria-expanded="false">⋯</button><span class="sv-menu" hidden><button type="button" data-story-delete>Delete story</button></span></span>`
-    : `<span class="sv-more-wrap"><button type="button" class="sv-more" aria-label="Story options" aria-expanded="false">⋯</button><span class="sv-menu" hidden><button type="button" data-story-report>Report</button></span></span>`;
+  const currentTray = () => trays[trayIndex];
+  const current = () => currentTray().stories[index] || {};
+  const isOwnTray = () => currentTray().stories.some((s) => s.own);
+
+  const moreMenu = () => {
+    const s = current();
+    const options = [];
+    if (s.own || isOwnTray()) {
+      if (s.key && s.key.startsWith('hl:')) {
+        options.push('<button type="button" data-story-unhighlight>Remove from highlights</button>');
+      } else {
+        options.push('<button type="button" data-story-highlight>Add to highlights</button>');
+        options.push('<button type="button" data-story-delete>Delete story</button>');
+      }
+    } else {
+      options.push('<button type="button" data-story-report>Report</button>');
+    }
+    return `<span class="sv-more-wrap"><button type="button" class="sv-more" aria-label="Story options" aria-expanded="false">⋯</button><span class="sv-menu" hidden>${options.join('')}</span></span>`;
+  };
 
   document.body.insertAdjacentHTML('beforeend', `
-    <div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="${escapeHtml(stories[0].name)} story">
-      <div class="sv-progress" aria-hidden="true">${segHtml}</div>
+    <div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="Story viewer">
+      <div class="sv-progress" aria-hidden="true"></div>
       <div class="sv-backdrop" aria-hidden="true"></div>
       <header class="sv-head">
         <a class="sv-id" href="profile.html">
@@ -835,7 +1038,7 @@ function openStoryViewer(stories) {
           <span class="sv-id-meta"><strong></strong><span class="sv-time-wrap"></span></span>
         </a>
         <span class="sv-frames"><i aria-hidden="true">✦</i>Frames by GlitchIt</span>
-        <span class="sv-actions">${moreMenu}<button type="button" class="story-close" aria-label="Close story">✕</button></span>
+        <span class="sv-actions">${moreMenu()}<button type="button" class="story-close" aria-label="Close story">✕</button></span>
       </header>
       <main class="sv-stage">
         <figure class="sv-polaroid">
@@ -846,41 +1049,69 @@ function openStoryViewer(stories) {
       </main>
       <footer class="sv-bar">
         <form class="sv-msg" data-sv-msg><input type="text" placeholder="Send message" aria-label="Send message" autocomplete="off"></form>
-        <button type="button" class="sv-like" aria-label="Like this story">♥</button>
+        <div class="sv-react-wrap">
+          <button type="button" class="sv-like" aria-label="React to this story" aria-expanded="false">♥</button>
+          <span class="sv-react-tray" hidden>
+            ${STORY_REACTIONS.map((r) => `<button type="button" class="sv-react" data-emoji="${r}" aria-label="React ${r}">${r}<b hidden></b></button>`).join('')}
+          </span>
+        </div>
         <button type="button" class="sv-share" aria-label="Share this story"><i aria-hidden="true">➤</i></button>
       </footer>
+      <div class="sv-name-sheet" hidden role="dialog" aria-modal="true" aria-label="Add to highlights">
+        <div class="sv-name-card">
+          <strong>Add to highlights</strong>
+          <p>Save this story so it stays on your profile after 24 hours.</p>
+          <input type="text" maxlength="24" placeholder="Highlight name (e.g. Vacations)" autocomplete="off">
+          <div class="sv-name-actions">
+            <button type="button" data-name-cancel>Cancel</button>
+            <button type="button" data-name-add>Add</button>
+          </div>
+        </div>
+      </div>
     </div>`);
 
   const viewer = document.getElementById('story-viewer');
   const polaroid = viewer.querySelector('.sv-polaroid');
   const shakeBtn = viewer.querySelector('.sv-shake');
-  const segments = [...viewer.querySelectorAll('.sv-progress i')];
+  const reactWrap = viewer.querySelector('.sv-react-wrap');
+  const likeBtn = viewer.querySelector('.sv-like');
+  const reactTray = viewer.querySelector('.sv-react-tray');
+  const moreBtn = viewer.querySelector('.sv-more');
+  const nameSheet = viewer.querySelector('.sv-name-sheet');
+  const alive = () => document.getElementById('story-viewer') === viewer;
 
-  // Render the story at `index`: polaroid photo, header, and the reveal state.
+  function refreshSegments() {
+    const progress = viewer.querySelector('.sv-progress');
+    progress.innerHTML = currentTray().stories.map(() => '<i></i>').join('');
+    segments = [...progress.querySelectorAll('i')];
+    segments.forEach((seg, i) => seg.classList.toggle('done', i < index));
+  }
+
+  // Render the story at `index` of the current tray: polaroid, header, views,
+  // reactions and the reveal state.
   function renderStory() {
+    const tray = currentTray();
     const s = current();
     if (!s.name && !s.image) return;
-    const now = new Date();
-    const dateLine = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
-      + ' • ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     const timeLine = s.live
       ? '<i class="sv-live-pill">LIVE</i>'
-      : '<span class="sv-time">now</span>';
+      : `<span class="sv-time">${storyAgeLabel(s.at)} ago</span>`;
+    const viewCount = s.own && s.key ? storyViewCount(s.key) : 0;
+    const views = viewCount > 0
+      ? `<span class="sv-views" aria-label="${viewCount} views">👁 ${viewCount}</span>`
+      : '';
+    const cf = s.closeFriends ? '<i class="sv-cf-pill">Close friends</i>' : '';
     viewer.querySelector('.sv-backdrop').style.backgroundImage = `url('${s.image}')`;
     viewer.querySelector('.sv-avatar img').src = s.image;
-    viewer.querySelector('.sv-id-meta strong').textContent = s.name;
-    viewer.querySelector('.sv-id-meta .sv-time-wrap').innerHTML = timeLine;
+    viewer.querySelector('.sv-id-meta strong').textContent = tray.creator;
+    viewer.querySelector('.sv-id-meta .sv-time-wrap').innerHTML = timeLine + views + cf;
     viewer.querySelector('.sv-photo img').src = s.image;
-    viewer.querySelector('.sv-photo img').alt = `${s.name} story`;
-    viewer.querySelector('.sv-caption strong').textContent = s.name;
-    viewer.querySelector('.sv-caption span').textContent = dateLine;
-    // Segmented progress: finished segments stay full, the active one animates
-    // only while its loading bar is actually running (reveal stories hold until
-    // the polaroid is revealed).
-    segments.forEach((seg, i) => {
-      seg.classList.toggle('done', i < index);
-      seg.classList.toggle('active', false);
-    });
+    viewer.querySelector('.sv-photo img').alt = `${tray.creator} story`;
+    viewer.querySelector('.sv-caption strong').textContent = tray.creator;
+    viewer.querySelector('.sv-caption span').textContent = storyAgeLabel(s.at) + ' ago';
+    refreshSegments();
+    // Record a view the first time this viewer watches a story that isn't theirs.
+    recordStoryView(s);
     // Shake-to-reveal is an opt-in effect the creator chose on the camera page.
     revealed = false;
     polaroid.classList.remove('revealed');
@@ -895,6 +1126,10 @@ function openStoryViewer(stories) {
       shakeBtn.hidden = true;
       startTimer();
     }
+    renderReactions();
+    const menu = viewer.querySelector('.sv-menu');
+    if (menu) menu.hidden = true;
+    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
   }
 
   function stopTimer() { clearTimeout(autoTimer); autoTimer = null; }
@@ -903,15 +1138,27 @@ function openStoryViewer(stories) {
     const seg = segments[index];
     if (seg) seg.classList.add('active');
     autoTimer = setTimeout(() => {
-      // Loading bar finished → switch to the next story by the same creator.
-      if (index + 1 < stories.length) {
+      // Loading bar finished → next story, then the next creator's tray.
+      if (index + 1 < currentTray().stories.length) {
         index += 1;
+        renderStory();
+      } else if (trayIndex + 1 < trays.length) {
+        trayIndex += 1;
+        index = 0;
         renderStory();
       } else {
         viewer.remove();
       }
     }, STORY_MS);
   }
+  function goToTray(nextTray) {
+    stopTimer();
+    trayIndex = Math.max(0, Math.min(nextTray, trays.length - 1));
+    index = 0;
+    renderStory();
+  }
+  function nextTray() { goToTray(trayIndex + 1); }
+  function prevTray() { goToTray(trayIndex - 1); }
 
   // Reveal the polaroid photo (once) — only meaningful when the effect is on.
   const reveal = () => {
@@ -928,6 +1175,7 @@ function openStoryViewer(stories) {
   // Shake detection: a sharp jump in device motion reveals the photo. iOS 13+
   // asks for permission first, so tap-to-reveal is always the fallback.
   const onMotion = (e) => {
+    if (!alive()) return;
     const s = current();
     if (!s.reveal || revealed) return;
     const a = e.accelerationIncludingGravity;
@@ -944,7 +1192,39 @@ function openStoryViewer(stories) {
     window.addEventListener('devicemotion', onMotion);
   }
 
-  const moreBtn = viewer.querySelector('.sv-more');
+  // ---------- reactions ----------
+  function renderReactions() {
+    const s = current();
+    const state = storyReactionState(s.key);
+    reactTray.querySelectorAll('.sv-react').forEach((btn) => {
+      const emoji = btn.dataset.emoji;
+      const n = state.counts[emoji] || 0;
+      const badge = btn.querySelector('b');
+      if (badge) { badge.hidden = !n; badge.textContent = n ? String(n) : ''; }
+      btn.classList.toggle('mine', state.mine === emoji);
+    });
+    const mine = state.mine;
+    likeBtn.textContent = mine || '♥';
+    likeBtn.classList.toggle('on', Boolean(mine));
+  }
+  likeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = reactTray.hidden;
+    reactTray.hidden = !open;
+    likeBtn.setAttribute('aria-expanded', String(open));
+    if (open) renderReactions();
+  });
+  reactTray.addEventListener('click', (e) => {
+    const btn = e.target.closest('.sv-react');
+    if (!btn) return;
+    e.stopPropagation();
+    reactToStory(current().key, btn.dataset.emoji);
+    renderReactions();
+    if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) { /* ignore */ } }
+    setTimeout(() => { reactTray.hidden = true; likeBtn.setAttribute('aria-expanded', 'false'); }, 700);
+  });
+
+  // ---------- more menu (delete / report / highlights) ----------
   if (moreBtn) {
     moreBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -954,6 +1234,55 @@ function openStoryViewer(stories) {
       moreBtn.setAttribute('aria-expanded', String(open));
     });
   }
+
+  const openHighlightSheet = () => {
+    stopTimer();
+    nameSheet.hidden = false;
+    const input = nameSheet.querySelector('input');
+    input.value = '';
+    setTimeout(() => input.focus(), 30);
+  };
+  const closeHighlightSheet = () => {
+    nameSheet.hidden = true;
+    startTimer();
+  };
+  viewer.querySelector('[data-story-highlight]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const menu = viewer.querySelector('.sv-menu');
+    if (menu) menu.hidden = true;
+    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
+    openHighlightSheet();
+  });
+  viewer.querySelector('[data-name-cancel]')?.addEventListener('click', closeHighlightSheet);
+  viewer.querySelector('[data-name-add]')?.addEventListener('click', () => {
+    const input = nameSheet.querySelector('input');
+    const name = addStoryToHighlights(input.value, current());
+    closeHighlightSheet();
+    glitchToast(`Added to ${name} ✦`);
+    hydrateHighlights();
+  });
+  nameSheet.querySelector('input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') viewer.querySelector('[data-name-add]')?.click();
+  });
+
+  viewer.querySelector('[data-story-unhighlight]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const key = current().key;
+    removeStoryFromHighlights(key);
+    stopTimer();
+    currentTray().stories.splice(index, 1);
+    if (!currentTray().stories.length) {
+      trays.splice(trayIndex, 1);
+      if (!trays.length) { viewer.remove(); return; }
+      trayIndex = Math.min(trayIndex, trays.length - 1);
+    } else if (index >= currentTray().stories.length) {
+      index = currentTray().stories.length - 1;
+    }
+    renderStory();
+    glitchToast('Removed from highlights');
+    hydrateHighlights();
+  });
+
   viewer.querySelector('[data-story-delete]')?.addEventListener('click', (e) => {
     e.stopPropagation();
     if (isGuest()) { showGuestGate('Sign in to manage your story'); return; }
@@ -977,12 +1306,15 @@ function openStoryViewer(stories) {
       saveUploads();
       clearStoryLatest();
     }
-    stories.splice(index, 1);
-    if (!stories.length) { viewer.remove(); }
-    else {
-      if (index >= stories.length) index = stories.length - 1;
-      renderStory();
+    currentTray().stories.splice(index, 1);
+    if (!currentTray().stories.length) {
+      trays.splice(trayIndex, 1);
+      if (!trays.length) { viewer.remove(); return; }
+      trayIndex = Math.min(trayIndex, trays.length - 1);
+    } else if (index >= currentTray().stories.length) {
+      index = currentTray().stories.length - 1;
     }
+    renderStory();
     hydrateStoryShelf();
   });
   viewer.querySelector('[data-story-report]')?.addEventListener('click', (e) => {
@@ -999,12 +1331,7 @@ function openStoryViewer(stories) {
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
-    glitchToast(`Message sent to ${current().name}`);
-  });
-  viewer.querySelector('.sv-like')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    e.currentTarget.classList.toggle('on');
-    if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) { /* ignore */ } }
+    glitchToast(`Message sent to ${currentTray().creator}`);
   });
   viewer.querySelector('.sv-share')?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1012,6 +1339,40 @@ function openStoryViewer(stories) {
     share.classList.add('pop');
     setTimeout(() => share.classList.remove('pop'), 320);
   });
+
+  // ---------- swipe between creators + keyboard shortcuts ----------
+  viewer.addEventListener('touchstart', (e) => {
+    const t = e.touches && e.touches[0];
+    if (!t) return;
+    swipeX = t.clientX;
+    swipeY = t.clientY;
+  }, { passive: true });
+  viewer.addEventListener('touchend', (e) => {
+    if (swipeX === null) return;
+    const t = e.changedTouches && e.changedTouches[0];
+    if (t) {
+      const dx = t.clientX - swipeX;
+      const dy = t.clientY - swipeY;
+      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        if (dx < 0) nextTray();
+        else prevTray();
+        if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) { /* ignore */ } }
+      }
+    }
+    swipeX = null;
+    swipeY = null;
+  }, { passive: true });
+  viewer.addEventListener('touchcancel', () => { swipeX = null; swipeY = null; }, { passive: true });
+  const onKey = (e) => {
+    if (!alive()) { document.removeEventListener('keydown', onKey); return; }
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Escape') return;
+    const tag = ((e.target && e.target.tagName) || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+    if (e.key === 'ArrowLeft') prevTray();
+    else if (e.key === 'ArrowRight') nextTray();
+    else viewer.remove();
+  };
+  document.addEventListener('keydown', onKey);
 
   renderStory();
   viewer.querySelector('.story-close')?.focus();
