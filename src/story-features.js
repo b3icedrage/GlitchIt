@@ -73,13 +73,15 @@
         ? mine.map((m) => ({
             name: 'Your story',
             image: m.poster || m.url,
+            url: m.url,
+            video: m.kind === 'video',
             live: false,
             own: true,
             reveal: Boolean(m.reveal),
             closeFriends: Boolean(m.closeFriends),
             key: 'mine:' + m.at,
           }))
-        : [{ name: 'Your story', image: latest.poster || latest.url, live: false, own: true, reveal: Boolean(latest.reveal), closeFriends: Boolean(latest.closeFriends), key: 'mine:' + latest.at }];
+        : [{ name: 'Your story', image: latest.poster || latest.url, url: latest.url, video: latest.kind === 'video', live: false, own: true, reveal: Boolean(latest.reveal), closeFriends: Boolean(latest.closeFriends), key: 'mine:' + latest.at }];
       const trayIndex = pushTray({ creator: 'Your story', avatar, stories: items });
       selfRing = `<a class="story story-self" data-story-dynamic="true" data-story-tray="${trayIndex}" aria-label="View your stories"><span class="story-ring live"><img src="${avatar}" alt="Your story">${items.length > 1 ? `<i class="story-count" aria-hidden="true">${items.length}</i>` : ''}</span><span>Your story</span></a>`;
     } else {
@@ -114,6 +116,8 @@
           group.items.push({
             name: creator,
             image: row.poster || row.url,
+            url: row.url,
+            video: row.type === 'video' || /\.(mp4|webm|mov|m4v|ogv)$/i.test(row.url || ''),
             live: false,
             own: false,
             reveal,

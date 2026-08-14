@@ -987,7 +987,7 @@ function returnToPage() {
 // ---------- Supabase database (optional — see src/config.js) ----------
 // Loaded lazily so the app works identically when no keys are configured.
 let DB = null;
-import('./db.js?v=6').then((mod) => { DB = mod; }).catch((err) => { DB = null; if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'db-load' }); });
+import('./db.js?v=7').then((mod) => { DB = mod; }).catch((err) => { DB = null; if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'db-load' }); });
 
 // ---------- Social layer (likes, comments, activity, DMs — see src/social.js) ----------
 // Loaded lazily like db.js; every consumer guards with `SOC ?` so the app keeps
@@ -1181,6 +1181,8 @@ function addStoryToHighlights(name, story) {
   const item = {
     name: cleanName,
     image: story.image || story.poster || story.url || '',
+    url: story.url || story.image || '',
+    video: Boolean(story.video),
     at: story.at || Date.now(),
     reveal: Boolean(story.reveal),
     closeFriends: Boolean(story.closeFriends),
@@ -1464,7 +1466,9 @@ function openStoryViewer(input, startTray = 0) {
       ? `<span class="sv-views" aria-label="${viewCount} views">👁 ${viewCount}</span>`
       : '';
     const cf = s.closeFriends ? '<i class="sv-cf-pill">Close friends</i>' : '';
-    viewer.querySelector('.sv-backdrop').style.backgroundImage = `url('${s.image}')`;
+    // The blurred backdrop uses the poster frame for videos so it never goes
+    // dark mid-playback; the polaroid below shows the real media.
+    viewer.querySelector('.sv-backdrop').style.backgroundImage = `url('${s.poster || s.image}')`;
     // Keep the creator's profile picture in the header — the story media
     // only fills the polaroid below it.
     viewer.querySelector('.sv-avatar img').src = tray.avatar || s.image;
@@ -1480,8 +1484,41 @@ function openStoryViewer(input, startTray = 0) {
       idLink.href = 'profile.html';
     }
     viewer.querySelector('.sv-id-meta .sv-time-wrap').innerHTML = timeLine + views + cf;
-    viewer.querySelector('.sv-photo img').src = s.image;
-    viewer.querySelector('.sv-photo img').alt = `${tray.creator} story`;
+    // Video stories play in the polaroid (muted, looping); images render as
+    // before. The media element is recreated per story so nothing leaks
+    // between segments.
+    const photo = viewer.querySelector('.sv-photo');
+    photo.querySelector('img, video')?.remove();
+    const mediaSrc = s.url || s.image;
+    if (s.video && mediaSrc) {
+      const vid = document.createElement('video');
+      vid.className = 'sv-media';
+      vid.src = mediaSrc;
+      if (s.poster && s.poster !== mediaSrc) vid.poster = s.poster;
+      vid.muted = true;
+      vid.loop = true;
+      vid.playsInline = true;
+      vid.setAttribute('playsinline', '');
+      vid.setAttribute('autoplay', '');
+      vid.setAttribute('aria-label', `${tray.creator} story video`);
+      photo.appendChild(vid);
+      const play = vid.play();
+      if (play && play.catch) play.catch(() => {});
+      // Short clips advance as soon as they finish; longer videos ride the
+      // normal per-story timer so the progress bar stays in charge.
+      vid.addEventListener('loadedmetadata', () => {
+        const d = vid.duration;
+        if (Number.isFinite(d) && d > 0 && d < STORY_MS / 1000 - 1) {
+          stopTimer();
+          vid.addEventListener('ended', () => { if (alive()) advance(); });
+        }
+      });
+    } else {
+      const img = document.createElement('img');
+      img.alt = `${tray.creator} story`;
+      img.src = s.image;
+      photo.appendChild(img);
+    }
     viewer.querySelector('.sv-caption strong').textContent = tray.creator;
     viewer.querySelector('.sv-caption span').textContent = storyAgeLabel(s.at) + ' ago';
     refreshSegments();
@@ -1508,23 +1545,25 @@ function openStoryViewer(input, startTray = 0) {
   }
 
   function stopTimer() { clearTimeout(autoTimer); autoTimer = null; }
+  function advance() {
+    if (!alive()) return;
+    // Loading bar finished → next story, then the next creator's tray.
+    if (index + 1 < currentTray().stories.length) {
+      index += 1;
+      renderStory();
+    } else if (trayIndex + 1 < trays.length) {
+      trayIndex += 1;
+      index = 0;
+      renderStory();
+    } else {
+      viewer.remove();
+    }
+  }
   function startTimer() {
     stopTimer();
     const seg = segments[index];
     if (seg) seg.classList.add('active');
-    autoTimer = setTimeout(() => {
-      // Loading bar finished → next story, then the next creator's tray.
-      if (index + 1 < currentTray().stories.length) {
-        index += 1;
-        renderStory();
-      } else if (trayIndex + 1 < trays.length) {
-        trayIndex += 1;
-        index = 0;
-        renderStory();
-      } else {
-        viewer.remove();
-      }
-    }, STORY_MS);
+    autoTimer = setTimeout(advance, STORY_MS);
   }
   function goToTray(nextTray) {
     stopTimer();
@@ -1795,12 +1834,14 @@ function hydrateStoryShelf() {
       ? mine.map((m) => ({
           name: 'Your story',
           image: m.poster || m.url,
+          url: m.url,
+          video: m.kind === 'video',
           live: false,
           own: true,
           reveal: Boolean(m.reveal),
           key: 'mine:' + m.at,
         }))
-      : [{ name: 'Your story', image: latest.poster || latest.url, live: false, own: true, reveal: Boolean(latest.reveal), key: 'mine:' + latest.at }];
+      : [{ name: 'Your story', image: latest.poster || latest.url, url: latest.url, video: latest.kind === 'video', live: false, own: true, reveal: Boolean(latest.reveal), key: 'mine:' + latest.at }];
     list[0].avatar = avatar;
     selfRing = `<a class="story story-self" data-story-dynamic="true" data-story-list='${storyListAttr(list)}' aria-label="View your stories"><span class="story-ring live"><img src="${avatar}" alt="Your story">${list.length > 1 ? `<i class="story-count" aria-hidden="true">${list.length}</i>` : ''}</span><span>Your story</span></a>`;
   } else {
@@ -2740,7 +2781,7 @@ function finishAuth(user, auth) {
   try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
   window.GLITCHIT_USER = user;
   auth.setHandle(auth.userHandle(user));
-  import('./db.js?v=6').then((db) => db.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) })).catch(() => {});
+  import('./db.js?v=7').then((db) => db.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) })).catch(() => {});
   location.href = returnToPage() || 'index.html';
 }
 
@@ -2809,7 +2850,7 @@ function attachAuthPage(auth) {
       pendingAvatar = dataUrl;
       if (avatarPreview) { avatarPreview.src = dataUrl; avatarPreview.hidden = false; }
       try {
-        const db = await import('./db.js?v=6');
+        const db = await import('./db.js?v=7');
         const up = await db.uploadToCloudinary(dataUrlToBlob(dataUrl), 'avatar');
         if (up && up.ok) {
           pendingAvatar = up.url;
@@ -3035,7 +3076,7 @@ async function boot() {
   try { guest = localStorage.getItem(GUEST_KEY) === '1'; } catch (err) { /* ignore */ }
   const dbReady = async () => {
     if (DB) return DB;
-    try { return await import('./db.js?v=6'); } catch (err) { return null; }
+    try { return await import('./db.js?v=7'); } catch (err) { return null; }
   };
   if (auth && auth.authAvailable()) {
     if (isAuthPage) {

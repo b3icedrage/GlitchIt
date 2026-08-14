@@ -98,7 +98,7 @@
         try { auth.setHandle(auth.userHandle(user)); } catch (e) { /* ok */ }
       }
     }
-    try { db = await import('./db.js?v=6'); } catch (e) { db = null; }
+    try { db = await import('./db.js?v=7'); } catch (e) { db = null; }
     if (db && user) db.setCurrentUser({ id: user.id, username: auth.userHandle(user) });
     startCamera();
   }

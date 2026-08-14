@@ -134,7 +134,7 @@ function isUuid(value) {
 // insert retries without those optional columns, so posting never breaks while
 // the schema catches up — the app just skips the features they power.
 async function insertMediaRow(sb, row) {
-  const OPTIONAL_COLUMNS = ['verified', 'reveal', 'close_friends'];
+  const OPTIONAL_COLUMNS = ['type', 'verified', 'reveal', 'close_friends'];
   const { data, error } = await sb.from('media').insert(row).select('id').single();
   if (error && /PGRST204|could not find|does not exist|column/i.test(String(error.message || error))) {
     const stripped = { ...row };
@@ -216,6 +216,7 @@ export async function saveMedia(item) {
     }
     const row = {
       kind,
+      type: item.type === 'video' ? 'video' : 'image',
       title: item.title || 'Untitled',
       caption: item.caption || '',
       url,
