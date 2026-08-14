@@ -37,7 +37,7 @@ const SHELL_URLS = [
   './src/ai-chat.css',
   './src/dm-inbox.css',
   './src/social.css',
-  './src/main.js?v=31',
+  './src/main.js?v=32',
   './src/social-wire.js?v=4',
   './src/edit-profile.js',
   './src/edit-profile.css',

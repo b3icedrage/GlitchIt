@@ -948,6 +948,11 @@ const page = document.body.dataset.page || 'home';
 (function attachBottomBarDismiss() {
   const bar = document.querySelector('.bottom-bar');
   if (!bar) return;
+  // Conversation screens keep the bottom bar visible: reaching the bottom of a
+  // message list is the normal reading state there (the chat even pins itself
+  // to the bottom), not the "end of content" state this auto-hide is for.
+  const dismissPage = document.body.dataset.page || '';
+  if (dismissPage === 'chat' || dismissPage === 'messages') return;
   const desktop = window.matchMedia('(min-width: 761px)'); // desktop hides the bar anyway
   const apply = (hiddenNow) => bar.classList.toggle('bottom-bar-hidden', hiddenNow);
   const nearBottom = (el) => {
