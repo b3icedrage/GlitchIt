@@ -33,6 +33,9 @@ main { height: 100vh; overflow-y: auto; padding: 28px 0 56px; scrollbar-width: t
 .story img { width: 68px; height: 68px; object-fit: cover; border: 3px solid #fff; border-radius: 50%; }
 .story-create, .story-self { text-decoration: none; }
 .story-create .story-ring, .story-self .story-ring { position: relative; background: linear-gradient(135deg, #d62976, #4f5bd5); }
+/* The "Your story" ring only glows once a story has been posted; before
+   that it is a plain gray ring around the profile picture. */
+.story-self .story-ring.story-idle { background: #ddd; }
 .story-create-plus { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 30px; font-style: normal; font-weight: 300; }
 .story-self-badge { position: absolute; right: -2px; bottom: -2px; display: grid; place-items: center; width: 25px; height: 25px; border: 3px solid #fff; border-radius: 50%; color: #fff; font-style: normal; font-weight: 800; font-size: 15px; line-height: 1; background: linear-gradient(135deg, #d62976, #4f5bd5); }
 .story-count { position: absolute; top: -2px; right: -2px; display: grid; place-items: center; min-width: 21px; height: 21px; padding: 0 6px; border: 2.5px solid #fff; border-radius: 999px; color: #fff; font-style: normal; font-weight: 800; font-size: 11px; line-height: 1; background: linear-gradient(135deg, #d62976, #4f5bd5); box-shadow: 0 3px 10px rgba(0,0,0,.35); }
@@ -879,6 +882,25 @@ a, .tag-row a, .comment-box button, .text-button a, .profile-insights a { color:
 .share-song { position: absolute; top: -34px; left: 50%; transform: translateX(-50%); border: 0; border-radius: 999px; padding: 7px 12px; background: #fff; color: #262626; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 6px 18px rgba(0, 0, 0, .18); cursor: pointer; z-index: 1; }
 .share-song::after { content: ''; position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); border: 7px solid transparent; border-top-color: #fff; border-bottom: 0; }
 .share-song:hover { background: #fafafa; }
+.photo-change-btn {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #262626;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+}
+.photo-change-btn:hover { background: #000; }
 .profile-panel .profile-metrics { gap: 28px; }
 .profile-panel .profile-metrics span { font-size: 14px; color: #8e8e8e; }
 .profile-panel .profile-metrics b { font-size: 17px; }
@@ -909,6 +931,9 @@ a, .tag-row a, .comment-box button, .text-button a, .profile-insights a { color:
 :root[data-theme="dark"] .top-menu-btn .icon { color: #f5f5f5; }
 :root[data-theme="dark"] .profile-photo-wrap > img { border-color: #363636; }
 :root[data-theme="dark"] .share-song { background: #262626; color: #f5f5f5; }
+:root[data-theme="dark"] .photo-change-btn { border-color: #000; background: #363636; }
+:root[data-theme="dark"] .photo-change-btn:hover { background: #262626; }
+:root[data-theme="dark"] .story-self .story-ring.story-idle { background: #363636; }
 :root[data-theme="dark"] .share-song::after { border-top-color: #262626; }
 :root[data-theme="dark"] .profile-bio p { color: #f5f5f5; }
 :root[data-theme="dark"] .pro-dashboard { background: #262626; }

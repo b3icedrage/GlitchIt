@@ -90,7 +90,7 @@
 
   // ---------- auth + data layer ----------
   async function boot() {
-    try { auth = await import('./auth.js?v=3'); } catch (e) { auth = null; }
+    try { auth = await import('./auth.js?v=4'); } catch (e) { auth = null; }
     if (auth && auth.authAvailable()) {
       try { user = await auth.currentUser(); } catch (e) { user = null; }
       if (user) {
@@ -98,7 +98,7 @@
         try { auth.setHandle(auth.userHandle(user)); } catch (e) { /* ok */ }
       }
     }
-    try { db = await import('./db.js?v=5'); } catch (e) { db = null; }
+    try { db = await import('./db.js?v=6'); } catch (e) { db = null; }
     if (db && user) db.setCurrentUser({ id: user.id, username: auth.userHandle(user) });
     startCamera();
   }
@@ -639,7 +639,11 @@
         }
       }
       const handle = (user.user_metadata && user.user_metadata.username) || user.email?.split('@')[0] || '';
-      const avatar = (user.user_metadata && user.user_metadata.avatar) || '';
+      // Prefer the picture chosen on the profile page (applies instantly),
+      // falling back to the account metadata.
+      let avatar = '';
+      try { avatar = localStorage.getItem('glitchit.avatar.v1') || ''; } catch (e) { /* ignore */ }
+      if (!avatar) avatar = (user.user_metadata && user.user_metadata.avatar) || '';
       const baseCaption = target === 'reel' ? 'Reel moment' : target === 'post' ? 'Post moment' : 'Story moment';
       // Paid verification was removed — uploads are always unbadged now.
       const verified = false;

@@ -36,7 +36,7 @@ const SHELL_URLS = [
   './src/music-ui.css?v=2',
   './src/ai-chat.css',
   './src/dm-inbox.css',
-  './src/main.js?v=26',
+  './src/main.js?v=27',
   './src/story-features.js',
   './src/story-extras.css',
   './src/story-swipe.js',
@@ -44,7 +44,7 @@ const SHELL_URLS = [
   './src/profile-avatar.js',
   './src/ai-chat.js?v=3',
   './src/story-camera.css?v=2',
-  './src/story-camera.js?v=2',
+  './src/story-camera.js?v=3',
 ];
 
 self.addEventListener('install', (event) => {

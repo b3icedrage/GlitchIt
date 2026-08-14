@@ -14,6 +14,11 @@
   }
 
   function getAvatar(user, handle) {
+    // A picture the user picked on the profile page wins over account metadata
+    // (it applies instantly, even for guests).
+    var custom = '';
+    try { custom = localStorage.getItem('glitchit.avatar.v1') || ''; } catch (e) { /* ignore */ }
+    if (validAvatar(custom)) return custom;
     var metadata = user && user.user_metadata || {};
     var identity = user && user.identities && user.identities[0] && user.identities[0].identity_data || {};
     return [metadata.avatar_url, metadata.picture, metadata.avatar, metadata.image, identity.avatar_url, identity.picture].map(validAvatar).filter(Boolean)[0] || fallbackAvatar(handle || 'GlitchIt');

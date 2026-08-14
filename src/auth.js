@@ -130,6 +130,17 @@ export async function signIn(email, password) {
   return { ok: true, user: data.user };
 }
 
+// Update the signed-in user's profile metadata (e.g. { avatar: url }). Returns
+// the refreshed user object so callers can mirror it into window.GLITCHIT_USER.
+export async function updateUserMetadata(data) {
+  const sb = await getClient();
+  if (!sb) return { ok: false, error: notReadyReason() };
+  const { data: updated, error } = await sb.auth.updateUser({ data });
+  if (error) return { ok: false, error: friendlyError(error) };
+  if (updated && updated.user) handle = userHandle(updated.user);
+  return { ok: true, user: updated && updated.user };
+}
+
 export async function signOut() {
   handle = '';
   try {

@@ -51,37 +51,39 @@
     // don't redeclare.
     storyTrays = [];
     const pushTray = (tray) => { storyTrays.push(tray); return storyTrays.length - 1; };
-    const trayRing = (trayIndex, name, items) => {
+    const trayRing = (trayIndex, name, items, avatarSrc) => {
       const link = document.createElement('a');
       link.className = 'story';
       link.href = '#';
       link.dataset.storyDynamic = 'true';
       link.dataset.storyTray = String(trayIndex);
       link.setAttribute('aria-label', `Open ${name}'s stories`);
-      const thumb = items[0].image;
+      // The ring shows the creator's profile picture when we know it, with
+      // the story media as the fallback.
+      const thumb = avatarSrc || items[0].image;
       link.innerHTML = `<span class="story-ring live"><img src="${escapeHtml(thumb)}" alt="${escapeHtml(name)} avatar">${items.length > 1 ? `<i class="story-count" aria-hidden="true">${items.length}</i>` : ''}</span><span>${escapeHtml(name)}</span>`;
       return link;
     };
 
     let selfRing;
-    if (mine.length) {
-      const items = mine.map((m) => ({
-        name: 'Your story',
-        image: m.poster || m.url,
-        live: false,
-        own: true,
-        reveal: Boolean(m.reveal),
-        closeFriends: Boolean(m.closeFriends),
-        key: 'mine:' + m.at,
-      }));
-      const trayIndex = pushTray({ creator: 'Your story', avatar: items[0].image, stories: items });
-      selfRing = `<a class="story story-self" data-story-dynamic="true" data-story-tray="${trayIndex}" aria-label="View your stories"><span class="story-ring live"><img src="${items[0].image}" alt="Your story">${items.length > 1 ? `<i class="story-count" aria-hidden="true">${items.length}</i>` : ''}</span><span>Your story</span></a>`;
-    } else if (latest) {
-      const item = { name: 'Your story', image: latest.poster || latest.url, live: false, own: true, reveal: Boolean(latest.reveal), closeFriends: Boolean(latest.closeFriends), key: 'mine:' + latest.at };
-      const trayIndex = pushTray({ creator: 'Your story', avatar: item.image, stories: [item] });
-      selfRing = `<a class="story story-self" data-story-dynamic="true" data-story-tray="${trayIndex}" aria-label="View your story"><span class="story-ring live"><img src="${item.image}" alt="Your story"></span><span>Your story</span></a>`;
+    if (mine.length || latest) {
+      // The ring always shows the profile picture; the story media plays in
+      // the viewer. The gradient glow only appears because stories exist.
+      const items = mine.length
+        ? mine.map((m) => ({
+            name: 'Your story',
+            image: m.poster || m.url,
+            live: false,
+            own: true,
+            reveal: Boolean(m.reveal),
+            closeFriends: Boolean(m.closeFriends),
+            key: 'mine:' + m.at,
+          }))
+        : [{ name: 'Your story', image: latest.poster || latest.url, live: false, own: true, reveal: Boolean(latest.reveal), closeFriends: Boolean(latest.closeFriends), key: 'mine:' + latest.at }];
+      const trayIndex = pushTray({ creator: 'Your story', avatar, stories: items });
+      selfRing = `<a class="story story-self" data-story-dynamic="true" data-story-tray="${trayIndex}" aria-label="View your stories"><span class="story-ring live"><img src="${avatar}" alt="Your story">${items.length > 1 ? `<i class="story-count" aria-hidden="true">${items.length}</i>` : ''}</span><span>Your story</span></a>`;
     } else {
-      selfRing = `<a class="story story-self" data-story-dynamic="true" href="camera.html" aria-label="Create a story"><span class="story-ring live"><img src="${avatar}" alt="You"><i class="story-self-badge" aria-hidden="true">＋</i></span><span>Your story</span></a>`;
+      selfRing = `<a class="story story-self" data-story-dynamic="true" href="camera.html" aria-label="Create a story"><span class="story-ring story-idle"><img src="${avatar}" alt="You"><i class="story-self-badge" aria-hidden="true">＋</i></span><span>Your story</span></a>`;
     }
     shelf.insertAdjacentHTML('afterbegin', selfRing);
 
@@ -106,7 +108,7 @@
           if (closeFriends && !canViewStory({ closeFriends: true }, creator)) return;
           let group = byOwner.get(row.user);
           if (!group) {
-            group = { creator, items: [] };
+            group = { creator, avatar: row.avatar || '', items: [] };
             byOwner.set(row.user, group);
           }
           group.items.push({
@@ -120,8 +122,8 @@
           });
         });
         byOwner.forEach((group, ownerId) => {
-          const trayIndex = pushTray({ creator: group.creator, avatar: group.items[0].image, creatorId: ownerId, stories: group.items });
-          shelf.appendChild(trayRing(trayIndex, group.creator, group.items));
+          const trayIndex = pushTray({ creator: group.creator, avatar: group.avatar || group.items[0].image, creatorId: ownerId, stories: group.items });
+          shelf.appendChild(trayRing(trayIndex, group.creator, group.items, group.avatar));
         });
         attachStoryLinks();
       });
@@ -170,7 +172,7 @@
         e.preventDefault();
         const h = highlights[Number(ring.dataset.highlightIndex)];
         if (!h || !h.stories || !h.stories.length) return;
-        openStoryViewer([{ creator: h.name, avatar: h.image, stories: h.stories }]);
+        openStoryViewer([{ creator: h.name, avatar: profile.avatar || h.image, stories: h.stories }]);
       });
     });
   }

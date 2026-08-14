@@ -95,6 +95,11 @@ function safeAvatar(value) {
 }
 
 function userAvatar(user, handle = '') {
+  // A picture picked on the profile page wins over account metadata.
+  try {
+    const custom = localStorage.getItem('glitchit.avatar.v1') || '';
+    if (custom && /^(?:https?:\/\/|data:image\/|blob:)/i.test(custom)) return custom;
+  } catch (e) { /* ignore */ }
   const metadata = user?.user_metadata || {};
   const identity = user?.identities?.[0]?.identity_data || {};
   return [metadata.avatar_url, metadata.picture, metadata.avatar, metadata.image, identity.avatar_url, identity.picture]
@@ -243,6 +248,70 @@ function applyProfileAvatarUi() {
 function applyCurrentUserProfile() {
   syncProfileFromUser(window.GLITCHIT_USER);
   applyProfileAvatarUi();
+}
+
+// ---------- Profile picture changer ----------
+// Reads a square crop of the chosen image (512px JPEG) and applies it
+// locally first, then pushes it to media storage + account metadata when a
+// backend is available, so the new photo shows everywhere instantly.
+function readImageSquare(file, size = 512) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const side = Math.min(img.naturalWidth, img.naturalHeight);
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      } catch (err) { resolve(null); }
+      finally { URL.revokeObjectURL(url); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+async function attachPhotoChange() {
+  const btn = document.getElementById('photo-change-btn');
+  const input = document.getElementById('photo-file');
+  if (!btn || !input) return;
+  btn.addEventListener('click', (event) => {
+    event.preventDefault();
+    input.click();
+  });
+  input.addEventListener('change', async (event) => {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    const dataUrl = await readImageSquare(file);
+    if (!dataUrl) { showEndToast('Couldn’t read that image — try another.'); return; }
+    const applyAvatar = (url) => {
+      try { localStorage.setItem('glitchit.avatar.v1', url); } catch (e) { /* ignore */ }
+      const me = window.GLITCHIT_USER;
+      if (me && !me.guest) {
+        if (me.user_metadata) me.user_metadata.avatar = url;
+        window.GLITCHIT_USER = me;
+      }
+      applyCurrentUserProfile();
+    };
+    // Local-first so the new photo shows instantly, then push to storage.
+    applyAvatar(dataUrl);
+    showEndToast('Profile picture updated');
+    if (!window.GLITCHIT_USER || window.GLITCHIT_USER.guest || !DB) return;
+    const blob = DB.toBlob ? DB.toBlob(dataUrl) : null;
+    if (!blob) return;
+    const up = await DB.saveAvatar(blob);
+    if (up && up.ok && up.url) {
+      applyAvatar(up.url);
+      if (window.GLITCHIT_AUTH && window.GLITCHIT_AUTH.updateUserMetadata) {
+        await window.GLITCHIT_AUTH.updateUserMetadata({ avatar: up.url });
+      }
+    }
+  });
 }
 
 // Map a stored owner UUID back to a friendly handle for display.
@@ -690,7 +759,7 @@ function returnToPage() {
 // ---------- Supabase database (optional — see src/config.js) ----------
 // Loaded lazily so the app works identically when no keys are configured.
 let DB = null;
-import('./db.js?v=5').then((mod) => { DB = mod; }).catch((err) => { DB = null; if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'db-load' }); });
+import('./db.js?v=6').then((mod) => { DB = mod; }).catch((err) => { DB = null; if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'db-load' }); });
 
 // ---------- Shared state (persisted across pages) ----------
 const UPLOADS_KEY = 'glitchit.uploads.v1';
@@ -724,7 +793,10 @@ function glitchVideoCard(video, uploaded = false) {
   const verified = Boolean(video.verified);
   const nameBolt = verified ? verifiedBolt('verified-bolt-inline') : '';
   const avatarBolt = verified ? verifiedBolt() : '';
-  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}" data-owner="${video.owner || ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><span class="verified-avatar-wrap"><img src="${video.avatar}" alt="${video.user} avatar">${avatarBolt}</span><div class="reel-meta"><strong>${video.user}${nameBolt}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
+  // Fall back to a real avatar (profile picture or initials) so reels never
+  // show a broken image placeholder.
+  const avatarSrc = video.avatar || fallbackAvatar(video.user || profile.username);
+  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}" data-owner="${video.owner || ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><span class="verified-avatar-wrap"><img src="${avatarSrc}" alt="${video.user} avatar">${avatarBolt}</span><div class="reel-meta"><strong>${video.user}${nameBolt}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
 }
 
 function renderUploads(type) {
@@ -945,7 +1017,7 @@ function openStoryViewer(input, startTray = 0) {
   let trays = input;
   if (!trays[0].stories) {
     const name = trays[0].name || 'Story';
-    trays = [{ creator: name, avatar: trays[0].image || '', stories: trays }];
+    trays = [{ creator: name, avatar: trays[0].avatar || trays[0].image || '', stories: trays }];
   }
   trays = trays
     .map((tray) => ({
@@ -1063,7 +1135,9 @@ function openStoryViewer(input, startTray = 0) {
       : '';
     const cf = s.closeFriends ? '<i class="sv-cf-pill">Close friends</i>' : '';
     viewer.querySelector('.sv-backdrop').style.backgroundImage = `url('${s.image}')`;
-    viewer.querySelector('.sv-avatar img').src = s.image;
+    // Keep the creator's profile picture in the header — the story media
+    // only fills the polaroid below it.
+    viewer.querySelector('.sv-avatar img').src = tray.avatar || s.image;
     viewer.querySelector('.sv-id-meta strong').textContent = tray.creator;
     // The header links to the story creator's outside profile when the tray
     // knows who that is (DB-backed trays); own/local trays go to own profile.
@@ -1384,21 +1458,23 @@ function hydrateStoryShelf() {
   const latest = mine[0] || storyLatest();
   const avatar = profile.avatar || fallbackAvatar(profile.username || 'You');
   let selfRing;
-  if (mine.length) {
-    const list = mine.map((m) => ({
-      name: 'Your story',
-      image: m.poster || m.url,
-      live: false,
-      own: true,
-      reveal: Boolean(m.reveal),
-      key: 'mine:' + m.at,
-    }));
-    const thumb = list[0].image;
-    selfRing = `<a class="story story-self" data-story-dynamic="true" data-story-list='${storyListAttr(list)}' aria-label="View your stories"><span class="story-ring live"><img src="${thumb}" alt="Your story">${mine.length > 1 ? `<i class="story-count" aria-hidden="true">${mine.length}</i>` : ''}</span><span>Your story</span></a>`;
-  } else if (latest) {
-    selfRing = `<a class="story story-self" data-story-dynamic="true" data-story-list='${storyListAttr([{ name: 'Your story', image: latest.poster || latest.url, live: false, own: true, reveal: Boolean(latest.reveal), key: 'mine:' + latest.at }])}' aria-label="View your story"><span class="story-ring live"><img src="${latest.poster || latest.url}" alt="Your story"></span><span>Your story</span></a>`;
+  if (mine.length || latest) {
+    // The ring shows the profile picture (the story media plays in the
+    // viewer); the glow appears because a story has actually been posted.
+    const list = mine.length
+      ? mine.map((m) => ({
+          name: 'Your story',
+          image: m.poster || m.url,
+          live: false,
+          own: true,
+          reveal: Boolean(m.reveal),
+          key: 'mine:' + m.at,
+        }))
+      : [{ name: 'Your story', image: latest.poster || latest.url, live: false, own: true, reveal: Boolean(latest.reveal), key: 'mine:' + latest.at }];
+    list[0].avatar = avatar;
+    selfRing = `<a class="story story-self" data-story-dynamic="true" data-story-list='${storyListAttr(list)}' aria-label="View your stories"><span class="story-ring live"><img src="${avatar}" alt="Your story">${list.length > 1 ? `<i class="story-count" aria-hidden="true">${list.length}</i>` : ''}</span><span>Your story</span></a>`;
   } else {
-    selfRing = `<a class="story story-self" data-story-dynamic="true" href="camera.html" aria-label="Create a story"><span class="story-ring live"><img src="${avatar}" alt="You"><i class="story-self-badge" aria-hidden="true">＋</i></span><span>Your story</span></a>`;
+    selfRing = `<a class="story story-self" data-story-dynamic="true" href="camera.html" aria-label="Create a story"><span class="story-ring story-idle"><img src="${avatar}" alt="You"><i class="story-self-badge" aria-hidden="true">＋</i></span><span>Your story</span></a>`;
   }
   shelf.insertAdjacentHTML('afterbegin', selfRing);
   // Group every story by its creator so one ring plays all of that user's
@@ -2204,6 +2280,7 @@ function runPage() {
   if (page === 'live') attachLive();
   if (page === 'profile') {
     attachSettingsDrawer();
+    attachPhotoChange();
     attachProfileTabs();
     attachProfileAuth();
     attachProfessional();
@@ -2346,7 +2423,7 @@ function attachAuthPage(auth) {
     try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
     window.GLITCHIT_USER = res.user;
     auth.setHandle(auth.userHandle(res.user));
-    import('./db.js?v=5').then((db) => db.setCurrentUser?.({ id: res.user.id, username: auth.userHandle(res.user) })).catch(() => {});
+    import('./db.js?v=6').then((db) => db.setCurrentUser?.({ id: res.user.id, username: auth.userHandle(res.user) })).catch(() => {});
     location.href = returnToPage() || 'index.html';
   });
 }
@@ -2490,13 +2567,13 @@ function proDashStatsHtml(stats) {
 async function boot() {
   const isAuthPage = page === 'auth';
   let auth = null;
-  try { auth = await import('./auth.js?v=3'); } catch (err) { auth = null; }
+  try { auth = await import('./auth.js?v=4'); } catch (err) { auth = null; }
   window.GLITCHIT_AUTH = auth;
   let guest = false;
   try { guest = localStorage.getItem(GUEST_KEY) === '1'; } catch (err) { /* ignore */ }
   const dbReady = async () => {
     if (DB) return DB;
-    try { return await import('./db.js?v=5'); } catch (err) { return null; }
+    try { return await import('./db.js?v=6'); } catch (err) { return null; }
   };
   if (auth && auth.authAvailable()) {
     if (isAuthPage) {

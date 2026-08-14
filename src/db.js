@@ -107,7 +107,7 @@ function getClient() {
 }
 
 // Convert a data URL (or pass through a Blob/File) into an uploadable Blob.
-function toBlob(value) {
+export function toBlob(value) {
   if (value instanceof Blob) return value;
   if (typeof value === 'string' && value.startsWith('data:')) {
     try {
@@ -141,6 +141,35 @@ async function insertMediaRow(sb, row) {
     return await sb.from('media').insert(stripped).select('id').single();
   }
   return { data, error };
+}
+
+// Upload a profile-picture image and return its public URL. Uses the same
+// pipeline as media (Cloudinary when configured, else Supabase Storage under
+// avatars/) so the URL is small and shareable — never a giant data URL.
+export async function saveAvatar(blob) {
+  if (!dbAvailable()) return { ok: false, reason: 'config' };
+  if (!(blob instanceof Blob)) return { ok: false, reason: 'file' };
+  try {
+    const sb = await getClient();
+    if (!sb) return { ok: false, reason: 'network' };
+    if (cloudinaryConfigured()) {
+      const up = await uploadToCloudinary(blob, 'image');
+      if (!up.ok) return up;
+      return { ok: true, url: up.url };
+    }
+    const ext = (blob.type.split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '');
+    const path = `avatars/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error: upErr } = await sb.storage.from('glitchit-media').upload(path, blob, { upsert: false });
+    if (upErr) {
+      console.warn('GlitchIt: avatar upload failed', upErr);
+      return { ok: false, reason: /not found|no such bucket/i.test(String(upErr.message || upErr)) ? 'bucket' : 'upload', detail: String(upErr.message || upErr) };
+    }
+    const { data } = sb.storage.from('glitchit-media').getPublicUrl(path);
+    return { ok: true, url: data.publicUrl };
+  } catch (err) {
+    console.warn('GlitchIt: avatar upload threw', err);
+    return { ok: false, reason: 'error', detail: String(err && err.message || err) };
+  }
 }
 
 // ---------- media table (videos + images) ----------
