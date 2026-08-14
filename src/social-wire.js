@@ -382,19 +382,26 @@
           ? `<img src="${escapeHtml(p.avatar)}" alt="${name}" loading="lazy">`
           : `<span class="badge"><i>${escapeHtml(String(p.name || 'C')[0].toUpperCase())}</i></span>`;
         const isUnread = unreadKeys.includes(String(p.id || ''));
+        // Instagram-style preview line: message text + relative time on the
+        // same line ("im good,, you?? · 23h"), no trailing camera icon.
+        const time = last ? SOC.timeAgo(last.at) : '';
+        const preview = last ? `${escapeHtml(last.text)}${time ? ` · ${time}` : ''}` : '';
         const q = new URLSearchParams();
         q.set('to', String(p.id || ''));
         q.set('name', p.name || 'Creator');
         return `
         <a class="dm-row${isUnread ? ' dm-row-unread' : ''}" href="chat.html?${q.toString()}" ${isUnread ? `aria-label="${name}: unread messages"` : ''}>
           <span class="dm-avatar">${avatar}</span>
-          <span class="dm-meta"><strong>${name}</strong><em>${escapeHtml(last ? last.text : '')}</em></span>
+          <span class="dm-meta"><strong>${name}</strong><em>${preview}</em></span>
           ${isUnread ? '<i class="dm-unread-dot" aria-hidden="true"></i>' : ''}
-          <span class="dm-side"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
         </a>`;
       }).join('');
+      // The Primary pill shows how many conversations have unread messages.
       const countEl = document.querySelector('.dm-tab-count');
-      if (countEl) countEl.textContent = convs.length ? String(convs.length) : '';
+      if (countEl) {
+        const unread = typeof SOC.dmUnreadTotal === 'function' ? SOC.dmUnreadTotal() : 0;
+        countEl.textContent = unread > 0 ? String(unread) : '';
+      }
     };
     render();
     if (search) {

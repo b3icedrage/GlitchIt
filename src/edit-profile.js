@@ -99,6 +99,15 @@
     const pronouns = meta.pronouns || readLocal(PROFILE_PRONOUNS_KEY, '');
     const bio = meta.bio || window.readStore('glitchit.bio', '');
     const esc = (v) => window.escapeHtml(String(v || ''));
+    // Current profile picture: the locally-chosen override wins, then account
+    // metadata, then the synced profile object — fall back to initials.
+    let avatarSrc = '';
+    try { avatarSrc = localStorage.getItem('glitchit.avatar.v1') || ''; } catch (e) { /* ignore */ }
+    if (!avatarSrc && me && !me.guest && me.user_metadata) {
+      avatarSrc = me.user_metadata.avatar || me.user_metadata.avatar_url || me.user_metadata.picture || '';
+    }
+    if (!avatarSrc && typeof profile !== 'undefined' && profile && profile.avatar) avatarSrc = profile.avatar;
+    if (!avatarSrc) avatarSrc = window.fallbackAvatar(handle);
     const wrap = document.createElement('div');
     wrap.id = 'edit-profile-sheet';
     wrap.className = 'editprofile-wrap';
@@ -114,6 +123,17 @@
           <button type="button" class="editprofile-done" data-ep-done>Done</button>
         </header>
         <div class="editprofile-body">
+          <div class="editprofile-field editprofile-avatar-field">
+            <label>Profile photo</label>
+            <div class="editprofile-avatar-row">
+              <span class="editprofile-avatar" id="ep-avatar"><img src="${esc(avatarSrc)}" alt="Profile picture"></span>
+              <span class="editprofile-avatar-actions">
+                <button type="button" class="editprofile-avatar-btn" id="ep-avatar-change">Change photo</button>
+                <button type="button" class="editprofile-avatar-btn danger" id="ep-avatar-remove" hidden>Remove</button>
+              </span>
+            </div>
+            <input type="file" id="ep-avatar-input" accept="image/*" hidden />
+          </div>
           <div class="editprofile-field">
             <label for="ep-name">Name</label>
             <input id="ep-name" type="text" maxlength="40" value="${esc(name)}" autocomplete="off">
@@ -141,6 +161,65 @@
     const count = wrap.querySelector('#ep-bio-count');
 
     bioInput.addEventListener('input', () => { count.textContent = `${bioInput.value.length}/220`; });
+
+    // --- Profile photo: change + remove (local-first, then cloud + metadata) ---
+    const avatarImg = wrap.querySelector('#ep-avatar img');
+    const changeBtn = wrap.querySelector('#ep-avatar-change');
+    const removeBtn = wrap.querySelector('#ep-avatar-remove');
+    const avatarInput = wrap.querySelector('#ep-avatar-input');
+    const setAvatar = (url) => {
+      try { localStorage.setItem('glitchit.avatar.v1', url); } catch (e) { /* ignore */ }
+      const u = window.GLITCHIT_USER;
+      if (u && !u.guest) {
+        if (!u.user_metadata) u.user_metadata = {};
+        u.user_metadata.avatar = url;
+        window.GLITCHIT_USER = u;
+      }
+      if (avatarImg) avatarImg.src = url;
+      if (removeBtn) removeBtn.hidden = false;
+      if (window.applyCurrentUserProfile) window.applyCurrentUserProfile();
+    };
+    changeBtn?.addEventListener('click', () => avatarInput?.click());
+    avatarInput?.addEventListener('change', async () => {
+      const file = avatarInput.files && avatarInput.files[0];
+      avatarInput.value = '';
+      if (!file) return;
+      const dataUrl = await window.readImageSquare(file);
+      if (!dataUrl) { window.glitchToast('Couldn’t read that image — try another.'); return; }
+      setAvatar(dataUrl);
+      window.glitchToast('Profile picture updated');
+      const meNow = window.GLITCHIT_USER;
+      if (!meNow || meNow.guest || !DB) return;
+      const blob = DB.toBlob ? DB.toBlob(dataUrl) : null;
+      if (!blob) return;
+      const up = await DB.saveAvatar(blob);
+      if (up && up.ok && up.url) {
+        setAvatar(up.url);
+        const authMod = window.GLITCHIT_AUTH;
+        if (authMod && authMod.updateUserMetadata) {
+          try {
+            const res = await authMod.updateUserMetadata({ avatar: up.url });
+            if (res && res.ok && res.user) window.GLITCHIT_USER = res.user;
+          } catch (err) { /* offline — kept locally */ }
+        }
+      }
+    });
+    removeBtn?.addEventListener('click', async () => {
+      try { localStorage.removeItem('glitchit.avatar.v1'); } catch (e) { /* ignore */ }
+      const u = window.GLITCHIT_USER;
+      if (u && !u.guest) {
+        if (u.user_metadata) u.user_metadata.avatar = '';
+        window.GLITCHIT_USER = u;
+        const authMod = window.GLITCHIT_AUTH;
+        if (authMod && authMod.updateUserMetadata) {
+          try { await authMod.updateUserMetadata({ avatar: '' }); } catch (err) { /* offline — kept locally */ }
+        }
+      }
+      if (avatarImg) avatarImg.src = window.fallbackAvatar(handle);
+      if (removeBtn) removeBtn.hidden = true;
+      if (window.applyCurrentUserProfile) window.applyCurrentUserProfile();
+      window.glitchToast('Profile picture removed');
+    });
 
     const close = (saved) => {
       document.removeEventListener('keydown', onKey);

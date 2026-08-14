@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="src/story-extras.css?v=2" />
     <link rel="stylesheet" href="src/bottombar.css?v=2" />
     <link rel="stylesheet" href="src/messages.css" />
-    <link rel="stylesheet" href="src/dm-inbox.css" />
+    <link rel="stylesheet" href="src/dm-inbox.css?v=2" />
     <link rel="stylesheet" href="src/ai-chat.css" />
     <link rel="stylesheet" href="src/music-ui.css?v=2" />
     <link rel="stylesheet" href="src/social.css" />
@@ -39,6 +39,7 @@
               <button type="button" class="dm-title" id="dm-title">
                 <span class="handle-text">you</span>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                <i class="dm-title-dot" aria-hidden="true"></i>
               </button>
               <div class="dm-head-actions">
                 <a href="activity.html" class="dm-act" aria-label="Activity">
@@ -52,7 +53,7 @@
 
             <div class="dm-search">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              <input id="dm-search-input" type="search" aria-label="Search conversations" autocomplete="off" />
+              <input id="dm-search-input" type="search" placeholder="Search" aria-label="Search conversations" autocomplete="off" />
             </div>
 
             <section class="messages-notes" aria-label="Notes from your circle">
@@ -97,8 +98,8 @@
       </nav>
     </div>
     <script src="src/main.js?v=34" defer></script>
-    <script src="src/social-wire.js?v=4" defer></script>
-    <script src="src/edit-profile.js" defer></script>
+    <script src="src/social-wire.js?v=5" defer></script>
+    <script src="src/edit-profile.js?v=2" defer></script>
     <script src="src/story-features.js?v=2" defer></script>
     <script src="src/music-ui.js?v=2" defer></script>
     <script src="src/profile-avatar.js" defer></script>

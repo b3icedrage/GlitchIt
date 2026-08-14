@@ -31,6 +31,34 @@
   --dm-fab-ink: #0a0a0a;
 }
 
+/* The reference look is a dark DM interface — pin the Messages page to the
+   dark palette on every screen size, regardless of the app-wide theme. */
+body[data-page="messages"] {
+  --dm-bg: #000000;
+  --dm-surface: #0a0a0a;
+  --dm-ink: #f5f5f5;
+  --dm-muted: #8f8f8f;
+  --dm-search: #1c1c1e;
+  --dm-hover: #141416;
+  --dm-pill: #1c1c1e;
+  --dm-border: rgba(255, 255, 255, 0.08);
+  --dm-fab: #f5f5f5;
+  --dm-fab-ink: #0a0a0a;
+  color: var(--dm-ink);
+}
+body[data-page="messages"],
+body[data-page="messages"] main { background: #000; }
+
+/* Red notification dot beside the handle in the inbox header. */
+.dm-title-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dm-red);
+  box-shadow: 0 0 0 2px var(--dm-bg);
+}
+
 /* ---------- Inbox shell (full-bleed on mobile, card on desktop) ---------- */
 .dm-inbox {
   border: 1px solid var(--dm-border);
