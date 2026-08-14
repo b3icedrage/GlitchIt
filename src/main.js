@@ -1382,6 +1382,14 @@ function openStoryViewer(input, startTray = 0) {
   let swipeX = null;
   let swipeY = null;
   let segments = [];
+  // Press-and-hold pausing + tap-navigation state.
+  let swiped = false;     // a tray swipe just happened — suppress the follow-up click
+  let storyStart = 0;     // when the current progress timer started
+  let pausedMs = 0;       // accumulated paused time within the current story
+  let shortClip = false;  // current story is a short video that advances on 'ended'
+  let pressPaused = false;
+  let justHeld = false;
+  let holdTimer = null;
 
   const currentTray = () => trays[trayIndex];
   const current = () => currentTray().stories[index] || {};
@@ -1417,10 +1425,18 @@ function openStoryViewer(input, startTray = 0) {
       </header>
       <main class="sv-stage">
         <figure class="sv-polaroid">
-          <div class="sv-photo"><span class="sv-fog" aria-hidden="true">✦</span><img alt=""></div>
+          <div class="sv-photo">
+            <span class="sv-fog" aria-hidden="true">✦</span>
+            <img alt="">
+            <button type="button" class="sv-sound" hidden aria-label="Unmute story video" aria-pressed="false">
+              <svg class="sv-sound-on" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+              <svg class="sv-sound-off" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+            </button>
+          </div>
           <figcaption class="sv-caption"><strong></strong><span></span></figcaption>
         </figure>
         <button type="button" class="sv-shake"><i aria-hidden="true">⚡</i>Shake to reveal</button>
+        <span class="sv-pause-pill" hidden aria-hidden="true"><i>⏸</i>Paused</span>
       </main>
       <footer class="sv-bar">
         <form class="sv-msg" data-sv-msg><input type="text" placeholder="Send message" aria-label="Send message" autocomplete="off"></form>
@@ -1453,6 +1469,12 @@ function openStoryViewer(input, startTray = 0) {
   const reactTray = viewer.querySelector('.sv-react-tray');
   const moreBtn = viewer.querySelector('.sv-more');
   const nameSheet = viewer.querySelector('.sv-name-sheet');
+  const stage = viewer.querySelector('.sv-stage');
+  const photo = viewer.querySelector('.sv-photo');
+  const soundBtn = viewer.querySelector('.sv-sound');
+  const soundOnIcon = viewer.querySelector('.sv-sound-on');
+  const soundOffIcon = viewer.querySelector('.sv-sound-off');
+  const pausePill = viewer.querySelector('.sv-pause-pill');
   const alive = () => document.getElementById('story-viewer') === viewer;
 
   function refreshSegments() {
@@ -1497,8 +1519,13 @@ function openStoryViewer(input, startTray = 0) {
     // Video stories play in the polaroid (muted, looping); images render as
     // before. The media element is recreated per story so nothing leaks
     // between segments.
-    const photo = viewer.querySelector('.sv-photo');
     photo.querySelector('img, video')?.remove();
+    // Fresh story → fresh playback state (progress, pause, sound).
+    shortClip = false;
+    pausedMs = 0;
+    pressPaused = false;
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    pausePill.hidden = true;
     const mediaSrc = s.url || s.image;
     if (s.video && mediaSrc) {
       const vid = document.createElement('video');
@@ -1514,16 +1541,35 @@ function openStoryViewer(input, startTray = 0) {
       photo.appendChild(vid);
       const play = vid.play();
       if (play && play.catch) play.catch(() => {});
+      // Video stories start muted (browsers block unmuted autoplay) — the
+      // sound button lets the viewer unmute this story.
+      let soundOn = false;
+      soundBtn.hidden = false;
+      soundBtn.setAttribute('aria-pressed', 'false');
+      soundBtn.setAttribute('aria-label', 'Unmute story video');
+      soundOnIcon.hidden = false;
+      soundOffIcon.hidden = true;
+      soundBtn.onclick = (e) => {
+        e.stopPropagation();
+        soundOn = !soundOn;
+        vid.muted = !soundOn;
+        soundBtn.setAttribute('aria-pressed', String(soundOn));
+        soundBtn.setAttribute('aria-label', soundOn ? 'Mute story video' : 'Unmute story video');
+        soundOnIcon.hidden = !soundOn;
+        soundOffIcon.hidden = soundOn;
+      };
       // Short clips advance as soon as they finish; longer videos ride the
       // normal per-story timer so the progress bar stays in charge.
       vid.addEventListener('loadedmetadata', () => {
         const d = vid.duration;
         if (Number.isFinite(d) && d > 0 && d < STORY_MS / 1000 - 1) {
+          shortClip = true;
           stopTimer();
           vid.addEventListener('ended', () => { if (alive()) advance(); });
         }
       });
     } else {
+      soundBtn.hidden = true;
       const img = document.createElement('img');
       img.alt = `${tray.creator} story`;
       img.src = s.image;
@@ -1555,7 +1601,8 @@ function openStoryViewer(input, startTray = 0) {
   }
 
   function stopTimer() { clearTimeout(autoTimer); autoTimer = null; }
-  function advance() {
+  function next() {
+    stopTimer();
     if (!alive()) return;
     // Loading bar finished → next story, then the next creator's tray.
     if (index + 1 < currentTray().stories.length) {
@@ -1569,11 +1616,65 @@ function openStoryViewer(input, startTray = 0) {
       viewer.remove();
     }
   }
+  function prev() {
+    stopTimer();
+    if (!alive()) return;
+    if (index > 0) {
+      index -= 1;
+      renderStory();
+    } else if (trayIndex > 0) {
+      // Jump to the previous creator's last story (Instagram-style).
+      trayIndex -= 1;
+      index = currentTray().stories.length - 1;
+      renderStory();
+    } else {
+      index = 0; // Already the very first story — restart it.
+      renderStory();
+    }
+  }
+  function advance() { next(); }
   function startTimer() {
     stopTimer();
+    storyStart = Date.now();
+    pausedMs = 0;
     const seg = segments[index];
-    if (seg) seg.classList.add('active');
+    if (seg) {
+      seg.classList.remove('active');
+      seg.style.setProperty('--sv-dur', STORY_MS + 'ms');
+      void seg.offsetWidth; // restart the fill animation from zero
+      seg.classList.add('active');
+    }
     autoTimer = setTimeout(advance, STORY_MS);
+  }
+  // Resume the progress bar from where it left off after a press-and-hold.
+  function resumeTimer(remainingMs) {
+    stopTimer();
+    const seg = segments[index];
+    if (seg) {
+      seg.classList.remove('active');
+      seg.style.setProperty('--sv-dur', Math.max(120, remainingMs) + 'ms');
+      void seg.offsetWidth;
+      seg.classList.add('active');
+    }
+    autoTimer = setTimeout(advance, Math.max(120, remainingMs));
+  }
+  function pausePlayback() {
+    if (autoTimer) {
+      pausedMs += Math.max(0, Date.now() - storyStart);
+      stopTimer();
+    }
+    const vid = photo.querySelector('video');
+    if (vid && !vid.paused) { try { vid.pause(); } catch (err) { /* ignore */ } }
+  }
+  function resumePlayback() {
+    const s = current();
+    const vid = photo.querySelector('video');
+    if (vid) { const p = vid.play(); if (p && p.catch) p.catch(() => {}); }
+    if (shortClip) return; // short clips advance on 'ended' — no timer needed
+    if (s.reveal && !revealed) return; // still hidden — hold until revealed
+    const remaining = STORY_MS - pausedMs;
+    if (remaining <= 250) { next(); return; }
+    resumeTimer(remaining);
   }
   function goToTray(nextTray) {
     stopTimer();
@@ -1778,6 +1879,7 @@ function openStoryViewer(input, startTray = 0) {
       const dx = t.clientX - swipeX;
       const dy = t.clientY - swipeY;
       if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        swiped = true; // suppress the tap-navigation click that follows
         if (dx < 0) nextTray();
         else prevTray();
         if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) { /* ignore */ } }
@@ -1797,6 +1899,58 @@ function openStoryViewer(input, startTray = 0) {
     else viewer.remove();
   };
   document.addEventListener('keydown', onKey);
+
+  // ---------- tap to navigate, press-and-hold to pause ----------
+  // Tapping the left third of the stage goes back, the rest goes forward;
+  // long-pressing anywhere pauses the story (and the video) until release.
+  const isInteractive = (target) => Boolean(target.closest && target.closest('.sv-shake, .sv-sound, .sv-more, .story-close, input, button, a'));
+  const tapNavigate = (clientX) => {
+    if (!alive()) return;
+    const rect = stage.getBoundingClientRect();
+    const s = current();
+    // Reveal stories blur the photo until the viewer shakes/taps to reveal —
+    // any tap reveals first instead of skipping past it.
+    if (s.reveal && !revealed) { reveal(); return; }
+    if (clientX - rect.left < rect.width / 3) prev();
+    else next();
+  };
+  stage.addEventListener('click', (e) => {
+    if (swiped) { swiped = false; return; }
+    if (justHeld) { justHeld = false; return; }
+    if (isInteractive(e.target)) return;
+    tapNavigate(e.clientX);
+  });
+  const endHold = () => {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    if (pressPaused) {
+      pressPaused = false;
+      justHeld = true;
+      pausePill.hidden = true;
+      resumePlayback();
+    }
+  };
+  stage.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1 || isInteractive(e.target)) return;
+    holdTimer = setTimeout(() => {
+      pressPaused = true;
+      pausePill.hidden = false;
+      pausePlayback();
+    }, 240);
+  }, { passive: true });
+  stage.addEventListener('touchend', endHold, { passive: true });
+  stage.addEventListener('touchcancel', endHold, { passive: true });
+  if (window.matchMedia && window.matchMedia('(pointer: fine)').matches) {
+    stage.addEventListener('mousedown', (e) => {
+      if (isInteractive(e.target)) return;
+      holdTimer = setTimeout(() => {
+        pressPaused = true;
+        pausePill.hidden = false;
+        pausePlayback();
+      }, 240);
+    });
+    stage.addEventListener('mouseup', endHold);
+    stage.addEventListener('mouseleave', endHold);
+  }
 
   renderStory();
   viewer.querySelector('.story-close')?.focus();
