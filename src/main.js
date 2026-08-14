@@ -512,8 +512,9 @@ window.attachProfileBio = function attachProfileBio() {
     ed.querySelector('.bio-save').addEventListener('click', async () => {
       const next = ta.value.trim();
       writeStore('glitchit.bio', next);
-      if (auth && auth.updateUserMetadata) {
-        try { await auth.updateUserMetadata({ bio: next }); } catch (err) { /* offline — kept locally */ }
+      const authMod = window.GLITCHIT_AUTH;
+      if (authMod && authMod.updateUserMetadata) {
+        try { await authMod.updateUserMetadata({ bio: next }); } catch (err) { /* offline — kept locally */ }
       }
       render(next);
       stopEdit();
@@ -987,7 +988,7 @@ import('./db.js?v=6').then((mod) => { DB = mod; }).catch((err) => { DB = null; i
 // Loaded lazily like db.js; every consumer guards with `SOC ?` so the app keeps
 // working identically if the module ever fails to load.
 let SOC = null;
-import('./social.js?v=2').then((mod) => {
+import('./social.js?v=3').then((mod) => {
   SOC = mod;
   window.GLITCHIT_SOC = mod;
   // src/social-wire.js (loaded after main.js) listens for this and wires the

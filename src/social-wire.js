@@ -23,7 +23,7 @@
     window.GLITCHIT_SOC = SOC;
     tryWire();
   });
-  import('./social.js?v=2').then((mod) => {
+  import('./social.js?v=3').then((mod) => {
     if (!window.GLITCHIT_SOC) { SOC = mod; window.GLITCHIT_SOC = mod; }
     tryWire();
   }).catch(() => { /* main.js will have reported it */ });
@@ -128,6 +128,9 @@
     if (page === 'messages') hydrateDmInbox();
     if (page === 'chat') hydrateChat();
     if (page === 'user') attachUserMessageBtn();
+    // Creator replies (from src/social.js) land at any moment — keep the nav
+    // badges and any open inbox/chat in sync wherever they arrive.
+    window.addEventListener('glitchit:dm', refreshUnreadBadges);
     scheduleSync();
   }
 
@@ -325,23 +328,29 @@
   }
 
   // ---------------- Unread badges ----------------
+  // Puts a small count bubble on the Activity and Messages nav links (sidebar,
+  // mobile top bar, and bottom bar) whenever there's unread activity or an
+  // unread incoming DM.
+  function setBadge(el, n, label) {
+    let badge = el.querySelector('.unread-badge');
+    if (n > 0) {
+      if (!badge) {
+        badge = document.createElement('i');
+        badge.className = 'unread-badge';
+        el.appendChild(badge);
+      }
+      badge.textContent = n > 9 ? '9+' : String(n);
+      badge.setAttribute('aria-label', `${n} ${label}`);
+    } else if (badge) {
+      badge.remove();
+    }
+  }
   function refreshUnreadBadges() {
     if (!SOC) return;
     const n = SOC.unreadActivity();
-    document.querySelectorAll('.top-activity-btn, .bottom-bar a[href="activity.html"], .sidebar nav a[href="activity.html"]').forEach((el) => {
-      let badge = el.querySelector('.unread-badge');
-      if (n > 0) {
-        if (!badge) {
-          badge = document.createElement('i');
-          badge.className = 'unread-badge';
-          badge.setAttribute('aria-label', `${n} unread activity items`);
-          el.appendChild(badge);
-        }
-        badge.textContent = n > 9 ? '9+' : String(n);
-      } else if (badge) {
-        badge.remove();
-      }
-    });
+    const dms = typeof SOC.dmUnreadTotal === 'function' ? SOC.dmUnreadTotal() : 0;
+    document.querySelectorAll('.top-activity-btn, .bottom-bar a[href="activity.html"], .sidebar nav a[href="activity.html"]').forEach((el) => setBadge(el, n, 'unread activity items'));
+    document.querySelectorAll('.top-dm-btn, .bottom-bar a[href="messages.html"], .sidebar nav a[href="messages.html"]').forEach((el) => setBadge(el, dms, 'unread messages'));
   }
 
   // ---------------- Direct messages (inbox + chat) ----------------
@@ -356,31 +365,38 @@
   function hydrateDmInbox() {
     const list = document.getElementById('dm-list');
     if (!list) return;
-    const convs = SOC.dmConversations();
-    if (!convs.length) {
-      list.innerHTML = '<div class="dm-empty"><span class="dm-empty-mark">✉</span><h3>No messages yet</h3><p>Tap ＋ and message a creator you follow — conversations show up here.</p></div>';
-      return;
-    }
-    list.innerHTML = convs.map((c) => {
-      const p = c.partner || {};
-      const last = c.messages[c.messages.length - 1];
-      const name = escapeHtml(p.name || 'Creator');
-      const avatar = p.avatar
-        ? `<img src="${escapeHtml(p.avatar)}" alt="${name}" loading="lazy">`
-        : `<span class="badge"><i>${escapeHtml(String(p.name || 'C')[0].toUpperCase())}</i></span>`;
-      const q = new URLSearchParams();
-      q.set('to', String(p.id || ''));
-      q.set('name', p.name || 'Creator');
-      return `
-        <a class="dm-row" href="chat.html?${q.toString()}">
+    const search = document.getElementById('dm-search-input');
+    let lastSig = '';
+    const render = () => {
+      const convs = SOC.dmConversations();
+      if (!convs.length) {
+        list.innerHTML = '<div class="dm-empty"><span class="dm-empty-mark">✉</span><h3>No messages yet</h3><p>Tap ＋ and message a creator you follow — conversations show up here.</p></div>';
+        return;
+      }
+      const unreadKeys = SOC.dmUnread();
+      list.innerHTML = convs.map((c) => {
+        const p = c.partner || {};
+        const last = c.messages[c.messages.length - 1];
+        const name = escapeHtml(p.name || 'Creator');
+        const avatar = p.avatar
+          ? `<img src="${escapeHtml(p.avatar)}" alt="${name}" loading="lazy">`
+          : `<span class="badge"><i>${escapeHtml(String(p.name || 'C')[0].toUpperCase())}</i></span>`;
+        const isUnread = unreadKeys.includes(String(p.id || ''));
+        const q = new URLSearchParams();
+        q.set('to', String(p.id || ''));
+        q.set('name', p.name || 'Creator');
+        return `
+        <a class="dm-row${isUnread ? ' dm-row-unread' : ''}" href="chat.html?${q.toString()}" ${isUnread ? `aria-label="${name}: unread messages"` : ''}>
           <span class="dm-avatar">${avatar}</span>
           <span class="dm-meta"><strong>${name}</strong><em>${escapeHtml(last ? last.text : '')}</em></span>
+          ${isUnread ? '<i class="dm-unread-dot" aria-hidden="true"></i>' : ''}
           <span class="dm-side"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
         </a>`;
-    }).join('');
-    const countEl = document.querySelector('.dm-tab-count');
-    if (countEl) countEl.textContent = convs.length ? String(convs.length) : '';
-    const search = document.getElementById('dm-search-input');
+      }).join('');
+      const countEl = document.querySelector('.dm-tab-count');
+      if (countEl) countEl.textContent = convs.length ? String(convs.length) : '';
+    };
+    render();
     if (search) {
       search.addEventListener('input', () => {
         const q = search.value.trim().toLowerCase();
@@ -389,6 +405,15 @@
         });
       });
     }
+    // While the inbox is open, land queued creator replies and re-render when
+    // a conversation changes (new reply arrives).
+    const poll = window.setInterval(() => {
+      if (!SOC || document.body.dataset.page !== 'messages') { window.clearInterval(poll); return; }
+      SOC.processPendingDmReplies();
+      const sig = SOC.dmConversations().map((c) => `${c.partner?.id || ''}:${c.messages.length}:${(c.messages[c.messages.length - 1] || {}).id || ''}`).join('|');
+      if (sig !== lastSig) { lastSig = sig; render(); }
+      refreshUnreadBadges();
+    }, 4000);
   }
 
   function hydrateChat() {
@@ -408,14 +433,18 @@
     const userLink = document.querySelector('.chat-user');
     if (userLink && to) userLink.href = `user.html?id=${encodeURIComponent(to)}&name=${encodeURIComponent(name)}`;
 
+    // The creator answers shortly after you message them; show a typing bubble
+    // while the reply is on its way.
+    let typing = false;
     const render = () => {
       const conv = to ? SOC.dmConversation(to) : null;
       const msgs = conv ? conv.messages : [];
-      if (!msgs.length) {
+      if (!msgs.length && !typing) {
         body.innerHTML = '<div class="chat-empty"><span class="chat-empty-mark">✉</span><h3>No conversation yet</h3><p>Say hi — your messages with this creator will show up here.</p></div>';
         return;
       }
-      body.innerHTML = msgs.map((m) => `<div class="msg ${m.from === 'me' ? 'out' : 'in'}"><span>${escapeHtml(m.text)}</span></div>`).join('');
+      const typingRow = typing ? '<div class="msg in msg-typing-row" aria-label="They are typing"><span class="msg-typing"><i></i><i></i><i></i></span></div>' : '';
+      body.innerHTML = msgs.map((m) => `<div class="msg ${m.from === 'me' ? 'out' : 'in'}"><span>${escapeHtml(m.text)}</span></div>`).join('') + typingRow;
       body.scrollTop = body.scrollHeight;
     };
     const send = () => {
@@ -425,11 +454,34 @@
       if (!to) { glitchToast('Pick someone to message first'); return; }
       SOC.dmSend(to, { name, avatar: '' }, text);
       input.value = '';
+      SOC.scheduleCreatorReply(to, { name, avatar: '' }, { story: /story|glitch|reel/i.test(text) });
+      typing = true;
       render();
+      // Safety net: if the reply never lands (offline etc.), drop the bubble.
+      window.setTimeout(() => { if (typing) { typing = false; render(); } }, 8000);
+      refreshUnreadBadges();
     };
     input.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') { event.preventDefault(); send(); }
     });
+    // Opening the conversation marks it read.
+    if (to) SOC.dmMarkRead(to);
+    const onDm = (event) => {
+      const keys = event && event.detail && event.detail.keys;
+      if (!to || (Array.isArray(keys) && !keys.includes(to))) return;
+      typing = false;
+      render();
+      SOC.dmMarkRead(to);
+      refreshUnreadBadges();
+    };
+    window.addEventListener('glitchit:dm', onDm);
+    // Land any replies queued while this page was loading, and re-render when
+    // one arrives while the chat stays open.
+    const poll = window.setInterval(() => {
+      if (!SOC || document.body.dataset.page !== 'chat') { window.clearInterval(poll); return; }
+      SOC.processPendingDmReplies();
+      if (typing) { typing = false; render(); }
+    }, 4000);
     render();
   }
 

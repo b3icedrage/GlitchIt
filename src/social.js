@@ -10,6 +10,8 @@ const COMMENTS_KEY = 'glitchit.social.comments.v1';
 const ACTIVITY_KEY = 'glitchit.social.activity.v1';
 const ACTIVITY_READ_KEY = 'glitchit.social.read.v1';
 const DMS_KEY = 'glitchit.social.dms.v1';
+const DM_READ_KEY = 'glitchit.social.dmread.v1';
+const DM_PENDING_KEY = 'glitchit.social.dmpending.v1';
 
 // Current identity ({ id, username, avatar }) — guests stay anonymous so they
 // never write anything into the per-user stores.
@@ -21,6 +23,8 @@ export function setSocialUser(user) {
   } else {
     me = { id: '', username: 'you', avatar: '', guest: true };
   }
+  // Replies queued while this identity was away (or on another page) land now.
+  processPendingDmReplies();
 }
 
 export function socialMe() {
@@ -195,6 +199,141 @@ export function dmSend(partnerKey, partner, text) {
 export function dmConversation(partnerKey) {
   if (me.guest || !partnerKey) return null;
   return (read(DMS_KEY, {})[me.id] || {})[String(partnerKey)] || null;
+}
+
+// ---------------- Incoming messages (creator replies) ----------------
+// DMs are two-way now: besides dmSend (from "me"), creators reply with
+// dmReceive (from "them"). Unread state is tracked per conversation so the
+// inbox and nav can badge new replies.
+
+export function dmReceive(partnerKey, partner, text) {
+  if (!partnerKey || me.guest) return null;
+  const clean = String(text || '').trim().slice(0, 1000);
+  if (!clean) return null;
+  const key = String(partnerKey);
+  const map = read(DMS_KEY, {});
+  const box = map[me.id] || (map[me.id] = {});
+  const conv = box[key] || (box[key] = {
+    partner: {
+      id: key,
+      name: String((partner && partner.name) || 'Creator').slice(0, 40),
+      avatar: (partner && partner.avatar) || '',
+    },
+    messages: [],
+  });
+  const msg = { id: 'm' + stamp() + Math.random().toString(36).slice(2, 6), from: 'them', text: clean, at: stamp() };
+  conv.messages.push(msg);
+  if (conv.messages.length > 500) conv.messages.splice(0, conv.messages.length - 500);
+  write(DMS_KEY, map);
+  return msg;
+}
+
+// Partner keys with at least one unread incoming message.
+export function dmUnread() {
+  if (me.guest) return [];
+  const map = read(DMS_KEY, {})[me.id] || {};
+  const readAt = read(DM_READ_KEY, {})[me.id] || {};
+  return Object.keys(map).filter((key) => {
+    const conv = map[key];
+    const last = conv && conv.messages && conv.messages[conv.messages.length - 1];
+    return Boolean(last && last.from !== 'me' && last.at > (Number(readAt[key]) || 0));
+  });
+}
+
+export function dmUnreadTotal() {
+  return dmUnread().length;
+}
+
+// Mark one conversation read (called when the chat page opens it).
+export function dmMarkRead(partnerKey) {
+  if (me.guest || !partnerKey) return;
+  const all = read(DM_READ_KEY, {});
+  const box = all[me.id] || (all[me.id] = {});
+  box[String(partnerKey)] = stamp();
+  write(DM_READ_KEY, all);
+}
+
+// ---------------- Creator auto-replies ----------------
+// Creators answer within a few seconds so conversations feel alive. Replies
+// are scheduled into a persisted queue (survives navigation) and land through
+// dmReceive; the UI re-renders on the 'glitchit:dm' event.
+const CREATOR_REPLIES = [
+  'hey! thanks for reaching out 🙌',
+  'got your message — what\'s on your mind?',
+  'appreciate the support! what brings you by?',
+  'hi! happy to chat ⚡',
+  'thanks for the message! how are you?',
+  'love the energy — tell me more!',
+  'hey! glad you found me here ✨',
+  'yo! appreciate you stopping by.',
+  'just saw your message — what\'s up?',
+];
+const STORY_REPLIES = [
+  'so glad you liked the story! 💜',
+  'haha thanks for the shout on the story!',
+  'thanks for watching! more coming soon ⚡',
+  'aw appreciate the love on the story!',
+  'glad you caught that story ✨',
+];
+
+function readPendingReplies() {
+  try {
+    const list = JSON.parse(localStorage.getItem(DM_PENDING_KEY) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch (err) { return []; }
+}
+function writePendingReplies(list) {
+  try { localStorage.setItem(DM_PENDING_KEY, JSON.stringify(list)); } catch (err) { /* storage unavailable */ }
+}
+
+let pendingTimer = null;
+function armPendingTimer() {
+  clearTimeout(pendingTimer);
+  const list = readPendingReplies();
+  if (!list.length) return;
+  const soonest = Math.min(...list.map((p) => p.due));
+  pendingTimer = setTimeout(processPendingReplies, Math.max(0, soonest - Date.now()));
+}
+
+// Land every reply whose time has come, then re-arm for the rest. Replies are
+// scoped to the user who scheduled them (another account on this device never
+// receives them) and stale entries expire after 30 minutes.
+function processPendingReplies() {
+  const now = Date.now();
+  const list = readPendingReplies();
+  const due = list.filter((p) => p && p.userId === me.id && p.due <= now);
+  const rest = list.filter((p) => {
+    if (!p) return false;
+    if (p.userId === me.id) return p.due > now;
+    return p.due > now - 30 * 60 * 1000;
+  });
+  writePendingReplies(rest);
+  due.forEach((p) => dmReceive(p.key, p.partner, p.text));
+  if (due.length) {
+    try {
+      window.dispatchEvent(new CustomEvent('glitchit:dm', { detail: { keys: due.map((p) => String(p.key)) } }));
+    } catch (err) { /* ignore */ }
+  }
+  if (rest.length) armPendingTimer();
+}
+
+// Queue a creator reply ~2–4s out. Works from anywhere (chat page, story
+// viewer, inbox) and survives navigation thanks to the persisted queue.
+export function scheduleCreatorReply(partnerKey, partner, opts) {
+  if (me.guest || !partnerKey) return;
+  const pool = opts && opts.story ? STORY_REPLIES : CREATOR_REPLIES;
+  const text = pool[Math.floor(Math.random() * pool.length)];
+  const due = Date.now() + 2000 + Math.floor(Math.random() * 2200);
+  const list = readPendingReplies();
+  list.push({ userId: me.id, key: String(partnerKey), partner: { name: String((partner && partner.name) || 'Creator').slice(0, 40), avatar: (partner && partner.avatar) || '' }, text, due });
+  writePendingReplies(list);
+  armPendingTimer();
+}
+
+// Land any replies that were queued while the page was closed/away. Called
+// on identity change and by pages that show DM state.
+export function processPendingDmReplies() {
+  processPendingReplies();
 }
 
 // ---------------- Time helpers ----------------
