@@ -23,7 +23,7 @@
     window.GLITCHIT_SOC = SOC;
     tryWire();
   });
-  import('./social.js?v=1').then((mod) => {
+  import('./social.js?v=2').then((mod) => {
     if (!window.GLITCHIT_SOC) { SOC = mod; window.GLITCHIT_SOC = mod; }
     tryWire();
   }).catch(() => { /* main.js will have reported it */ });
@@ -160,6 +160,7 @@
     closeCommentSheet();
     const me = window.GLITCHIT_USER;
     const meName = (me && !me.guest && (me.user_metadata?.username || me.email?.split('@')[0])) || 'you';
+    const meId = (me && !me.guest && me.id) || '';
     const wrap = document.createElement('div');
     wrap.className = 'comment-sheet-wrap';
     wrap.setAttribute('role', 'dialog');
@@ -179,9 +180,21 @@
         </form>
       </div>`;
     document.body.appendChild(wrap);
-    commentSheet = { wrap, key, baseCount, list: wrap.querySelector('.comment-list'), form: wrap.querySelector('form') };
+    commentSheet = { wrap, key, baseCount, meName, meId, list: wrap.querySelector('.comment-list'), form: wrap.querySelector('form') };
     renderCommentList();
-    wrap.querySelector('input').focus();
+    const input = wrap.querySelector('input');
+    input.focus();
+    commentSheet.form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      const comment = SOC.addComment(commentSheet.key, text);
+      if (!comment) return;
+      input.value = '';
+      renderCommentList();
+      bumpCommentCounts(commentSheet.key);
+      pushActivity('comment', 'post');
+    });
   }
 
   function closeCommentSheet() {
@@ -197,11 +210,27 @@
       commentSheet.list.innerHTML = '<div class="comment-empty">No comments yet — be the first to say something.</div>';
       return;
     }
-    commentSheet.list.innerHTML = rows.map((c) => `
+    commentSheet.list.innerHTML = rows.map((c) => {
+      // Own comments get a delete affordance (userId when available, else the
+      // legacy username match for comments written before userId was stored).
+      const mine = commentSheet.meId ? c.userId === commentSheet.meId : c.username === commentSheet.meName;
+      const del = mine ? `<button type="button" class="comment-del" data-comment-id="${escapeHtml(c.id)}" aria-label="Delete your comment">🗑</button>` : '';
+      return `
       <div class="comment-row">
         <img src="${escapeHtml(c.avatar || fallbackAvatar(c.username))}" alt="${escapeHtml(c.username)}" loading="lazy">
         <div class="comment-row-main"><b>${escapeHtml(c.username)}</b><p>${escapeHtml(c.text)}</p><time>${SOC.timeAgo(c.at)}</time></div>
-      </div>`).join('');
+        ${del}
+      </div>`;
+    }).join('');
+    commentSheet.list.querySelectorAll('.comment-del').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.commentId;
+        if (!id || !SOC.deleteComment(commentSheet.key, id)) return;
+        renderCommentList();
+        bumpCommentCounts(commentSheet.key);
+        glitchToast('Comment deleted');
+      });
+    });
   }
 
   function bumpCommentCounts(key) {

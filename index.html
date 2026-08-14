@@ -43,6 +43,11 @@
 
           <section class="stories" aria-label="Stories"></section>
 
+          <div class="feed-switch" role="tablist" aria-label="Choose your feed">
+            <button type="button" class="feed-tab active" data-feed-tab="foryou" role="tab" aria-selected="true">For You</button>
+            <button type="button" class="feed-tab" data-feed-tab="following" role="tab" aria-selected="false">Following</button>
+          </div>
+
           <div id="upload-feed"></div>
         </section>
       </main>
@@ -67,7 +72,7 @@
            — it opens the create page (camera.html: POST / STORY / REEL / LIVE). -->
       <a class="create-tab" href="camera.html" aria-label="Create a post, story or reel"><span class="create-tab-ic" aria-hidden="true">＋</span><span class="create-tab-label">Create</span></a>
     </div>
-    <script src="src/main.js?v=28" defer></script>
+    <script src="src/main.js?v=30" defer></script>
     <script src="src/social-wire.js" defer></script>
     <script src="src/story-features.js" defer></script>
     <script src="src/story-swipe.js" defer></script>

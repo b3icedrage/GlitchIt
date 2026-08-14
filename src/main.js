@@ -432,6 +432,228 @@ async function hydrateSearchAccounts() {
   window.renderSearchAccounts(box ? box.value : '');
 }
 
+// ---------- Search: real posts + reels + hashtags ----------
+// The Top / Reels / Tags tabs render real content from the media table
+// (images, videos, and hashtags derived from captions + titles) instead of
+// static placeholders. Search input filters whatever tab is active.
+const searchContent = { posts: [], reels: [], tags: [] };
+
+// ---------- For You / Following feed switch (home page) ----------
+// 'For You' shows every post on the home feed; 'Following' filters to
+// creators you follow (from the Follow toggle). The choice persists on this
+// device, and switching re-filters the DB feed without a reload.
+window.attachHomeFeedSwitch = function attachHomeFeedSwitch() {
+  const tabs = document.querySelectorAll('.feed-tab');
+  const feedTarget = document.getElementById('upload-feed');
+  if (!tabs.length || !feedTarget) return;
+  const saved = readStore('glitchit.feed.mode', 'foryou');
+  const renderFeed = (mode) => {
+    tabs.forEach((t) => {
+      const on = t.dataset.feedTab === mode;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    writeStore('glitchit.feed.mode', mode);
+    if (!DB) {
+      feedTarget.innerHTML = '<div class="feed-empty"><span class="feed-empty-mark">ϟ</span><h3>No posts yet</h3><p>Be the first to share a moment.</p></div>';
+      return;
+    }
+    feedTarget.innerHTML = '<div class="feed-empty"><span class="feed-empty-mark">ϟ</span><h3>Loading…</h3><p>Pulling the latest moments.</p></div>';
+    DB.loadMedia('image').then((rows) => {
+      const list = (rows || []).filter((r) => r.kind !== 'story');
+      const shown = mode === 'following' ? list.filter((r) => isFollowing(r.user)) : list;
+      if (!shown.length) {
+        feedTarget.innerHTML = mode === 'following'
+          ? '<div class="feed-empty"><span class="feed-empty-mark">ϟ</span><h3>Nothing from your circle yet</h3><p>Follow creators to fill this feed.</p></div>'
+          : '<div class="feed-empty"><span class="feed-empty-mark">ϟ</span><h3>No posts yet</h3><p>Be the first to share a moment.</p></div>';
+        return;
+      }
+      feedTarget.innerHTML = shown.map((r) => uploadCard({ preview: r.url, title: r.title, caption: r.caption, type: 'image', user: displayUser(r.user), avatar: r.avatar, verified: r.verified, owner: r.user }, 'feed')).join('');
+    });
+  };
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => renderFeed(tab.dataset.feedTab));
+  });
+  if (saved === 'following') renderFeed('following');
+};
+
+// ---------- Editable profile bio (profile page) ----------
+// Shows the bio from the account's profile (or this device's copy) and lets
+// the owner edit it inline; saves to Supabase user_metadata.bio + localStorage.
+window.attachProfileBio = function attachProfileBio() {
+  const textEl = document.getElementById('profile-bio-text');
+  const editBtn = document.getElementById('bio-edit-btn');
+  if (!textEl) return;
+  const me = window.GLITCHIT_USER;
+  const stored = (me && !me.guest && me.user_metadata && me.user_metadata.bio) || '';
+  const local = readStore('glitchit.bio', '');
+  const bio = stored || local || '';
+  const render = (value) => {
+    if (value) { textEl.textContent = value; }
+    else { textEl.textContent = 'Your bio will appear here — tap Edit profile to add one.'; }
+  };
+  render(bio);
+  if (!editBtn) return;
+  const stopEdit = () => {
+    editBtn.style.display = '';
+    const ed = document.querySelector('.bio-editor');
+    if (ed) ed.remove();
+  };
+  editBtn.addEventListener('click', () => {
+    editBtn.style.display = 'none';
+    const ed = document.createElement('div');
+    ed.className = 'bio-editor';
+    ed.innerHTML = `<textarea maxlength="220" placeholder="Tell people what you're about…">${escapeHtml(bio)}</textarea><div class="bio-editor-actions"><button type="button" class="bio-save">Save</button><button type="button" class="bio-cancel">Cancel</button></div>`;
+    textEl.insertAdjacentElement('afterend', ed);
+    const ta = ed.querySelector('textarea');
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    ed.querySelector('.bio-cancel').addEventListener('click', stopEdit);
+    ed.querySelector('.bio-save').addEventListener('click', async () => {
+      const next = ta.value.trim();
+      writeStore('glitchit.bio', next);
+      if (auth && auth.updateUserMetadata) {
+        try { await auth.updateUserMetadata({ bio: next }); } catch (err) { /* offline — kept locally */ }
+      }
+      render(next);
+      stopEdit();
+      glitchToast(next ? 'Bio saved' : 'Bio cleared');
+    });
+  });
+};
+
+// ---------- Bio on public profiles (user.html) ----------
+// Fills the viewed creator's bio from the account registry when available.
+window.attachUserBio = function attachUserBio() {
+  const textEl = document.getElementById('user-bio-text');
+  if (!textEl) return;
+  const params = new URLSearchParams(location.search);
+  const targetId = String(params.get('id') || '').trim();
+  if (!targetId) return;
+  fetch('/api/accounts', { cache: 'no-store' })
+    .then((res) => res.json().catch(() => null))
+    .then((data) => {
+      const acct = data && data.ok && Array.isArray(data.accounts) ? data.accounts.find((a) => a.id === targetId) : null;
+      if (acct && acct.bio) textEl.textContent = acct.bio;
+    })
+    .catch(() => { /* registry unavailable — keep default text */ });
+};
+
+// Boot the home feed switch and profile bio work after all deferred scripts
+// have run (so helpers like readStore and auth exist).
+document.addEventListener('DOMContentLoaded', () => {
+  if (page === 'home') window.attachHomeFeedSwitch();
+  if (page === 'profile') window.attachProfileBio();
+  if (page === 'user') window.attachUserBio();
+});
+let searchContentLoaded = false;
+
+// Escape a URL + name pair into a safe user.html link.
+function userLink(owner, name) {
+  if (!owner) return 'profile.html';
+  const q = new URLSearchParams();
+  q.set('id', String(owner));
+  const display = String(name || owner).slice(0, 30);
+  if (display) q.set('name', display);
+  return `user.html?${q.toString()}`;
+}
+
+function srMediaTile(item, kind) {
+  const owner = item.user || item.owner || '';
+  const me = window.GLITCHIT_USER;
+  const self = me && !me.guest && owner === me.id;
+  const href = self ? 'profile.html' : userLink(owner, displayUser(owner));
+  const src = kind === 'reels' ? (item.poster || item.url) : item.url;
+  const play = kind === 'reels' ? '<span class="sr-count"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M7 2v5M12 2v5M17 2v5M2 12h20"/><path d="M10 15.5l5-3-5-3z"/></svg></span>' : '';
+  const alt = escapeHtml(item.caption || item.title || (kind === 'reels' ? 'Glitch' : 'Post'));
+  return `<a class="sr-thumb" href="${href}" aria-label="${alt}"><img src="${escapeHtml(src)}" alt="${alt}" loading="lazy" decoding="async">${play}</a>`;
+}
+
+function srGridEmpty(kind, query) {
+  const mark = kind === 'reels' ? '▣' : 'ϟ';
+  const what = kind === 'reels' ? 'glitches' : 'posts';
+  return `<div class="feed-empty"><span class="feed-empty-mark">${mark}</span><h3>No ${what} found</h3><p>${query ? `Nothing matches “${escapeHtml(query)}” yet.` : 'Posts shared by creators will show up here.'}</p></div>`;
+}
+
+// Render the Top (images) or Reels (videos) grid, filtered by the query across
+// caption, title, and the display name.
+window.renderSearchMedia = function renderSearchMedia(query, kind) {
+  const grid = document.getElementById(kind === 'reels' ? 'sr-reels-grid' : 'sr-media-grid');
+  if (!grid) return;
+  const q = String(query || '').trim().toLowerCase();
+  const rows = searchContent[kind === 'reels' ? 'reels' : 'posts'].filter((r) => {
+    if (!q) return true;
+    const name = String(displayUser(r.user) || '').toLowerCase();
+    return String(r.caption || '').toLowerCase().includes(q)
+      || String(r.title || '').toLowerCase().includes(q)
+      || name.includes(q);
+  });
+  if (!rows.length) { grid.innerHTML = srGridEmpty(kind, q); return; }
+  grid.innerHTML = rows.slice(0, 30).map((r) => srMediaTile(r, kind)).join('');
+};
+
+// Render the Tags grid: real hashtags pulled from captions + titles, most
+// used first. Clicking a tag jumps the search box to it and shows Top results.
+window.renderSearchTags = function renderSearchTags(query) {
+  const list = document.getElementById('sr-tags');
+  if (!list) return;
+  const q = String(query || '').trim().toLowerCase();
+  const tags = searchContent.tags.filter((t) => !q || t.tag.includes(q));
+  if (!tags.length) {
+    list.innerHTML = `<div class="feed-empty"><span class="feed-empty-mark">#</span><h3>No tags found</h3><p>${q ? `Nothing matches “${escapeHtml(q)}”.` : 'Hashtags used in captions will show up here.'}</p></div>`;
+    return;
+  }
+  list.innerHTML = tags.map((t) => `<button type="button" class="sr-tag" data-tag="${escapeHtml(t.tag)}">${escapeHtml(t.tag)}<span>${fmtCount(t.count)} ${t.count === 1 ? 'post' : 'posts'}</span></button>`).join('');
+  list.querySelectorAll('.sr-tag').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const box = document.getElementById('sr-query');
+      if (box) {
+        box.value = btn.dataset.tag;
+        box.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      const tab = document.querySelector('.sr-tab[data-sr-tab="top"]');
+      if (tab) tab.click();
+    });
+  });
+};
+
+// Re-render whatever tab is active (called by search.html's inline script on
+// tab clicks and debounced input).
+window.renderSearchActive = function renderSearchActive() {
+  const active = document.querySelector('.sr-tab.active');
+  const tab = active ? active.dataset.srTab : 'top';
+  const box = document.getElementById('sr-query');
+  const q = box ? box.value : '';
+  if (tab === 'accounts') { if (window.renderSearchAccounts) window.renderSearchAccounts(q); return; }
+  if (tab === 'tags') { window.renderSearchTags(q); return; }
+  window.renderSearchMedia(q, tab === 'reels' ? 'reels' : 'posts');
+};
+
+async function hydrateSearchMedia() {
+  if (searchContentLoaded) return;
+  searchContentLoaded = true;
+  const [posts, reels] = await Promise.all([
+    DB ? DB.loadMedia('image', 60) : Promise.resolve([]),
+    DB ? DB.loadMedia('video', 60) : Promise.resolve([]),
+  ]);
+  searchContent.posts = (posts || []).filter((r) => r.kind !== 'story');
+  searchContent.reels = (reels || []).filter((r) => r.kind !== 'story');
+  // Real hashtags: count occurrences of #tag in captions + titles.
+  const counts = new Map();
+  [...searchContent.posts, ...searchContent.reels].forEach((r) => {
+    const text = `${r.caption || ''} ${r.title || ''}`;
+    (String(text).match(/#[\p{L}\p{N}_]+/gu) || []).forEach((tag) => {
+      const key = tag.toLowerCase();
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+  });
+  searchContent.tags = [...counts.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 30);
+  window.renderSearchActive();
+}
+
 // ---------- Outside profile view (user.html?id=...) ----------
 // Public profile of another creator: avatar, handle, follower / following /
 // post counts, a persistent Follow/Following toggle, and their media grid.
@@ -765,7 +987,7 @@ import('./db.js?v=6').then((mod) => { DB = mod; }).catch((err) => { DB = null; i
 // Loaded lazily like db.js; every consumer guards with `SOC ?` so the app keeps
 // working identically if the module ever fails to load.
 let SOC = null;
-import('./social.js?v=1').then((mod) => {
+import('./social.js?v=2').then((mod) => {
   SOC = mod;
   window.GLITCHIT_SOC = mod;
   // src/social-wire.js (loaded after main.js) listens for this and wires the
@@ -1002,6 +1224,70 @@ function canViewStory(story, creator) {
 
 // The creator trays for the home shelf — ordered so the viewer can swipe
 // between creators (tray 0 is "Your story").
+// Creator-aware uploadCard: shows the REAL poster (name + avatar) instead of
+// the viewer's placeholder identity, and links the avatar + name to the
+// creator's profile (user.html?id=...). Own posts link to profile.html.
+function uploadCard(item, type) {
+  const isVideo = type === 'videos' || item.type === 'video';
+  if (isVideo) return glitchVideoCard({ ...item, user: item.user || profile.username, avatar: item.avatar || profile.avatar, verified: item.verified, owner: item.owner, src: item.src || item.preview, poster: item.preview, caption: item.caption || item.title }, true);
+  const isBolt = Boolean(item.verified);
+  const bolt = isBolt ? verifiedBolt('verified-bolt-inline') : '';
+  const key = mediaKeyOf(item);
+  const liked = SOC ? SOC.isLiked(key) : false;
+  const likes = SOC ? SOC.totalLikes(key, 0) : 0;
+  const comments = SOC ? SOC.totalComments(key, 0) : 0;
+  const me = window.GLITCHIT_USER;
+  const self = me && !me.guest && Boolean(item.owner) && item.owner === me.id;
+  const creator = String(item.user || profile.username);
+  const creatorSafe = escapeHtml(creator).replace(/⚡/g, '');
+  const href = self ? 'profile.html' : userLink(item.owner, creator);
+  const avatarSrc = item.avatar || fallbackAvatar(creator);
+  const avatarWrap = self
+    ? `<span class="verified-avatar-wrap"><img src="${avatarSrc}" alt="${creatorSafe} avatar">${isBolt ? verifiedBolt() : ''}</span>`
+    : `<a class="card-creator" href="${href}" aria-label="Open ${creatorSafe}'s profile"><span class="verified-avatar-wrap"><img src="${avatarSrc}" alt="${creatorSafe} avatar">${isBolt ? verifiedBolt() : ''}</span></a>`;
+  const nameWrap = self
+    ? `<strong>${creatorSafe}${bolt}</strong>`
+    : `<strong><a class="card-creator" href="${href}">${creatorSafe}</a>${bolt}</strong>`;
+  return `<article class="post upload-card" data-media-key="${escapeHtml(key)}"><header><div class="profile">${avatarWrap}<div>${nameWrap}<span>Fresh post</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${item.preview}" alt="${item.title}" loading="lazy" decoding="async"><span class="shop-badge">${icon('＋')} ${item.type}</span></div><div class="actions post-actions"><div class="post-actions-left"><button type="button" class="post-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Like this post">${icon('♡')}<b>${likes}</b></button><button type="button" class="post-comment" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Comment on this post">${icon('◌')}<b>${comments}</b></button><button type="button" class="post-share" aria-label="Share this post">${icon('↗')}</button></div><button type="button" class="post-save" aria-label="Save this post">${icon('▱')}</button></div><strong>New upload</strong><p><b>${creatorSafe}${bolt}</b> ${item.caption || item.title}</p></article>`;
+}
+
+// Reel cards link their creator avatar + name to the creator's profile page.
+// Runs after each render (feeds fill asynchronously), then stops watching.
+window.attachReelCreatorLinks = function attachReelCreatorLinks() {
+  const link = () => {
+    document.querySelectorAll('.video-card .reel-creator:not([data-linked])').forEach((block) => {
+      const card = block.closest('.video-card');
+      if (!card) return;
+      const owner = (card.getAttribute('data-owner') || '').trim();
+      const strong = block.querySelector('strong');
+      if (!owner || !strong) return;
+      const name = strong.textContent;
+      block.setAttribute('data-linked', '1');
+      const href = userLink(owner, name);
+      const nameLink = document.createElement('a');
+      nameLink.className = 'card-creator';
+      nameLink.href = href;
+      nameLink.textContent = name;
+      strong.textContent = '';
+      strong.appendChild(nameLink);
+      const avatar = block.querySelector('.verified-avatar-wrap');
+      if (avatar) {
+        const wrap = document.createElement('a');
+        wrap.className = avatar.className;
+        wrap.href = href;
+        wrap.setAttribute('aria-label', `Open ${name}'s profile`);
+        wrap.innerHTML = avatar.innerHTML;
+        avatar.replaceWith(wrap);
+      }
+    });
+  };
+  link();
+  const mo = new MutationObserver(link);
+  mo.observe(document.body, { childList: true, subtree: true });
+  setTimeout(() => mo.disconnect(), 15000);
+};
+document.addEventListener('DOMContentLoaded', window.attachReelCreatorLinks);
+
 let storyTrays = [];
 
 function attachStoryLinks() {

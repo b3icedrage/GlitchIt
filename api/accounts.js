@@ -21,7 +21,8 @@ function sanitize(user) {
   const username = String(meta.username || (user && user.email ? user.email.split('@')[0] : '') || '').trim();
   const avatar = [meta.avatar_url, meta.picture, meta.avatar, meta.image, identity.avatar_url, identity.picture]
     .find((v) => typeof v === 'string' && /^(?:https?:|data:image\/)/i.test(v)) || '';
-  return { id: String(user.id || ''), username, avatar, created_at: String(user.created_at || '') };
+  const bio = String(meta.bio || '').trim();
+  return { id: String(user.id || ''), username, avatar, bio, created_at: String(user.created_at || '') };
 }
 
 function json(res, status, payload) {

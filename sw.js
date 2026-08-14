@@ -6,7 +6,7 @@
 //  - Supabase images:    stale-while-revalidate with a small FIFO budget.
 'use strict';
 
-const CACHE_NAME = 'glitchit-cache-v1';
+const CACHE_NAME = 'glitchit-cache-v2';
 const MEDIA_CACHE_NAME = 'glitchit-media-v1';
 const MEDIA_BUDGET = 40;
 const ASSET_RE = /\.(css|js|mjs|svg|png|jpe?g|webp|gif|ico|woff2?)$/;
@@ -37,8 +37,8 @@ const SHELL_URLS = [
   './src/ai-chat.css',
   './src/dm-inbox.css',
   './src/social.css',
-  './src/main.js?v=28',
-  './src/social-wire.js',
+  './src/main.js?v=30',
+  './src/social-wire.js?v=2',
   './src/story-features.js',
   './src/story-extras.css',
   './src/story-swipe.js',

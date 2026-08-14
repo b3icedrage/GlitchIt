@@ -94,6 +94,7 @@ export function addComment(mediaKey, text) {
     at: stamp(),
     username: me.username,
     avatar: me.avatar,
+    userId: me.id,
   };
   list.push(comment);
   if (list.length > 200) list.splice(0, list.length - 200);
@@ -104,6 +105,19 @@ export function addComment(mediaKey, text) {
 export function commentsFor(mediaKey) {
   if (!mediaKey) return [];
   return (read(COMMENTS_KEY, {})[me.id] || {})[mediaKey] || [];
+}
+
+// Remove one of your own comments (id from addComment). Returns true when the
+// comment existed and was deleted, so callers can refresh counts + the list.
+export function deleteComment(mediaKey, commentId) {
+  if (!mediaKey || me.guest || !commentId) return false;
+  const { map, box } = boxed(COMMENTS_KEY);
+  const list = box[mediaKey] || [];
+  const next = list.filter((c) => c && c.id !== commentId);
+  if (next.length === list.length) return false;
+  box[mediaKey] = next;
+  write(COMMENTS_KEY, map);
+  return true;
 }
 
 export function totalComments(mediaKey, baseCount) {
