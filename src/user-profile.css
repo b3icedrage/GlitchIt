@@ -56,7 +56,9 @@
 
 /* Follow / Following toggle */
 .user-actions { margin-top: 14px; }
-.user-follow-btn {
+/* `button.` prefix so this beats the generic .profile-actions-row button rule
+   (same specificity, later in the cascade) and keeps the gradient. */
+button.user-follow-btn {
   border: 0;
   border-radius: 8px;
   padding: 9px 22px;

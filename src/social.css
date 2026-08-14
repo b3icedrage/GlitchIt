@@ -359,7 +359,9 @@
 :root[data-theme='dark'] .dm-pick b { color: #f6f3ff; }
 
 /* ---------- Outside-profile Message button (user.html) ---------- */
-.user-msg-btn {
+/* `button.` prefix so these beat the generic .profile-actions-row button rule
+   (same specificity, later in the cascade) and keep their own look. */
+button.user-msg-btn {
   border: 1px solid #dbdbdb;
   border-radius: 8px;
   padding: 9px 22px;
@@ -370,9 +372,9 @@
   cursor: pointer;
   transition: background .18s ease, border-color .18s ease;
 }
-.user-msg-btn:hover { background: #f2f2f2; }
-:root[data-theme='dark'] .user-msg-btn { border-color: #3a3a3a; background: #000; color: #f6f3ff; }
-:root[data-theme='dark'] .user-msg-btn:hover { background: #1b1b1b; }
+button.user-msg-btn:hover { background: #f2f2f2; }
+:root[data-theme='dark'] button.user-msg-btn { border-color: #3a3a3a; background: #000; color: #f6f3ff; }
+:root[data-theme='dark'] button.user-msg-btn:hover { background: #1b1b1b; }
 
 /* ---------- Shared sheet entrance (picker + comment) ---------- */
 @media (min-width: 760px) {

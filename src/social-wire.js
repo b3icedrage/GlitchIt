@@ -540,23 +540,30 @@
   }
 
   // ---------------- Message button (user.html) ----------------
+  // The button ships in the page markup (hidden until a target is known); this
+  // fills it with the creator id + name from the URL and reveals it. It also
+  // creates the button on pages where the markup is missing, so the Message
+  // action never depends on a single code path.
   function attachUserMessageBtn() {
     const row = document.querySelector('.user-actions');
-    const followBtn = document.getElementById('user-follow-btn');
-    if (!row || document.querySelector('.user-msg-btn')) return;
+    if (!row) return;
     const params = new URLSearchParams(location.search);
     const to = String(params.get('id') || '').trim();
     const name = String(params.get('name') || '').trim() || 'Creator';
+    let btn = document.getElementById('user-msg-btn') || row.querySelector('.user-msg-btn');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'user-msg-btn';
+      btn.textContent = 'Message';
+      row.appendChild(btn);
+    }
+    btn.hidden = !to;
     if (!to) return;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'user-msg-btn';
     btn.dataset.to = to;
     btn.dataset.name = name;
     btn.textContent = 'Message';
     btn.setAttribute('aria-label', `Message ${name}`);
-    if (followBtn) followBtn.after(btn);
-    else row.appendChild(btn);
   }
 
   // ---------------- Interest chips (home feed) ----------------
