@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="src/story-extras.css" />
     <link rel="stylesheet" href="src/bottombar.css?v=2" />
     <link rel="stylesheet" href="src/messages.css" />
+    <link rel="stylesheet" href="src/social.css" />
   </head>
   <body data-page="chat">
     <div id="app">
@@ -91,43 +92,9 @@
         <a href="profile.html"><span class="nav-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span>Profile</span></a>
       </nav>
     </div>
-    <script src="src/main.js?v=27" defer></script>
+    <script src="src/main.js?v=28" defer></script>
+    <script src="src/social-wire.js" defer></script>
     <script src="src/story-features.js" defer></script>
     <script src="src/profile-avatar.js" defer></script>
-    <script>
-      // Chat page micro-interactions: transcription toggle + send-on-enter.
-      (function () {
-        var trans = document.getElementById('voice-trans');
-        var msg = document.getElementById('voice-msg');
-        var extra = document.getElementById('voice-extra');
-        var more = document.getElementById('voice-more');
-        if (trans) {
-          trans.addEventListener('click', function () {
-            var open = msg.classList.toggle('open');
-            trans.textContent = open ? 'Hide transcription' : 'View transcription';
-          });
-        }
-        if (more) {
-          more.addEventListener('click', function () {
-            extra.classList.add('show');
-            more.style.display = 'none';
-          });
-        }
-        var input = document.getElementById('chat-input');
-        var body = document.getElementById('chat-body');
-        if (input && body) {
-          input.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' && input.value.trim()) {
-              var p = document.createElement('p');
-              p.className = 'msg out';
-              p.textContent = input.value.trim();
-              body.appendChild(p);
-              input.value = '';
-              body.scrollTop = body.scrollHeight;
-            }
-          });
-        }
-      })();
-    </script>
   </body>
 </html>

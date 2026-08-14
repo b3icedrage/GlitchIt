@@ -761,6 +761,36 @@ function returnToPage() {
 let DB = null;
 import('./db.js?v=6').then((mod) => { DB = mod; }).catch((err) => { DB = null; if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'db-load' }); });
 
+// ---------- Social layer (likes, comments, activity, DMs — see src/social.js) ----------
+// Loaded lazily like db.js; every consumer guards with `SOC ?` so the app keeps
+// working identically if the module ever fails to load.
+let SOC = null;
+import('./social.js?v=1').then((mod) => {
+  SOC = mod;
+  window.GLITCHIT_SOC = mod;
+  // src/social-wire.js (loaded after main.js) listens for this and wires the
+  // persisted like / comment / share / DM / activity interactions.
+  window.dispatchEvent(new CustomEvent('glitchit:social', { detail: mod }));
+}).catch((err) => { SOC = null; window.GLITCHIT_SOC = null; if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'social-load' }); });
+
+// Small stable string hash — used to derive a per-media key when a database id
+// isn't available (local uploads), so like/comment state survives re-renders.
+function hashStr(str) {
+  let h = 5381;
+  const s = String(str || '');
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+// A stable key for the social layer: the database id when present, otherwise a
+// hash of the media URL so re-renders stay consistent.
+function mediaKeyOf(item) {
+  if (item && item.id) return String(item.id);
+  const src = item && (item.src || item.url || item.preview);
+  if (src) return 'url:' + hashStr(src);
+  return 'local:' + hashStr((item && (item.title || '')) + '|' + (item && (item.caption || '')));
+}
+
 // ---------- Shared state (persisted across pages) ----------
 const UPLOADS_KEY = 'glitchit.uploads.v1';
 
@@ -781,7 +811,13 @@ function uploadCard(item, type) {
   if (isVideo) return glitchVideoCard({ ...item, user: profile.username, avatar: profile.avatar, verified: item.verified, owner: item.owner, src: item.src || item.preview, poster: item.preview, caption: item.caption || item.title }, true);
   const isBolt = Boolean(item.verified);
   const bolt = isBolt ? verifiedBolt('verified-bolt-inline') : '';
-  return `<article class="post upload-card"><header><div class="profile"><span class="verified-avatar-wrap"><img src="${profile.avatar}" alt="${profile.username} avatar">${isBolt ? verifiedBolt() : ''}</span><div><strong>${profile.username}${bolt}</strong><span>Fresh post</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${item.preview}" alt="${item.title}" loading="lazy" decoding="async"><span class="shop-badge">${icon('＋')} ${item.type}</span></div><div class="actions"><div>${icon('♡')}${icon('◌')}${icon('↗')}</div>${icon('▱')}</div><strong>New upload</strong><p><b>${profile.username}${bolt}</b> ${item.caption || item.title}</p></article>`;
+  // Real social actions (like / comment / share / save) backed by src/social.js.
+  const key = mediaKeyOf(item);
+  const liked = SOC ? SOC.isLiked(key) : false;
+  const likes = SOC ? SOC.totalLikes(key, 0) : 0;
+  const comments = SOC ? SOC.totalComments(key, 0) : 0;
+  const ownerName = escapeHtml(String(item.user || profile.username).replace(/⚡/g, ''));
+  return `<article class="post upload-card" data-media-key="${escapeHtml(key)}"><header><div class="profile"><span class="verified-avatar-wrap"><img src="${profile.avatar}" alt="${profile.username} avatar">${isBolt ? verifiedBolt() : ''}</span><div><strong>${profile.username}${bolt}</strong><span>Fresh post</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${item.preview}" alt="${item.title}" loading="lazy" decoding="async"><span class="shop-badge">${icon('＋')} ${item.type}</span></div><div class="actions post-actions"><div class="post-actions-left"><button type="button" class="post-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Like this post">${icon('♡')}<b>${likes}</b></button><button type="button" class="post-comment" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Comment on this post">${icon('◌')}<b>${comments}</b></button><button type="button" class="post-share" aria-label="Share this post">${icon('↗')}</button></div><button type="button" class="post-save" aria-label="Save this post">${icon('▱')}</button></div><strong>New upload</strong><p><b>${ownerName}${bolt}</b> ${item.caption || item.title}</p></article>`;
 }
 
 function glitchVideoCard(video, uploaded = false) {
@@ -796,7 +832,9 @@ function glitchVideoCard(video, uploaded = false) {
   // Fall back to a real avatar (profile picture or initials) so reels never
   // show a broken image placeholder.
   const avatarSrc = video.avatar || fallbackAvatar(video.user || profile.username);
-  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}" data-owner="${video.owner || ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><span class="verified-avatar-wrap"><img src="${avatarSrc}" alt="${video.user} avatar">${avatarBolt}</span><div class="reel-meta"><strong>${video.user}${nameBolt}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
+  const key = mediaKeyOf(video);
+  const liked = SOC ? SOC.isLiked(key) : false;
+  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}" data-owner="${video.owner || ''}" data-media-key="${escapeHtml(key)}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="${likes}" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action reel-comment" data-media-key="${escapeHtml(key)}" data-base-count="${comments}" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action reel-share" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><span class="verified-avatar-wrap"><img src="${avatarSrc}" alt="${video.user} avatar">${avatarBolt}</span><div class="reel-meta"><strong>${video.user}${nameBolt}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
 }
 
 function renderUploads(type) {
