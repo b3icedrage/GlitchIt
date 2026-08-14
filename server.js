@@ -473,8 +473,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Dynamic endpoints: AI chat (POST), the music search proxy (GET), the
-  // account registry (GET /api/accounts) and the Heleket payment proxy.
+  // Dynamic endpoints: AI chat (POST), the music search proxy (GET), and the
+  // account registry (GET /api/accounts).
   if (req.method === 'POST' && new URL(req.url, 'http://glitchit.local').pathname === '/api/chat') {
     await handleChatRequest(req, res);
     return;

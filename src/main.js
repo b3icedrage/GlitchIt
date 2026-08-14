@@ -2065,14 +2065,13 @@ function attachProfileTabs() {
 }
 
 // ---------- Page dispatch ----------
-// Live viewing page: real viewer count, floating
-// heart reactions, comment posting, and badge purchases.
+// Live viewing page: real viewer count, floating heart
+// reactions, and comment posting.
 function attachLive() {
   const chat = document.getElementById('live-chat');
   const hearts = document.getElementById('live-hearts');
   const viewers = document.getElementById('live-viewers');
   const form = document.getElementById('live-comment-form');
-  const buyBtn = document.getElementById('live-buy');
   const heartBtn = document.getElementById('live-heart-btn');
   const player = document.getElementById('live-player');
   const liveUser = window.GLITCHIT_USER;
@@ -2151,14 +2150,6 @@ function attachLive() {
     if (input) input.value = '';
   });
 
-  // ----- badge purchase -----
-  buyBtn?.addEventListener('click', () => {
-    const tip = document.createElement('div');
-    tip.className = 'end-toast show';
-    tip.innerHTML = `<span class="end-toast-mark">${icon('🏆')}</span><span class="end-toast-text">Badge purchased — thanks for supporting this stream!</span>`;
-    document.body.appendChild(tip);
-    setTimeout(() => tip.remove(), 2200);
-  });
 }
 
 function runPage() {
@@ -2253,7 +2244,7 @@ const GUEST_GATED_SELECTOR = [
   '.seller button',
   '.user-follow-btn',
   '.note-add',
-  '.live-comment-form', '.live-buy', '.live-heart-btn',
+  '.live-comment-form', '.live-heart-btn',
 ].join(',');
 
 let guestGateToast = null;

@@ -198,8 +198,8 @@ export async function saveMedia(item) {
       likes: item.likes || 0,
       comments: item.comments || 0,
       shares: item.shares || 0,
-      // GlitchIt Verified: stamped when the uploader holds the Pro entitlement,
-      // so the ⚡ badge follows their posts and reels everywhere. Skipped
+      // Pass-through verified flag (⚡ badge on posts/reels). Kept as a plain
+      // display column — the paid verification system is gone. Skipped
       // gracefully if the column isn't in the media table yet.
       verified: item.verified ? true : false,
       // Story flags (shake-to-reveal effect, close-friends-only visibility).
