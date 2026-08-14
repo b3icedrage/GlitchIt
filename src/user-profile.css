@@ -1,0 +1,92 @@
+/* ============ OUTSIDE PROFILE VIEW (user.html?id=...) ============ */
+/* Public profile of another creator: topbar, avatar, follow toggle,
+   media grid. Reuses the .profile-panel / .profile-header / .profile-grid
+   foundation from styles.css; this file only adds what that page needs. */
+
+/* Topbar: back chevron + the creator's name */
+.user-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 0 22px;
+}
+.user-topbar strong {
+  font-size: 20px;
+  color: #171717;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-topbar-spacer { flex: 1; }
+.user-back {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #171717;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background .15s ease, transform .15s ease;
+}
+.user-back:hover { background: #f2f2f2; }
+.user-back:active { transform: scale(.94); }
+
+/* Avatar (not .profile-photo-wrap, so profile-avatar.js never overwrites it
+   with the signed-in user's own picture) */
+.user-photo {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+.user-photo img {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+  border: 1px solid #dbdbdb;
+  border-radius: 50%;
+  background: #f2f2f2;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, .14);
+}
+
+/* Follow / Following toggle */
+.user-actions { margin-top: 14px; }
+.user-follow-btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 22px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  box-shadow: 0 6px 16px rgba(214, 41, 118, .28);
+  transition: transform .15s ease, box-shadow .15s ease, background .2s ease, color .2s ease, border-color .2s ease;
+}
+.user-follow-btn:hover { box-shadow: 0 10px 22px rgba(214, 41, 118, .4); }
+.user-follow-btn:active { transform: scale(.97); }
+.user-follow-btn.following {
+  background: #efefef;
+  color: #171717;
+  border: 1px solid #dbdbdb;
+  box-shadow: none;
+}
+.user-follow-btn.following:hover { background: #e6e6e6; }
+.user-follow-btn.following:active { transform: scale(.97); }
+
+/* Dark theme */
+:root[data-theme='dark'] .user-topbar strong,
+:root[data-theme='dark'] .user-back { color: #f6f3ff; }
+:root[data-theme='dark'] .user-back:hover { background: #262626; }
+:root[data-theme='dark'] .user-photo img { border-color: #262626; }
+:root[data-theme='dark'] .user-follow-btn.following {
+  background: #262626;
+  color: #f6f3ff;
+  border-color: #3a3a3a;
+}
+:root[data-theme='dark'] .user-follow-btn.following:hover { background: #2e2e2e; }

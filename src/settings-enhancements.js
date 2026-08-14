@@ -83,4 +83,33 @@
     document.body.classList.remove('settings-open');
     document.body.classList.remove('account-sheet-open');
   });
+
+  // ---- Scroll-driven icon crossfade ----
+  // Row icons fade out as they scroll out of the settings drawer and fade
+  // back in when they re-enter. The observer only activates when supported
+  // and the user hasn't asked for reduced motion; otherwise icons stay put.
+  const scrollEl = document.querySelector('.settings-scroll');
+  if (scrollEl && 'IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const icons = scrollEl.querySelectorAll('.setting-icon');
+    if (icons.length) {
+      scrollEl.classList.add('icons-crossfade');
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          entry.target.classList.toggle('icon-in-view', entry.isIntersecting);
+        });
+      }, {
+        root: scrollEl,
+        rootMargin: '0px 0px -12% 0px',
+        threshold: 0.1,
+      });
+      const recheck = () => {
+        observer.disconnect();
+        icons.forEach((icon) => observer.observe(icon));
+      };
+      icons.forEach((icon) => observer.observe(icon));
+      // The drawer slides in/out with a transform; re-observing on open/close
+      // makes fresh callbacks mark exactly what is currently on screen.
+      new MutationObserver(recheck).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    }
+  }
 })();

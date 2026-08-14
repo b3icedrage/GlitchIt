@@ -95,6 +95,11 @@ function safeAvatar(value) {
 }
 
 function userAvatar(user, handle = '') {
+  // A picture picked on the profile page wins over account metadata.
+  try {
+    const custom = localStorage.getItem('glitchit.avatar.v1') || '';
+    if (custom && /^(?:https?:\/\/|data:image\/|blob:)/i.test(custom)) return custom;
+  } catch (e) { /* ignore */ }
   const metadata = user?.user_metadata || {};
   const identity = user?.identities?.[0]?.identity_data || {};
   return [metadata.avatar_url, metadata.picture, metadata.avatar, metadata.image, identity.avatar_url, identity.picture]
@@ -108,17 +113,7 @@ const profile = {
   avatar: fallbackAvatar('you'),
 };
 
-// ---------- GlitchIt Verified (Pro entitlement) + creator analytics ----------
-let meVerified = false;        // cached own status, used by sync renders
-
-// Payments (RevenueCat subscriptions for the Pro/Verified entitlement) are
-// currently disabled, so no account is ever treated as verified. Re-enable by
-// restoring the RevenueCat import + isVerifiedUser() probe when payments
-// come back.
-function isVerifiedUser() {
-  return Promise.resolve(false);
-}
-
+// ---------- Creator analytics ----------
 const fmtCount = (n) => {
   const v = Number(n) || 0;
   if (v >= 1000000) return (v / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
@@ -136,15 +131,16 @@ const PRO_VIEWS_MIN = 500000;
 // dashboard shows real progress until the thresholds are met.
 const PRO_STATS_KEY = (userId) => `glitchit.pro.stats.${userId}`;
 function readProfileStats(userId) {
-  if (!userId) return { followers: 0, watchHours: 0, views: 0 };
+  if (!userId) return { followers: 0, following: 0, watchHours: 0, views: 0 };
   try {
     const s = JSON.parse(localStorage.getItem(PRO_STATS_KEY(userId)) || '{}') || {};
     return {
       followers: Math.max(0, Number(s.followers) || 0),
+      following: Math.max(0, Number(s.following) || 0),
       watchHours: Math.max(0, Number(s.watchHours) || 0),
       views: Math.max(0, Number(s.views) || 0),
     };
-  } catch (e) { return { followers: 0, watchHours: 0, views: 0 }; }
+  } catch (e) { return { followers: 0, following: 0, watchHours: 0, views: 0 }; }
 }
 function writeProfileStats(userId, stats) {
   try { localStorage.setItem(PRO_STATS_KEY(userId), JSON.stringify(stats)); } catch (e) { /* ignore */ }
@@ -154,6 +150,46 @@ function recordFollow(targetId) {
   const s = readProfileStats(targetId);
   s.followers += 1;
   writeProfileStats(targetId, s);
+}
+
+// Persistent follow state for the signed-in user (who they follow), so the
+// Follow/Following toggle survives navigation and every follow button in the
+// app agrees on the same state.
+const FOLLOWING_KEY = (myId) => `glitchit.following.${myId}`;
+function readFollowing() {
+  const me = window.GLITCHIT_USER;
+  if (!me || me.guest) return [];
+  try {
+    const arr = JSON.parse(localStorage.getItem(FOLLOWING_KEY(me.id)) || '[]');
+    return Array.isArray(arr) ? arr.map(String).filter(Boolean) : [];
+  } catch (e) { return []; }
+}
+function isFollowing(targetId) {
+  return readFollowing().includes(String(targetId));
+}
+// Follow (on=true) or unfollow (on=false) a creator. Persists the list, bumps
+// the target's follower count, and adjusts the signed-in user's own following
+// count so both profiles stay honest.
+function setFollowing(targetId, on) {
+  const me = window.GLITCHIT_USER;
+  if (!me || me.guest || !targetId || targetId === me.id) return false;
+  const id = String(targetId);
+  let list = readFollowing();
+  const was = list.includes(id);
+  if (on === was) return true;
+  list = on ? [...list, id] : list.filter((x) => x !== id);
+  try { localStorage.setItem(FOLLOWING_KEY(me.id), JSON.stringify(list)); } catch (e) { /* ignore */ }
+  const mine = readProfileStats(me.id);
+  mine.following = Math.max(0, (Number(mine.following) || 0) + (on ? 1 : -1));
+  writeProfileStats(me.id, mine);
+  if (on) {
+    recordFollow(targetId);
+  } else {
+    const theirs = readProfileStats(targetId);
+    theirs.followers = Math.max(0, (Number(theirs.followers) || 0) - 1);
+    writeProfileStats(targetId, theirs);
+  }
+  return true;
 }
 function recordView(ownerId) {
   if (!ownerId) return;
@@ -171,37 +207,6 @@ function recordWatch(ownerId, seconds) {
 // The ⚡ badge element shown beside Verified members' avatars.
 function verifiedBolt(extraClass = '') {
   return `<span class="verified-bolt ${extraClass}" aria-label="GlitchIt Verified" title="GlitchIt Verified">⚡</span>`;
-}
-
-// Puts the ⚡ badge on the signed-in user's own avatars (right rail, profile
-// photo, account sheet, nav icons, story ring) once they're verified.
-function applyVerifiedBadges(verified) {
-  if (!verified) return;
-  const wrapImage = (img) => {
-    if (!img || img.closest('.verified-avatar-holder')) return;
-    const w = img.offsetWidth;
-    const h = img.offsetHeight;
-    if (!w || !h) return;
-    const holder = document.createElement('span');
-    holder.className = 'verified-avatar-holder';
-    holder.style.width = `${w}px`;
-    holder.style.height = `${h}px`;
-    img.replaceWith(holder);
-    holder.appendChild(img);
-    const bolt = document.createElement('span');
-    bolt.className = 'verified-bolt';
-    bolt.textContent = '⚡';
-    bolt.setAttribute('aria-label', 'GlitchIt Verified');
-    bolt.title = 'GlitchIt Verified';
-    holder.appendChild(bolt);
-  };
-  document.querySelectorAll('.me img, .account-avatar img, .bottom-bar a[href="profile.html"] .profile-nav-avatar, .sidebar nav a[href="profile.html"] .profile-nav-avatar, .story-self .story-ring img').forEach(wrapImage);
-  // Profile photo: the wrap is position:relative, so bolt goes straight inside
-  // it (keeps the direct-child sizing rules intact).
-  const photo = document.querySelector('.profile-photo-wrap');
-  if (photo && !photo.querySelector(':scope > .verified-bolt')) {
-    photo.insertAdjacentHTML('beforeend', verifiedBolt());
-  }
 }
 
 function syncProfileFromUser(user) {
@@ -245,6 +250,70 @@ function applyCurrentUserProfile() {
   applyProfileAvatarUi();
 }
 
+// ---------- Profile picture changer ----------
+// Reads a square crop of the chosen image (512px JPEG) and applies it
+// locally first, then pushes it to media storage + account metadata when a
+// backend is available, so the new photo shows everywhere instantly.
+function readImageSquare(file, size = 512) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const side = Math.min(img.naturalWidth, img.naturalHeight);
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      } catch (err) { resolve(null); }
+      finally { URL.revokeObjectURL(url); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+async function attachPhotoChange() {
+  const btn = document.getElementById('photo-change-btn');
+  const input = document.getElementById('photo-file');
+  if (!btn || !input) return;
+  btn.addEventListener('click', (event) => {
+    event.preventDefault();
+    input.click();
+  });
+  input.addEventListener('change', async (event) => {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    const dataUrl = await readImageSquare(file);
+    if (!dataUrl) { showEndToast('Couldn’t read that image — try another.'); return; }
+    const applyAvatar = (url) => {
+      try { localStorage.setItem('glitchit.avatar.v1', url); } catch (e) { /* ignore */ }
+      const me = window.GLITCHIT_USER;
+      if (me && !me.guest) {
+        if (me.user_metadata) me.user_metadata.avatar = url;
+        window.GLITCHIT_USER = me;
+      }
+      applyCurrentUserProfile();
+    };
+    // Local-first so the new photo shows instantly, then push to storage.
+    applyAvatar(dataUrl);
+    showEndToast('Profile picture updated');
+    if (!window.GLITCHIT_USER || window.GLITCHIT_USER.guest || !DB) return;
+    const blob = DB.toBlob ? DB.toBlob(dataUrl) : null;
+    if (!blob) return;
+    const up = await DB.saveAvatar(blob);
+    if (up && up.ok && up.url) {
+      applyAvatar(up.url);
+      if (window.GLITCHIT_AUTH && window.GLITCHIT_AUTH.updateUserMetadata) {
+        await window.GLITCHIT_AUTH.updateUserMetadata({ avatar: up.url });
+      }
+    }
+  });
+}
+
 // Map a stored owner UUID back to a friendly handle for display.
 function displayUser(owner) {
   const u = window.GLITCHIT_USER;
@@ -277,29 +346,181 @@ async function hydrateRail() {
     return `<div class="seller" data-owner="${escapeHtml(c.id)}"><div><strong>${handle}${c.verified ? verifiedBolt('verified-bolt-inline') : ''}</strong><span>Creator</span></div><button type="button">Follow</button></div>`;
   }).join('');
   list.querySelectorAll('.seller button').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const on = btn.classList.toggle('following');
+    const ownerId = btn.closest('.seller')?.dataset.owner;
+    const syncBtn = () => {
+      const on = isFollowing(ownerId);
+      btn.classList.toggle('following', on);
       btn.textContent = on ? 'Following' : 'Follow';
-      recordFollow(btn.closest('.seller')?.dataset.owner);
+    };
+    syncBtn();
+    btn.addEventListener('click', () => {
+      if (!ownerId) return;
+      setFollowing(ownerId, !isFollowing(ownerId));
+      syncBtn();
     });
   });
 }
 
-// Search page: real accounts derived from the media table, or an empty state.
+// Search page: real accounts derived from the media table. By default they are
+// ranked by follower count (most -> lowest); once the user types a query they
+// are filtered and re-sorted alphabetically. Follower counts come from the
+// same per-creator analytics used by the professional dashboard.
+const searchAccounts = { creators: [] };
+
+function srAccountRow(c) {
+  const handle = escapeHtml(c.handle || String(c.id).slice(0, 8));
+  const avatar = c.avatar ? `<img src="${escapeHtml(c.avatar)}" alt="${handle} avatar" loading="lazy">` : `<span class="badge" aria-hidden="true"><i>${escapeHtml(handle[0]?.toUpperCase() || 'G')}</i></span>`;
+  const bolt = c.verified ? verifiedBolt('verified-bolt-inline') : '';
+  const followers = Number(c.followers) || 0;
+  const meta = followers > 0 ? `${fmtCount(followers)} followers` : 'No followers yet';
+  return `<a class="sr-acct" href="user.html?id=${encodeURIComponent(c.id)}&name=${encodeURIComponent(c.handle || '')}"><span class="sr-avatar">${avatar}</span><span class="sr-info"><span class="sr-name">${handle}${bolt}</span><span class="sr-meta">${meta}</span></span></a>`;
+}
+
+// Shared renderer, also driven by the search input in search.html. Empty
+// query: every account ranked by followers. Non-empty query: matches only,
+// sorted alphabetically by display name.
+window.renderSearchAccounts = function renderSearchAccounts(query) {
+  const list = document.getElementById('sr-accounts');
+  if (!list) return;
+  const q = String(query || '').trim().toLowerCase();
+  const nameOf = (c) => (c.handle || String(c.id).slice(0, 8)).toLowerCase();
+  let rows = searchAccounts.creators;
+  if (q) {
+    rows = rows.filter((c) => nameOf(c).includes(q));
+    rows = rows.slice().sort((a, b) => nameOf(a).localeCompare(nameOf(b), undefined, { sensitivity: 'base' }));
+  }
+  if (!rows.length) {
+    list.innerHTML = q
+      ? `<div class="sr-empty"><span class="sr-empty-mark">⌕</span><h3>No accounts found</h3><p>No one matches “${escapeHtml(q)}” yet.</p></div>`
+      : '<div class="sr-empty"><span class="sr-empty-mark">⌕</span><h3>No accounts yet</h3><p>Accounts that post on GlitchIt will show up here.</p></div>';
+    return;
+  }
+  list.innerHTML = rows.map(srAccountRow).join('');
+};
+
 async function hydrateSearchAccounts() {
   const list = document.getElementById('sr-accounts');
   if (!list) return;
-  const creators = DB ? await DB.loadCreators(30) : [];
-  if (!creators.length) {
-    list.innerHTML = '<div class="sr-empty"><span class="sr-empty-mark">⌕</span><h3>No accounts yet</h3><p>Accounts that post on GlitchIt will show up here.</p></div>';
+  let creators = [];
+  // Prefer the real account registry — every registered user with their actual
+  // username — via the serverless endpoint (it uses the Supabase Admin API;
+  // the browser anon key cannot read auth.users). Falls back to the
+  // media-derived creator list when the endpoint is unavailable.
+  try {
+    const res = await fetch('/api/accounts', { cache: 'no-store' });
+    const data = await res.json().catch(() => null);
+    if (data && data.ok && Array.isArray(data.accounts) && data.accounts.length) {
+      creators = data.accounts.map((a) => ({
+        id: a.id,
+        handle: a.username || '',
+        avatar: a.avatar || '',
+        verified: false,
+      }));
+    }
+  } catch (err) { /* registry unavailable — fall through to media-derived */ }
+  if (!creators.length) creators = DB ? await DB.loadCreators(30) : [];
+  searchAccounts.creators = creators.map((c) => ({
+    id: c.id,
+    handle: c.handle || '',
+    avatar: c.avatar || '',
+    verified: Boolean(c.verified),
+    followers: readProfileStats(c.id).followers,
+  })).sort((a, b) => b.followers - a.followers);
+  // Re-apply whatever is currently in the search box (the inline script may
+  // have fired before the accounts finished loading).
+  const box = document.getElementById('sr-query');
+  window.renderSearchAccounts(box ? box.value : '');
+}
+
+// ---------- Outside profile view (user.html?id=...) ----------
+// Public profile of another creator: avatar, handle, follower / following /
+// post counts, a persistent Follow/Following toggle, and their media grid.
+// Viewing your own id redirects to the own-profile page.
+async function hydrateUserPage() {
+  const params = new URLSearchParams(location.search);
+  const targetId = String(params.get('id') || '').trim();
+  const nameParam = String(params.get('name') || '').trim();
+  const me = window.GLITCHIT_USER;
+  if (!targetId || (me && !me.guest && targetId === me.id)) {
+    location.replace('profile.html');
     return;
   }
-  list.innerHTML = creators.map((c) => {
-    const handle = escapeHtml(c.handle || String(c.id).slice(0, 8));
-    const avatar = c.avatar ? `<img src="${escapeHtml(c.avatar)}" alt="${handle} avatar" loading="lazy">` : `<span class="badge" aria-hidden="true"><i>${escapeHtml(handle[0]?.toUpperCase() || 'G')}</i></span>`;
-    const bolt = c.verified ? verifiedBolt('verified-bolt-inline') : '';
-    return `<a class="sr-acct" href="profile.html"><span class="sr-avatar">${avatar}</span><span class="sr-info"><span class="sr-name">${handle}${bolt}</span><span class="sr-meta">Creator on GlitchIt</span></span></a>`;
-  }).join('');
+  document.getElementById('user-back')?.addEventListener('click', () => {
+    if (history.length > 1) history.back();
+    else location.href = 'search.html';
+  });
+
+  const topName = document.getElementById('user-top-name');
+  const nameEl = document.getElementById('user-name');
+  const avatarEl = document.getElementById('user-avatar');
+  const postsEl = document.querySelector('[data-u-stat="posts"]');
+  const followersEl = document.querySelector('[data-u-stat="followers"]');
+  const followingEl = document.querySelector('[data-u-stat="following"]');
+  const btn = document.getElementById('user-follow-btn');
+  const grid = document.getElementById('user-grid');
+
+  const rows = DB ? await DB.loadOwnMedia(targetId, 100) : [];
+  const avatar = (rows.find((r) => r.avatar) || {}).avatar || '';
+  const verified = Boolean(rows.find((r) => r.verified)?.verified);
+  const posts = rows.filter((r) => r.kind !== 'video');
+  const reels = rows.filter((r) => r.kind === 'video');
+  const stats = readProfileStats(targetId);
+  // Prefer the username the search page linked us with (real registry name),
+  // then fall back to the short-id display used for media-derived accounts.
+  const handle = nameParam || String(targetId).slice(0, 8);
+  const esc = escapeHtml(handle);
+
+  if (topName) topName.textContent = handle;
+  if (nameEl) nameEl.innerHTML = `${esc}${verified ? verifiedBolt('verified-bolt-inline') : ''}`;
+  if (avatarEl) { avatarEl.src = avatar || fallbackAvatar(handle); avatarEl.alt = `${handle} profile picture`; }
+  if (postsEl) postsEl.textContent = String(posts.length);
+  if (followersEl) followersEl.textContent = fmtCount(stats.followers);
+  if (followingEl) followingEl.textContent = fmtCount(stats.following);
+  const countPosts = document.getElementById('user-count-posts');
+  const countReels = document.getElementById('user-count-reels');
+  if (countPosts) countPosts.textContent = String(posts.length);
+  if (countReels) countReels.textContent = String(reels.length);
+
+  const renderBtn = () => {
+    if (!btn) return;
+    const on = isFollowing(targetId);
+    btn.textContent = on ? 'Following' : 'Follow';
+    btn.classList.toggle('following', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  };
+  renderBtn();
+  if (btn) {
+    btn.addEventListener('click', () => {
+      setFollowing(targetId, !isFollowing(targetId));
+      renderBtn();
+      if (followersEl) followersEl.textContent = fmtCount(readProfileStats(targetId).followers);
+      showEndToast(isFollowing(targetId) ? `You're now following @${handle}` : `You unfollowed @${handle}`);
+    });
+  }
+
+  const renderGrid = (label) => {
+    if (!grid) return;
+    const isReel = label === 'reels';
+    const items = isReel ? reels : posts;
+    if (!items.length) {
+      grid.innerHTML = `<p class="profile-empty">${isReel ? 'No reels yet.' : 'No posts yet.'}</p>`;
+      return;
+    }
+    grid.innerHTML = items.map((r) => profileTile(r, isReel)).join('');
+    // Outside viewers never see delete controls.
+    grid.querySelectorAll('.profile-tile-delete').forEach((b) => b.remove());
+  };
+  const tabs = document.querySelectorAll('.profile-tab');
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      tabs.forEach((t) => {
+        t.classList.toggle('active', t === tab);
+        t.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+      });
+      renderGrid((tab.getAttribute('aria-label') || 'posts').toLowerCase());
+    });
+  });
+  renderGrid('posts');
 }
 
 // ---------- Profile media (grouped Posts / Reels, owner-deletable) ----------
@@ -558,9 +779,9 @@ function saveUploads() {
 function uploadCard(item, type) {
   const isVideo = type === 'videos' || item.type === 'video';
   if (isVideo) return glitchVideoCard({ ...item, user: profile.username, avatar: profile.avatar, verified: item.verified, owner: item.owner, src: item.src || item.preview, poster: item.preview, caption: item.caption || item.title }, true);
-  const isBolt = Boolean(item.verified || meVerified);
+  const isBolt = Boolean(item.verified);
   const bolt = isBolt ? verifiedBolt('verified-bolt-inline') : '';
-  return `<article class="post upload-card"><header><div class="profile"><span class="verified-avatar-wrap"><img src="${profile.avatar}" alt="${profile.username} avatar">${isBolt ? verifiedBolt() : ''}</span><div><strong>${profile.username}${bolt}</strong><span>Fresh post</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${item.preview}" alt="${item.title}"><span class="shop-badge">${icon('＋')} ${item.type}</span></div><div class="actions"><div>${icon('♡')}${icon('◌')}${icon('↗')}</div>${icon('▱')}</div><strong>New upload</strong><p><b>${profile.username}${bolt}</b> ${item.caption || item.title}</p></article>`;
+  return `<article class="post upload-card"><header><div class="profile"><span class="verified-avatar-wrap"><img src="${profile.avatar}" alt="${profile.username} avatar">${isBolt ? verifiedBolt() : ''}</span><div><strong>${profile.username}${bolt}</strong><span>Fresh post</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${item.preview}" alt="${item.title}" loading="lazy" decoding="async"><span class="shop-badge">${icon('＋')} ${item.type}</span></div><div class="actions"><div>${icon('♡')}${icon('◌')}${icon('↗')}</div>${icon('▱')}</div><strong>New upload</strong><p><b>${profile.username}${bolt}</b> ${item.caption || item.title}</p></article>`;
 }
 
 function glitchVideoCard(video, uploaded = false) {
@@ -569,10 +790,13 @@ function glitchVideoCard(video, uploaded = false) {
   const shares = video.shares || '0';
   const replyTo = video.replyTo || video.user;
   const savedClass = video.saved ? ' saved' : '';
-  const verified = Boolean(video.verified || (uploaded && meVerified));
+  const verified = Boolean(video.verified);
   const nameBolt = verified ? verifiedBolt('verified-bolt-inline') : '';
   const avatarBolt = verified ? verifiedBolt() : '';
-  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}" data-owner="${video.owner || ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><span class="verified-avatar-wrap"><img src="${video.avatar}" alt="${video.user} avatar">${avatarBolt}</span><div class="reel-meta"><strong>${video.user}${nameBolt}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
+  // Fall back to a real avatar (profile picture or initials) so reels never
+  // show a broken image placeholder.
+  const avatarSrc = video.avatar || fallbackAvatar(video.user || profile.username);
+  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}" data-owner="${video.owner || ''}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><span class="verified-avatar-wrap"><img src="${avatarSrc}" alt="${video.user} avatar">${avatarBolt}</span><div class="reel-meta"><strong>${video.user}${nameBolt}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
 }
 
 function renderUploads(type) {
@@ -580,70 +804,696 @@ function renderUploads(type) {
 }
 
 // ---------- Stories ----------
+// Stories live for 24 hours, carry reactions + views, can be saved to
+// highlights (which never expire), can be restricted to close friends, and
+// play back with swipe-to-switch between creators. Own stories are mirrored
+// in localStorage by the camera page (glitchit.story.mine / .latest) and also
+// stored in the media table (kind='story') so other users' stories can be
+// loaded onto the shelf from the database.
+const STORY_TTL = 24 * 60 * 60 * 1000; // 24h story expiry
+const STORY_REACTIONS_KEY = 'glitchit.story.reactions.v1';
+const STORY_VIEWS_KEY = 'glitchit.story.views.v1';
+const STORY_HIGHLIGHTS_KEY = 'glitchit.story.highlights.v1';
+const STORY_CLOSE_KEY = 'glitchit.story.closefriends.v1';
+const STORY_REACTIONS = ['❤️', '😂', '😮', '😢', '🔥'];
+
+function readStore(key, fallback) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || 'null');
+    return value === null || value === undefined ? fallback : value;
+  } catch (e) { return fallback; }
+}
+function writeStore(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage unavailable */ }
+}
+
+// A story with an `at` timestamp expires 24h after it was shared.
+function storyExpired(story) {
+  return typeof story?.at === 'number' && Date.now() - story.at > STORY_TTL;
+}
+function storyAgeLabel(at) {
+  if (typeof at !== 'number') return 'now';
+  const mins = Math.max(1, Math.round((Date.now() - at) / 60000));
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
+// Stable per-device identity used for story reactions + views (auth id when
+// signed in, otherwise a persisted anonymous id).
+function viewerId() {
+  const user = window.GLITCHIT_USER;
+  if (user && !user.guest && user.id) {
+    return { id: 'u:' + user.id, name: (user.user_metadata && user.user_metadata.username) || String(user.email || '').split('@')[0] || 'You' };
+  }
+  let anon = '';
+  try { anon = localStorage.getItem('glitchit.anon') || ''; } catch (e) { /* ignore */ }
+  if (!anon) {
+    anon = 'a:' + Math.random().toString(36).slice(2, 10);
+    try { localStorage.setItem('glitchit.anon', anon); } catch (e) { /* ignore */ }
+  }
+  return { id: anon, name: 'Guest' };
+}
+
+// ---------- Story reactions (emoji, per story) ----------
+function storyReactionState(key) {
+  return readStore(STORY_REACTIONS_KEY, {})[key] || { counts: {}, mine: null };
+}
+function reactToStory(key, emoji) {
+  if (!key) return;
+  const map = readStore(STORY_REACTIONS_KEY, {});
+  const rec = map[key] || { counts: {}, mine: null };
+  const counts = { ...(rec.counts || {}) };
+  if (rec.mine) {
+    counts[rec.mine] = Math.max(0, (counts[rec.mine] || 1) - 1);
+    if (!counts[rec.mine]) delete counts[rec.mine];
+  }
+  if (rec.mine === emoji) {
+    rec.mine = null; // tap the same reaction again to remove it
+  } else {
+    rec.mine = emoji;
+    counts[emoji] = (counts[emoji] || 0) + 1;
+  }
+  rec.counts = counts;
+  map[key] = rec;
+  writeStore(STORY_REACTIONS_KEY, map);
+}
+
+// ---------- Story views (who watched, when) ----------
+function storyViewRecord(key) {
+  return readStore(STORY_VIEWS_KEY, {})[key] || { count: 0, viewers: [] };
+}
+function storyViewCount(key) {
+  return storyViewRecord(key).count;
+}
+function recordStoryView(story) {
+  if (!story || story.own || !story.key) return;
+  const map = readStore(STORY_VIEWS_KEY, {});
+  const rec = map[story.key] || { count: 0, viewers: [] };
+  const me = viewerId();
+  if (!rec.viewers.some((v) => v.id === me.id)) {
+    rec.viewers.push({ id: me.id, name: me.name, at: Date.now() });
+    rec.count = rec.viewers.length;
+    map[story.key] = rec;
+    writeStore(STORY_VIEWS_KEY, map);
+  }
+}
+
+// ---------- Story highlights (persist beyond 24h) ----------
+function readHighlights() {
+  const list = readStore(STORY_HIGHLIGHTS_KEY, []);
+  return Array.isArray(list) ? list : [];
+}
+function writeHighlights(list) {
+  writeStore(STORY_HIGHLIGHTS_KEY, list);
+}
+function addStoryToHighlights(name, story) {
+  const cleanName = String(name || 'Highlights').trim().slice(0, 24) || 'Highlights';
+  const list = readHighlights();
+  let highlight = list.find((h) => h.name === cleanName);
+  const item = {
+    name: cleanName,
+    image: story.image || story.poster || story.url || '',
+    at: story.at || Date.now(),
+    reveal: Boolean(story.reveal),
+    closeFriends: Boolean(story.closeFriends),
+    key: 'hl:' + cleanName + ':' + Date.now(),
+    own: true,
+  };
+  if (!highlight) {
+    highlight = { name: cleanName, at: item.at, image: item.image, stories: [] };
+    list.unshift(highlight);
+  }
+  highlight.stories.push(item);
+  highlight.at = item.at;
+  highlight.image = item.image;
+  writeHighlights(list);
+  return cleanName;
+}
+function removeStoryFromHighlights(key) {
+  const list = readHighlights();
+  let changed = false;
+  list.forEach((highlight) => {
+    const before = highlight.stories.length;
+    highlight.stories = highlight.stories.filter((s) => s.key !== key);
+    if (highlight.stories.length !== before) changed = true;
+    const last = highlight.stories[highlight.stories.length - 1];
+    if (last) { highlight.at = last.at; highlight.image = last.image; }
+  });
+  if (changed) writeHighlights(list.filter((h) => h.stories.length));
+}
+
+// ---------- Close friends (stories visible only to this list) ----------
+function readCloseFriends() {
+  const list = readStore(STORY_CLOSE_KEY, []);
+  return Array.isArray(list) ? list : [];
+}
+function writeCloseFriends(list) {
+  writeStore(STORY_CLOSE_KEY, list);
+}
+function isCloseFriendOf(creator) {
+  const target = String(creator || '').toLowerCase();
+  return readCloseFriends().some((c) => String(c.name || '').toLowerCase() === target || String(c.id || '') === String(creator));
+}
+function canViewStory(story, creator) {
+  if (!story || !story.closeFriends) return true;
+  if (story.own) return true; // your own close-friends stories are always visible to you
+  return isCloseFriendOf(creator);
+}
+
+// The creator trays for the home shelf — ordered so the viewer can swipe
+// between creators (tray 0 is "Your story").
+let storyTrays = [];
+
 function attachStoryLinks() {
-  document.querySelectorAll('.story[data-story-name]').forEach((storyLink) => {
+  document.querySelectorAll('.story[data-story-name], .story[data-story-list], .story[data-story-tray]').forEach((storyLink) => {
     if (storyLink.dataset.storyReady) return;
     storyLink.dataset.storyReady = 'true';
     storyLink.addEventListener('click', (event) => {
       event.preventDefault();
-      const name = storyLink.dataset.storyName;
-      const image = storyLink.dataset.storyImage;
-      const live = storyLink.dataset.storyLive === 'true';
-      const ownStory = storyLink.dataset.storyOwn === 'true';
-      document.getElementById('story-viewer')?.remove();
-      const deleteAction = ownStory ? '<button type="button" class="story-delete-action" data-story-delete>Delete story</button>' : '';
-      document.body.insertAdjacentHTML('beforeend', `<div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="${escapeHtml(name)} story"><button type="button" class="story-close" aria-label="Close story">×</button><div><img src="${image}" alt="${escapeHtml(name)} story"><span>${live ? 'Live now' : 'Story'}</span><h2>${escapeHtml(name)}</h2><p>Tap through creator updates, product teasers, and behind-the-scenes moments.</p>${deleteAction}<a class="primary-action" href="profile.html">View profile</a></div></div>`);
-      document.querySelector('[data-story-delete]')?.addEventListener('click', () => {
-        if (isGuest()) { showGuestGate('Sign in to manage your story'); return; }
-        if (!window.confirm('Delete your latest story?')) return;
-        userUploads.stories.shift();
-        saveUploads();
-        clearStoryLatest();
-        document.getElementById('story-viewer')?.remove();
-        hydrateStoryShelf();
-      });
-      document.querySelector('.story-close')?.focus();
+      // Swipe-between-creators entry: the shelf ring points at a tray index.
+      if (storyLink.dataset.storyTray !== undefined && storyTrays.length) {
+        const at = Math.max(0, Number(storyLink.dataset.storyTray) || 0);
+        openStoryViewer(storyTrays, at);
+        return;
+      }
+      let stories = null;
+      if (storyLink.dataset.storyList) {
+        try { stories = JSON.parse(storyLink.dataset.storyList); } catch (e) { stories = null; }
+      }
+      if (!stories || !stories.length) {
+        stories = [{
+          name: storyLink.dataset.storyName,
+          image: storyLink.dataset.storyImage,
+          live: storyLink.dataset.storyLive === 'true',
+          own: storyLink.dataset.storyOwn === 'true',
+          reveal: storyLink.dataset.storyReveal === 'true',
+          key: storyLink.dataset.storyKey || '',
+        }];
+      }
+      openStoryViewer(stories);
     });
   });
   if (!document.body.dataset.storyDismissReady) {
     document.body.dataset.storyDismissReady = 'true';
     document.addEventListener('click', (event) => {
-      if (event.target.matches('.story-viewer, .story-close')) document.getElementById('story-viewer')?.remove();
+      if (event.target.matches('.story-viewer, .story-close, .sv-backdrop')) document.getElementById('story-viewer')?.remove();
     });
   }
 }
 
-// The user's most recently shared story (mirrored from the story camera page).
+// Frames-style story viewer: full-screen with a segmented progress bar and a
+// tilted polaroid. Stories live for 24h, carry emoji reactions and views, can
+// be saved to (never-expiring) highlights, and can be restricted to close
+// friends. Each creator is a "tray" — when a tray's loading bar finishes it
+// advances to the next story, then the next creator's tray; swiping left or
+// right (or using ←/→) jumps between creators manually.
+function openStoryViewer(input, startTray = 0) {
+  if (!Array.isArray(input) || !input.length) return;
+
+  // Accept either a list of creator trays ({ creator, avatar, stories }) or a
+  // flat story list (legacy links) — both normalize to trays.
+  let trays = input;
+  if (!trays[0].stories) {
+    const name = trays[0].name || 'Story';
+    trays = [{ creator: name, avatar: trays[0].avatar || trays[0].image || '', stories: trays }];
+  }
+  trays = trays
+    .map((tray) => ({
+      creator: tray.creator || (tray.stories[0] && tray.stories[0].name) || 'Story',
+      avatar: tray.avatar || (tray.stories[0] && tray.stories[0].image) || '',
+      creatorId: tray.creatorId || '',
+      stories: (tray.stories || []).filter((s) => s && !storyExpired(s)),
+    }))
+    .filter((tray) => tray.stories.length);
+  if (!trays.length) return;
+
+  document.getElementById('story-viewer')?.remove();
+
+  const STORY_MS = 8000;
+  let trayIndex = Math.max(0, Math.min(startTray || 0, trays.length - 1));
+  let index = 0;
+  let revealed = false;
+  let autoTimer = null;
+  let lastMag = null;
+  let swipeX = null;
+  let swipeY = null;
+  let segments = [];
+
+  const currentTray = () => trays[trayIndex];
+  const current = () => currentTray().stories[index] || {};
+  const isOwnTray = () => currentTray().stories.some((s) => s.own);
+
+  const moreMenu = () => {
+    const s = current();
+    const options = [];
+    if (s.own || isOwnTray()) {
+      if (s.key && s.key.startsWith('hl:')) {
+        options.push('<button type="button" data-story-unhighlight>Remove from highlights</button>');
+      } else {
+        options.push('<button type="button" data-story-highlight>Add to highlights</button>');
+        options.push('<button type="button" data-story-delete>Delete story</button>');
+      }
+    } else {
+      options.push('<button type="button" data-story-report>Report</button>');
+    }
+    return `<span class="sv-more-wrap"><button type="button" class="sv-more" aria-label="Story options" aria-expanded="false">⋯</button><span class="sv-menu" hidden>${options.join('')}</span></span>`;
+  };
+
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="story-viewer" id="story-viewer" role="dialog" aria-modal="true" aria-label="Story viewer">
+      <div class="sv-progress" aria-hidden="true"></div>
+      <div class="sv-backdrop" aria-hidden="true"></div>
+      <header class="sv-head">
+        <a class="sv-id" href="profile.html">
+          <span class="sv-avatar"><img alt=""></span>
+          <span class="sv-id-meta"><strong></strong><span class="sv-time-wrap"></span></span>
+        </a>
+        <span class="sv-frames"><i aria-hidden="true">✦</i>Frames by GlitchIt</span>
+        <span class="sv-actions">${moreMenu()}<button type="button" class="story-close" aria-label="Close story">✕</button></span>
+      </header>
+      <main class="sv-stage">
+        <figure class="sv-polaroid">
+          <div class="sv-photo"><span class="sv-fog" aria-hidden="true">✦</span><img alt=""></div>
+          <figcaption class="sv-caption"><strong></strong><span></span></figcaption>
+        </figure>
+        <button type="button" class="sv-shake"><i aria-hidden="true">⚡</i>Shake to reveal</button>
+      </main>
+      <footer class="sv-bar">
+        <form class="sv-msg" data-sv-msg><input type="text" placeholder="Send message" aria-label="Send message" autocomplete="off"></form>
+        <div class="sv-react-wrap">
+          <button type="button" class="sv-like" aria-label="React to this story" aria-expanded="false">♥</button>
+          <span class="sv-react-tray" hidden>
+            ${STORY_REACTIONS.map((r) => `<button type="button" class="sv-react" data-emoji="${r}" aria-label="React ${r}">${r}<b hidden></b></button>`).join('')}
+          </span>
+        </div>
+        <button type="button" class="sv-share" aria-label="Share this story"><i aria-hidden="true">➤</i></button>
+      </footer>
+      <div class="sv-name-sheet" hidden role="dialog" aria-modal="true" aria-label="Add to highlights">
+        <div class="sv-name-card">
+          <strong>Add to highlights</strong>
+          <p>Save this story so it stays on your profile after 24 hours.</p>
+          <input type="text" maxlength="24" placeholder="Highlight name (e.g. Vacations)" autocomplete="off">
+          <div class="sv-name-actions">
+            <button type="button" data-name-cancel>Cancel</button>
+            <button type="button" data-name-add>Add</button>
+          </div>
+        </div>
+      </div>
+    </div>`);
+
+  const viewer = document.getElementById('story-viewer');
+  const polaroid = viewer.querySelector('.sv-polaroid');
+  const shakeBtn = viewer.querySelector('.sv-shake');
+  const reactWrap = viewer.querySelector('.sv-react-wrap');
+  const likeBtn = viewer.querySelector('.sv-like');
+  const reactTray = viewer.querySelector('.sv-react-tray');
+  const moreBtn = viewer.querySelector('.sv-more');
+  const nameSheet = viewer.querySelector('.sv-name-sheet');
+  const alive = () => document.getElementById('story-viewer') === viewer;
+
+  function refreshSegments() {
+    const progress = viewer.querySelector('.sv-progress');
+    progress.innerHTML = currentTray().stories.map(() => '<i></i>').join('');
+    segments = [...progress.querySelectorAll('i')];
+    segments.forEach((seg, i) => seg.classList.toggle('done', i < index));
+  }
+
+  // Render the story at `index` of the current tray: polaroid, header, views,
+  // reactions and the reveal state.
+  function renderStory() {
+    const tray = currentTray();
+    const s = current();
+    if (!s.name && !s.image) return;
+    const timeLine = s.live
+      ? '<i class="sv-live-pill">LIVE</i>'
+      : `<span class="sv-time">${storyAgeLabel(s.at)} ago</span>`;
+    const viewCount = s.own && s.key ? storyViewCount(s.key) : 0;
+    const views = viewCount > 0
+      ? `<span class="sv-views" aria-label="${viewCount} views">👁 ${viewCount}</span>`
+      : '';
+    const cf = s.closeFriends ? '<i class="sv-cf-pill">Close friends</i>' : '';
+    viewer.querySelector('.sv-backdrop').style.backgroundImage = `url('${s.image}')`;
+    // Keep the creator's profile picture in the header — the story media
+    // only fills the polaroid below it.
+    viewer.querySelector('.sv-avatar img').src = tray.avatar || s.image;
+    viewer.querySelector('.sv-id-meta strong').textContent = tray.creator;
+    // The header links to the story creator's outside profile when the tray
+    // knows who that is (DB-backed trays); own/local trays go to own profile.
+    const me = window.GLITCHIT_USER;
+    const myIdNow = me && !me.guest ? me.id : '';
+    const idLink = viewer.querySelector('.sv-id');
+    if (tray.creatorId && tray.creatorId !== myIdNow) {
+      idLink.href = `user.html?id=${encodeURIComponent(tray.creatorId)}&name=${encodeURIComponent(tray.creator)}`;
+    } else {
+      idLink.href = 'profile.html';
+    }
+    viewer.querySelector('.sv-id-meta .sv-time-wrap').innerHTML = timeLine + views + cf;
+    viewer.querySelector('.sv-photo img').src = s.image;
+    viewer.querySelector('.sv-photo img').alt = `${tray.creator} story`;
+    viewer.querySelector('.sv-caption strong').textContent = tray.creator;
+    viewer.querySelector('.sv-caption span').textContent = storyAgeLabel(s.at) + ' ago';
+    refreshSegments();
+    // Record a view the first time this viewer watches a story that isn't theirs.
+    recordStoryView(s);
+    // Shake-to-reveal is an opt-in effect the creator chose on the camera page.
+    revealed = false;
+    polaroid.classList.remove('revealed');
+    if (s.reveal) {
+      polaroid.classList.add('reveal-mode');
+      shakeBtn.hidden = false;
+      shakeBtn.innerHTML = '<i aria-hidden="true">⚡</i>Shake to reveal';
+      shakeBtn.classList.remove('done');
+      stopTimer(); // hold until revealed
+    } else {
+      polaroid.classList.remove('reveal-mode');
+      shakeBtn.hidden = true;
+      startTimer();
+    }
+    renderReactions();
+    const menu = viewer.querySelector('.sv-menu');
+    if (menu) menu.hidden = true;
+    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  function stopTimer() { clearTimeout(autoTimer); autoTimer = null; }
+  function startTimer() {
+    stopTimer();
+    const seg = segments[index];
+    if (seg) seg.classList.add('active');
+    autoTimer = setTimeout(() => {
+      // Loading bar finished → next story, then the next creator's tray.
+      if (index + 1 < currentTray().stories.length) {
+        index += 1;
+        renderStory();
+      } else if (trayIndex + 1 < trays.length) {
+        trayIndex += 1;
+        index = 0;
+        renderStory();
+      } else {
+        viewer.remove();
+      }
+    }, STORY_MS);
+  }
+  function goToTray(nextTray) {
+    stopTimer();
+    trayIndex = Math.max(0, Math.min(nextTray, trays.length - 1));
+    index = 0;
+    renderStory();
+  }
+  function nextTray() { goToTray(trayIndex + 1); }
+  function prevTray() { goToTray(trayIndex - 1); }
+
+  // Reveal the polaroid photo (once) — only meaningful when the effect is on.
+  const reveal = () => {
+    if (revealed) return;
+    revealed = true;
+    polaroid.classList.add('revealed');
+    shakeBtn.innerHTML = '<i aria-hidden="true">✓</i>Revealed';
+    shakeBtn.classList.add('done');
+    if (navigator.vibrate) { try { navigator.vibrate(18); } catch (err) { /* ignore */ } }
+    startTimer(); // revealed → let the loading bar finish and advance
+  };
+  shakeBtn.addEventListener('click', reveal);
+
+  // Shake detection: a sharp jump in device motion reveals the photo. iOS 13+
+  // asks for permission first, so tap-to-reveal is always the fallback.
+  const onMotion = (e) => {
+    if (!alive()) return;
+    const s = current();
+    if (!s.reveal || revealed) return;
+    const a = e.accelerationIncludingGravity;
+    if (!a) return;
+    const mag = Math.abs(a.x || 0) + Math.abs(a.y || 0) + Math.abs(a.z || 0);
+    if (lastMag !== null && mag - lastMag > 14) reveal();
+    lastMag = mag;
+  };
+  if (window.DeviceMotionEvent && typeof window.DeviceMotionEvent.requestPermission === 'function') {
+    window.DeviceMotionEvent.requestPermission().then((res) => {
+      if (res === 'granted') window.addEventListener('devicemotion', onMotion);
+    }).catch(() => { /* permission denied — tap to reveal still works */ });
+  } else {
+    window.addEventListener('devicemotion', onMotion);
+  }
+
+  // ---------- reactions ----------
+  function renderReactions() {
+    const s = current();
+    const state = storyReactionState(s.key);
+    reactTray.querySelectorAll('.sv-react').forEach((btn) => {
+      const emoji = btn.dataset.emoji;
+      const n = state.counts[emoji] || 0;
+      const badge = btn.querySelector('b');
+      if (badge) { badge.hidden = !n; badge.textContent = n ? String(n) : ''; }
+      btn.classList.toggle('mine', state.mine === emoji);
+    });
+    const mine = state.mine;
+    likeBtn.textContent = mine || '♥';
+    likeBtn.classList.toggle('on', Boolean(mine));
+  }
+  likeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = reactTray.hidden;
+    reactTray.hidden = !open;
+    likeBtn.setAttribute('aria-expanded', String(open));
+    if (open) renderReactions();
+  });
+  reactTray.addEventListener('click', (e) => {
+    const btn = e.target.closest('.sv-react');
+    if (!btn) return;
+    e.stopPropagation();
+    reactToStory(current().key, btn.dataset.emoji);
+    renderReactions();
+    if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) { /* ignore */ } }
+    setTimeout(() => { reactTray.hidden = true; likeBtn.setAttribute('aria-expanded', 'false'); }, 700);
+  });
+
+  // ---------- more menu (delete / report / highlights) ----------
+  if (moreBtn) {
+    moreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const menu = moreBtn.parentElement.querySelector('.sv-menu');
+      const open = menu.hidden;
+      menu.hidden = !open;
+      moreBtn.setAttribute('aria-expanded', String(open));
+    });
+  }
+
+  const openHighlightSheet = () => {
+    stopTimer();
+    nameSheet.hidden = false;
+    const input = nameSheet.querySelector('input');
+    input.value = '';
+    setTimeout(() => input.focus(), 30);
+  };
+  const closeHighlightSheet = () => {
+    nameSheet.hidden = true;
+    startTimer();
+  };
+  viewer.querySelector('[data-story-highlight]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const menu = viewer.querySelector('.sv-menu');
+    if (menu) menu.hidden = true;
+    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
+    openHighlightSheet();
+  });
+  viewer.querySelector('[data-name-cancel]')?.addEventListener('click', closeHighlightSheet);
+  viewer.querySelector('[data-name-add]')?.addEventListener('click', () => {
+    const input = nameSheet.querySelector('input');
+    const name = addStoryToHighlights(input.value, current());
+    closeHighlightSheet();
+    glitchToast(`Added to ${name} ✦`);
+    hydrateHighlights();
+  });
+  nameSheet.querySelector('input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') viewer.querySelector('[data-name-add]')?.click();
+  });
+
+  viewer.querySelector('[data-story-unhighlight]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const key = current().key;
+    removeStoryFromHighlights(key);
+    stopTimer();
+    currentTray().stories.splice(index, 1);
+    if (!currentTray().stories.length) {
+      trays.splice(trayIndex, 1);
+      if (!trays.length) { viewer.remove(); return; }
+      trayIndex = Math.min(trayIndex, trays.length - 1);
+    } else if (index >= currentTray().stories.length) {
+      index = currentTray().stories.length - 1;
+    }
+    renderStory();
+    glitchToast('Removed from highlights');
+    hydrateHighlights();
+  });
+
+  viewer.querySelector('[data-story-delete]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (isGuest()) { showGuestGate('Sign in to manage your story'); return; }
+    const s = current();
+    if (!window.confirm('Delete this story?')) return;
+    stopTimer();
+    if (s.key && s.key.startsWith('mine:')) {
+      // Remove exactly this story from the creator's story list.
+      const at = Number(s.key.slice(5));
+      let mine = [];
+      try { mine = JSON.parse(localStorage.getItem(STORY_MINE_KEY) || '[]'); } catch (err) { mine = []; }
+      mine = mine.filter((m) => m.at !== at);
+      try { localStorage.setItem(STORY_MINE_KEY, JSON.stringify(mine)); } catch (err) { /* ignore */ }
+      if (mine.length) {
+        try { localStorage.setItem(STORY_LATEST_KEY, JSON.stringify(mine[0])); } catch (err) { /* ignore */ }
+      } else {
+        clearStoryLatest();
+      }
+    } else {
+      userUploads.stories.shift();
+      saveUploads();
+      clearStoryLatest();
+    }
+    currentTray().stories.splice(index, 1);
+    if (!currentTray().stories.length) {
+      trays.splice(trayIndex, 1);
+      if (!trays.length) { viewer.remove(); return; }
+      trayIndex = Math.min(trayIndex, trays.length - 1);
+    } else if (index >= currentTray().stories.length) {
+      index = currentTray().stories.length - 1;
+    }
+    renderStory();
+    hydrateStoryShelf();
+  });
+  viewer.querySelector('[data-story-report]')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    stopTimer();
+    viewer.remove();
+    glitchToast('Thanks — we’ll take a look at this story.');
+  });
+
+  const msgForm = viewer.querySelector('[data-sv-msg]');
+  msgForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = msgForm.querySelector('input');
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    glitchToast(`Message sent to ${currentTray().creator}`);
+  });
+  viewer.querySelector('.sv-share')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const share = e.currentTarget;
+    share.classList.add('pop');
+    setTimeout(() => share.classList.remove('pop'), 320);
+  });
+
+  // ---------- swipe between creators + keyboard shortcuts ----------
+  viewer.addEventListener('touchstart', (e) => {
+    const t = e.touches && e.touches[0];
+    if (!t) return;
+    swipeX = t.clientX;
+    swipeY = t.clientY;
+  }, { passive: true });
+  viewer.addEventListener('touchend', (e) => {
+    if (swipeX === null) return;
+    const t = e.changedTouches && e.changedTouches[0];
+    if (t) {
+      const dx = t.clientX - swipeX;
+      const dy = t.clientY - swipeY;
+      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        if (dx < 0) nextTray();
+        else prevTray();
+        if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) { /* ignore */ } }
+      }
+    }
+    swipeX = null;
+    swipeY = null;
+  }, { passive: true });
+  viewer.addEventListener('touchcancel', () => { swipeX = null; swipeY = null; }, { passive: true });
+  const onKey = (e) => {
+    if (!alive()) { document.removeEventListener('keydown', onKey); return; }
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Escape') return;
+    const tag = ((e.target && e.target.tagName) || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+    if (e.key === 'ArrowLeft') prevTray();
+    else if (e.key === 'ArrowRight') nextTray();
+    else viewer.remove();
+  };
+  document.addEventListener('keydown', onKey);
+
+  renderStory();
+  viewer.querySelector('.story-close')?.focus();
+}
+
+// The user's story records (mirrored from the story camera page): the newest
+// single story (thumb for the "Your story" ring) plus the full per-user list
+// so the viewer can auto-advance through every story they shared.
 const STORY_LATEST_KEY = 'glitchit.story.latest';
+const STORY_MINE_KEY = 'glitchit.story.mine';
 function storyLatest() {
   try { return JSON.parse(localStorage.getItem(STORY_LATEST_KEY) || 'null'); } catch (e) { return null; }
 }
+function storyMine() {
+  try {
+    const list = JSON.parse(localStorage.getItem(STORY_MINE_KEY) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch (e) { return []; }
+}
 function clearStoryLatest() {
   try { localStorage.removeItem(STORY_LATEST_KEY); } catch (e) { /* ignore */ }
+}
+
+// Encode a list of story items for a `data-story-list` attribute (JSON).
+function storyListAttr(stories) {
+  return escapeHtml(JSON.stringify(stories));
 }
 
 function hydrateStoryShelf() {
   const shelf = document.querySelector('.stories');
   if (!shelf) return;
   shelf.querySelectorAll('.story[data-story-dynamic="true"]').forEach((link) => link.remove());
-  // Entry rings for the story camera: a persistent "New story" plus button and
-  // a "Your story" ring that shows the latest shared story (or your avatar).
-  const latest = storyLatest();
+  // Entry ring for the story camera: the "Your story" ring shows the latest
+  // shared story (or your avatar) and plays every story you've shared in
+  // sequence. Creating happens from the create tab on the right edge of the
+  // home page (see index.html).
+  const mine = storyMine();
+  const latest = mine[0] || storyLatest();
   const avatar = profile.avatar || fallbackAvatar(profile.username || 'You');
-  const selfRing = latest
-    ? `<a class="story story-self" data-story-dynamic="true" data-story-name="Your story" data-story-image="${latest.poster || latest.url}" data-story-own="true" aria-label="View your story"><span class="story-ring live"><img src="${latest.poster || latest.url}" alt="Your story"></span><span>Your story</span></a>`
-    : `<a class="story story-self" data-story-dynamic="true" href="camera.html" aria-label="Create a story"><span class="story-ring live"><img src="${avatar}" alt="You"><i class="story-self-badge" aria-hidden="true">＋</i></span><span>Your story</span></a>`;
-  shelf.insertAdjacentHTML('afterbegin', `<a class="story story-create" data-story-dynamic="true" href="camera.html" aria-label="Create a new story"><span class="story-ring"><i class="story-create-plus" aria-hidden="true">＋</i></span><span>New story</span></a>${selfRing}`);
+  let selfRing;
+  if (mine.length || latest) {
+    // The ring shows the profile picture (the story media plays in the
+    // viewer); the glow appears because a story has actually been posted.
+    const list = mine.length
+      ? mine.map((m) => ({
+          name: 'Your story',
+          image: m.poster || m.url,
+          live: false,
+          own: true,
+          reveal: Boolean(m.reveal),
+          key: 'mine:' + m.at,
+        }))
+      : [{ name: 'Your story', image: latest.poster || latest.url, live: false, own: true, reveal: Boolean(latest.reveal), key: 'mine:' + latest.at }];
+    list[0].avatar = avatar;
+    selfRing = `<a class="story story-self" data-story-dynamic="true" data-story-list='${storyListAttr(list)}' aria-label="View your stories"><span class="story-ring live"><img src="${avatar}" alt="Your story">${list.length > 1 ? `<i class="story-count" aria-hidden="true">${list.length}</i>` : ''}</span><span>Your story</span></a>`;
+  } else {
+    selfRing = `<a class="story story-self" data-story-dynamic="true" href="camera.html" aria-label="Create a story"><span class="story-ring story-idle"><img src="${avatar}" alt="You"><i class="story-self-badge" aria-hidden="true">＋</i></span><span>Your story</span></a>`;
+  }
+  shelf.insertAdjacentHTML('afterbegin', selfRing);
+  // Group every story by its creator so one ring plays all of that user's
+  // stories back-to-back (each story is a segment in the viewer's loading bar).
+  const byCreator = new Map();
   [...userUploads.stories].reverse().forEach((story) => {
+    const title = story.title || 'Someone';
+    if (!byCreator.has(title)) byCreator.set(title, []);
+    byCreator.get(title).push(story);
+  });
+  byCreator.forEach((list, title) => {
+    const items = list.map((s) => ({ name: title, image: s.preview, live: true, own: false, reveal: false }));
     const link = document.createElement('a');
     link.className = 'story';
     link.href = '#';
     link.dataset.storyDynamic = 'true';
-    link.dataset.storyName = story.title;
-    link.dataset.storyImage = story.preview;
-    link.dataset.storyLive = 'true';
-    link.setAttribute('aria-label', `Open ${story.title}'s story`);
-    link.innerHTML = `<span class="story-ring live"><img src="${story.preview}" alt="${escapeHtml(story.title)} avatar"></span><span>${escapeHtml(story.title)}</span>`;
+    link.dataset.storyList = JSON.stringify(items);
+    link.setAttribute('aria-label', `Open ${title}'s stories`);
+    link.innerHTML = `<span class="story-ring live"><img src="${list[0].preview}" alt="${escapeHtml(title)} avatar">${list.length > 1 ? `<i class="story-count" aria-hidden="true">${list.length}</i>` : ''}</span><span>${escapeHtml(title)}</span>`;
     shelf.appendChild(link);
   });
   attachStoryLinks();
@@ -883,10 +1733,17 @@ function attachReelsActions() {
   document.querySelectorAll('.reel-follow').forEach((btn) => {
     if (btn.dataset.followReady) return;
     btn.dataset.followReady = 'true';
-    btn.addEventListener('click', () => {
-      const on = btn.classList.toggle('following');
+    const ownerId = btn.closest('.video-card')?.dataset.owner;
+    const syncBtn = () => {
+      const on = isFollowing(ownerId);
+      btn.classList.toggle('following', on);
       btn.textContent = on ? 'Following' : 'Follow';
-      recordFollow(btn.closest('.video-card')?.dataset.owner);
+    };
+    syncBtn();
+    btn.addEventListener('click', () => {
+      if (!ownerId) return;
+      setFollowing(ownerId, !isFollowing(ownerId));
+      syncBtn();
     });
   });
   document.querySelectorAll('.reel-save').forEach((btn) => {
@@ -1284,14 +2141,13 @@ function attachProfileTabs() {
 }
 
 // ---------- Page dispatch ----------
-// Live viewing page: real viewer count, floating
-// heart reactions, comment posting, and badge purchases.
+// Live viewing page: real viewer count, floating heart
+// reactions, and comment posting.
 function attachLive() {
   const chat = document.getElementById('live-chat');
   const hearts = document.getElementById('live-hearts');
   const viewers = document.getElementById('live-viewers');
   const form = document.getElementById('live-comment-form');
-  const buyBtn = document.getElementById('live-buy');
   const heartBtn = document.getElementById('live-heart-btn');
   const player = document.getElementById('live-player');
   const liveUser = window.GLITCHIT_USER;
@@ -1305,6 +2161,7 @@ function attachLive() {
   // ----- viewer count ticker -----
   let viewersCount = 1;
   const fmtCount = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+
   const renderViewers = () => {
     if (!viewers) return;
     viewers.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${fmtCount(viewersCount)}`;
@@ -1369,14 +2226,6 @@ function attachLive() {
     if (input) input.value = '';
   });
 
-  // ----- badge purchase -----
-  buyBtn?.addEventListener('click', () => {
-    const tip = document.createElement('div');
-    tip.className = 'end-toast show';
-    tip.innerHTML = `<span class="end-toast-mark">${icon('🏆')}</span><span class="end-toast-text">Badge purchased — thanks for supporting this stream!</span>`;
-    document.body.appendChild(tip);
-    setTimeout(() => tip.remove(), 2200);
-  });
 }
 
 function runPage() {
@@ -1431,8 +2280,10 @@ function runPage() {
   if (page === 'live') attachLive();
   if (page === 'profile') {
     attachSettingsDrawer();
+    attachPhotoChange();
     attachProfileTabs();
     attachProfileAuth();
+    attachProfessional();
     document.getElementById('share-song')?.addEventListener('click', () => openNoteComposer());
     document.getElementById('share-profile')?.addEventListener('click', () => {
       const url = location.href;
@@ -1451,6 +2302,7 @@ function runPage() {
   if (page === 'shop') { attachShopTabs(); attachShopFilters(); attachStoryLinks(); attachGlitchAutoplay(); }
 
   if (page === 'search') hydrateSearchAccounts();
+  if (page === 'user') hydrateUserPage();
   if (page === 'profile') hydrateProfileGrid();
   hydrateRail();
 
@@ -1468,8 +2320,9 @@ const GUEST_GATED_SELECTOR = [
   '.comment-box', '.text-button',
   '.post .actions',
   '.seller button',
+  '.user-follow-btn',
   '.note-add',
-  '.live-comment-form', '.live-buy', '.live-heart-btn',
+  '.live-comment-form', '.live-heart-btn',
 ].join(',');
 
 let guestGateToast = null;
@@ -1615,7 +2468,6 @@ function attachAuthPage(auth) {
     setStep(1);
   };
   tabs.forEach((t) => t.addEventListener('click', () => setMode(t.dataset.authMode)));
-
   // Profile picture: resize locally, preview instantly, then push a durable
   // CDN copy to Cloudinary when configured (the data URL stays as fallback).
   avatarBtn?.addEventListener('click', () => avatarInput?.click());
@@ -1635,6 +2487,13 @@ function attachAuthPage(auth) {
         }
       } catch (err) { /* keep the local data URL */ }
     } catch (err) { /* unreadable image — ignore */ }
+  });
+  document.getElementById('auth-toggle-password')?.addEventListener('click', (e) => {
+    const input = document.getElementById('auth-password');
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    e.currentTarget.textContent = show ? '\u{1F647}' : '\u{1F441}';
+    e.currentTarget.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
   });
 
   // Interest chips: tap to toggle what the user wants in their feed.
@@ -1665,7 +2524,6 @@ function attachAuthPage(auth) {
     hideErrors();
     const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
-
     if (mode !== 'signup') {
       if (!email || !password) { showError(errorEl, 'Enter your email and password.'); return; }
       if (submit) { submit.disabled = true; submit.textContent = 'Please wait…'; }
@@ -1713,8 +2571,7 @@ function attachProfileAuth() {
       location.href = 'auth.html';
     });
   }
-  // Payments (RevenueCat subscriptions) are disabled for now — the GlitchIt
-  // Pro settings row and its paywall were removed, so nothing to wire here.
+
   if (!user || user.guest) return;
   const handle = user.user_metadata?.username || user.email?.split('@')[0] || '';
   const top = document.querySelector('.profile-topbar strong');
@@ -1726,6 +2583,117 @@ function attachProfileAuth() {
   const me = document.querySelector('.me strong');
   if (me && handle) me.textContent = handle;
 }
+
+// ---------- Professional account dashboard ----------
+const PRO_MODE_KEY = 'glitchit.pro.mode';
+
+function readProMode() {
+  try { return localStorage.getItem(PRO_MODE_KEY) === '1'; } catch (e) { return false; }
+}
+function writeProMode(on) {
+  try { localStorage.setItem(PRO_MODE_KEY, on ? '1' : '0'); } catch (e) { /* ignore */ }
+}
+
+// Branded toast that stays on the page (the guest-gate variant redirects).
+function glitchToast(message) {
+  const tip = document.createElement('div');
+  tip.className = 'end-toast show';
+  tip.setAttribute('role', 'status');
+  tip.innerHTML = `<span class="end-toast-mark">${icon('⚡')}</span><span class="end-toast-text">${escapeHtml(message)}</span>`;
+  document.body.appendChild(tip);
+  setTimeout(() => tip.remove(), 2200);
+}
+
+// Professional account: settings toggle + dashboard sheet.
+function attachProfessional() {
+  const link = document.querySelector('.pro-dashboard');
+  const toggle = document.getElementById('pro-account-toggle');
+  const status = document.getElementById('pro-account-status');
+  const backdrop = document.getElementById('prodash-backdrop');
+  const sheet = document.getElementById('prodash-sheet');
+  const closeBtn = document.getElementById('prodash-close');
+
+  if (toggle) toggle.checked = readProMode();
+
+  toggle?.addEventListener('change', async () => {
+    const on = toggle.checked;
+    if (!on) {
+      writeProMode(false);
+      if (status) status.textContent = 'Switch to access creator earnings';
+      link?.classList.remove('prodash-unlocked');
+      return;
+    }
+    writeProMode(true);
+    if (status) status.textContent = 'Professional mode is on — dashboard unlocked';
+    link?.classList.add('prodash-unlocked');
+    glitchToast('Professional account switched on ⚡');
+  });
+
+  link?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!readProMode()) {
+      glitchToast('Switch to a professional account in Settings → Access first');
+      document.body.classList.add('settings-open');
+      return;
+    }
+    openProDashSheet();
+  });
+
+  closeBtn?.addEventListener('click', closeProDashSheet);
+  backdrop?.addEventListener('click', closeProDashSheet);
+
+  if (link && readProMode()) {
+    link.classList.add('prodash-unlocked');
+    if (status) status.textContent = 'Professional mode is on — dashboard unlocked';
+  }
+}
+
+function openProDashSheet() {
+  const backdrop = document.getElementById('prodash-backdrop');
+  const sheet = document.getElementById('prodash-sheet');
+  if (!backdrop || !sheet) return;
+  const user = window.GLITCHIT_USER;
+  const body = document.getElementById('prodash-body');
+  const stats = readProfileStats(user && !user.guest ? user.id : null);
+  body.innerHTML = proDashStatsHtml(stats);
+  backdrop.hidden = false;
+  sheet.hidden = false;
+}
+
+function closeProDashSheet() {
+  const backdrop = document.getElementById('prodash-backdrop');
+  const sheet = document.getElementById('prodash-sheet');
+  if (backdrop) backdrop.hidden = true;
+  if (sheet) sheet.hidden = true;
+}
+
+function proDashStatsHtml(stats) {
+  const qualified = stats.followers >= PRO_FOLLOWERS_MIN && stats.watchHours >= PRO_WATCH_HOURS_MIN && stats.views >= PRO_VIEWS_MIN;
+  const pct = (v, max) => Math.min(100, Math.round((Number(v) / max) * 100));
+  const row = (label, value, max, unit) => `
+    <div class="prodash-stat">
+      <div class="prodash-stat-head"><span>${label}</span><b>${fmtCount(value)}${unit}</b></div>
+      <div class="prodash-bar"><i style="width:${pct(value, max)}%"></i></div>
+      <em>Goal: ${fmtCount(max)}${unit}</em>
+    </div>`;
+  return `
+    <div class="prodash-hero ${qualified ? 'qualified' : ''}">
+      <span class="prodash-hero-mark" aria-hidden="true">${qualified ? '🏆' : '⚡'}</span>
+      <div><h3>${qualified ? 'You’re eligible to earn on GlitchIt' : 'Keep creating to unlock earnings'}</h3>
+      <p>${qualified ? 'All requirements met — monetization is unlocked.' : 'Reach 100K followers, 5,000 watch hours and 500K views to start earning from the app.'}</p></div>
+    </div>
+    <div class="prodash-stats">
+      ${row('Followers', stats.followers, PRO_FOLLOWERS_MIN, '')}
+      ${row('Watch hours', stats.watchHours, PRO_WATCH_HOURS_MIN, 'h')}
+      ${row('Views', stats.views, PRO_VIEWS_MIN, '')}
+    </div>
+    <div class="prodash-checklist">
+      <p class="${stats.followers >= PRO_FOLLOWERS_MIN ? 'met' : ''}"><i aria-hidden="true">${stats.followers >= PRO_FOLLOWERS_MIN ? '✓' : '○'}</i>100K followers <b>${fmtCount(stats.followers)}</b></p>
+      <p class="${stats.watchHours >= PRO_WATCH_HOURS_MIN ? 'met' : ''}"><i aria-hidden="true">${stats.watchHours >= PRO_WATCH_HOURS_MIN ? '✓' : '○'}</i>5,000 watch hours <b>${fmtCount(stats.watchHours)}h</b></p>
+      <p class="${stats.views >= PRO_VIEWS_MIN ? 'met' : ''}"><i aria-hidden="true">${stats.views >= PRO_VIEWS_MIN ? '✓' : '○'}</i>500K views <b>${fmtCount(stats.views)}</b></p>
+    </div>`;
+}
+
 
 // Check whether this device is signed in before showing any app page.
 async function boot() {

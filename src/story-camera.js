@@ -26,6 +26,8 @@
     countdown: $('cam-countdown'),
     sheet: $('cam-sheet'), sheetClose: $('cam-sheet-close'),
     setFlip: $('cam-set-flip'), setGrid: $('cam-set-grid'), setFlash: $('cam-set-flash'), setTimer: $('cam-set-timer'),
+    setReveal: $('cam-set-reveal'),
+    setClose: $('cam-set-close'),
     toast: $('cam-toast'), file: $('cam-file'),
   };
 
@@ -61,6 +63,8 @@
   let preview = null;  // { kind: 'image'|'video', url, blob?, poster?, canvas? }
   let curColor = '#ffffff';
   let recording = false;
+  let revealEffect = false; // "Shake to reveal" story effect (saved on the story record)
+  let closeFriendsOnly = false; // "Close friends only" story visibility (saved on the story record)
   let auth = null;
   let db = null;
   let user = null;
@@ -635,10 +639,13 @@
         }
       }
       const handle = (user.user_metadata && user.user_metadata.username) || user.email?.split('@')[0] || '';
-      const avatar = (user.user_metadata && user.user_metadata.avatar) || '';
+      // Prefer the picture chosen on the profile page (applies instantly),
+      // falling back to the account metadata.
+      let avatar = '';
+      try { avatar = localStorage.getItem('glitchit.avatar.v1') || ''; } catch (e) { /* ignore */ }
+      if (!avatar) avatar = (user.user_metadata && user.user_metadata.avatar) || '';
       const baseCaption = target === 'reel' ? 'Reel moment' : target === 'post' ? 'Post moment' : 'Story moment';
-      // GlitchIt Verified uploaders stamp ⚡ on their media rows. Payments
-      // (RevenueCat) are currently disabled, so uploads are never badged.
+      // Paid verification was removed — uploads are always unbadged now.
       const verified = false;
       const res = await db.saveMedia({
         type: kind,
@@ -649,6 +656,10 @@
         handle,
         avatar,
         verified,
+        // Story-only flags, mirrored to the media row so other users' shelves
+        // can replay the effect and honor close-friends-only visibility.
+        reveal: revealEffect,
+        closeFriends: closeFriendsOnly,
       });
       if (!res.ok) {
         const e = new Error(res.reason || 'save');
@@ -658,12 +669,23 @@
       }
       if (target === 'story') {
         try {
-          localStorage.setItem('glitchit.story.latest', JSON.stringify({
+          const record = {
             url: res.url,
             poster: kind === 'video' ? poster : res.url,
             kind,
             at: Date.now(),
-          }));
+            reveal: revealEffect,
+            closeFriends: closeFriendsOnly,
+          };
+          // Keep the newest as the shelf's "Your story" thumb, and accumulate
+          // every story into a per-user list so the viewer can play them in
+          // sequence (one ring, several stories, auto-advancing).
+          localStorage.setItem('glitchit.story.latest', JSON.stringify(record));
+          let mine = [];
+          try { mine = JSON.parse(localStorage.getItem('glitchit.story.mine') || '[]'); } catch (e) { mine = []; }
+          if (!Array.isArray(mine)) mine = [];
+          mine.unshift(record);
+          localStorage.setItem('glitchit.story.mine', JSON.stringify(mine.slice(0, 12)));
         } catch (e) { /* storage unavailable */ }
       }
       toast(target === 'reel' ? 'Reel shared ✦' : target === 'post' ? 'Post shared ✦' : 'Story shared ✦');
@@ -742,6 +764,10 @@
     els.setGrid.setAttribute('aria-checked', String(gridOn));
     els.setFlash.textContent = flash === 'off' ? 'Off' : flash === 'on' ? 'On' : 'Auto';
     els.setTimer.textContent = `${TIMERS[timerIdx]}s`;
+    els.setReveal.classList.toggle('on', revealEffect);
+    els.setReveal.setAttribute('aria-checked', String(revealEffect));
+    els.setClose.classList.toggle('on', closeFriendsOnly);
+    els.setClose.setAttribute('aria-checked', String(closeFriendsOnly));
   }
   els.settings.addEventListener('click', () => { els.sheet.hidden = false; syncSheet(); });
   els.sheet.addEventListener('click', (e) => { if (e.target === els.sheet) els.sheet.hidden = true; });
@@ -762,6 +788,14 @@
   });
   els.setTimer.addEventListener('click', () => {
     timerIdx = (timerIdx + 1) % TIMERS.length;
+    syncSheet();
+  });
+  els.setReveal.addEventListener('click', () => {
+    revealEffect = !revealEffect;
+    syncSheet();
+  });
+  els.setClose.addEventListener('click', () => {
+    closeFriendsOnly = !closeFriendsOnly;
     syncSheet();
   });
 

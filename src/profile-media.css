@@ -11,12 +11,6 @@
 @media (hover: none) { .profile-tile-delete { opacity: 1; } }
 .profile-tab-count { font-style: normal; font-size: 11px; font-weight: 600; color: #8e8e8e; margin-top: 3px; }
 
-/* GlitchIt Pro status row in the profile settings sheet */
-.settings-pro-group { margin-top: 10px; }
-.settings-pro-group .setting-icon { color: #d62976; }
-.settings-pro-group #pro-status { color: #8e8ea0; }
-.settings-pro-group .pro-active .setting-icon,
-.settings-pro-group .pro-active #pro-status { color: #22c55e; }
 
 /* ---------- Professional dashboard sheet ---------- */
 .prodash-backdrop {
@@ -64,34 +58,6 @@
   cursor: pointer;
 }
 .prodash-body { padding: 20px 18px 24px; }
-.prodash-locked { text-align: center; padding: 16px 8px 6px; }
-.prodash-lock-mark {
-  display: grid;
-  place-items: center;
-  width: 72px;
-  height: 72px;
-  margin: 0 auto 16px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #d62976, #4f5bd5);
-  color: #fff;
-  font-size: 36px;
-  box-shadow: 0 14px 38px rgba(214, 41, 118, .45);
-}
-.prodash-locked h3 { margin: 0 0 8px; font-size: 21px; }
-.prodash-locked p { margin: 0 auto 20px; max-width: 300px; color: #9c9cb0; line-height: 1.6; font-size: 14px; }
-.prodash-cta {
-  border: 0;
-  border-radius: 999px;
-  padding: 13px 26px;
-  background: linear-gradient(135deg, #d62976, #4f5bd5);
-  color: #fff;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 10px 26px rgba(214, 41, 118, .35);
-  transition: transform .15s ease, box-shadow .15s ease;
-}
-.prodash-cta:hover { transform: translateY(-1px); box-shadow: 0 14px 32px rgba(214, 41, 118, .45); }
 .prodash-hero {
   display: flex;
   align-items: center;

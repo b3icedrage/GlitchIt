@@ -23,6 +23,7 @@ const ENTRIES = [
   'activity.html',
   'shop.html',
   'profile.html',
+  'user.html',
   'auth.html',
   'camera.html',
   'src',

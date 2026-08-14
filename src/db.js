@@ -108,7 +108,7 @@ function getClient() {
 }
 
 // Convert a data URL (or pass through a Blob/File) into an uploadable Blob.
-function toBlob(value) {
+export function toBlob(value) {
   if (value instanceof Blob) return value;
   if (typeof value === 'string' && value.startsWith('data:')) {
     try {
@@ -129,19 +129,48 @@ function isUuid(value) {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
-// Insert a media row, tolerating a missing `verified` column. The app stamps
-// it for GlitchIt Verified uploaders so the ⚡ badge renders next to their
-// avatar everywhere the row appears, but the Supabase table may not have the
-// column created yet — on a column-not-found error the insert retries without
-// it, so posting never breaks while the schema catches up.
+// Insert a media row, tolerating columns that may not exist in the table yet
+// (`verified`, `reveal`, `close_friends`). On a column-not-found error the
+// insert retries without those optional columns, so posting never breaks while
+// the schema catches up — the app just skips the features they power.
 async function insertMediaRow(sb, row) {
+  const OPTIONAL_COLUMNS = ['verified', 'reveal', 'close_friends'];
   const { data, error } = await sb.from('media').insert(row).select('id').single();
   if (error && /PGRST204|could not find|does not exist|column/i.test(String(error.message || error))) {
     const stripped = { ...row };
-    delete stripped.verified;
+    OPTIONAL_COLUMNS.forEach((col) => delete stripped[col]);
     return await sb.from('media').insert(stripped).select('id').single();
   }
   return { data, error };
+}
+
+// Upload a profile-picture image and return its public URL. Uses the same
+// pipeline as media (Cloudinary when configured, else Supabase Storage under
+// avatars/) so the URL is small and shareable — never a giant data URL.
+export async function saveAvatar(blob) {
+  if (!dbAvailable()) return { ok: false, reason: 'config' };
+  if (!(blob instanceof Blob)) return { ok: false, reason: 'file' };
+  try {
+    const sb = await getClient();
+    if (!sb) return { ok: false, reason: 'network' };
+    if (cloudinaryConfigured()) {
+      const up = await uploadToCloudinary(blob, 'image');
+      if (!up.ok) return up;
+      return { ok: true, url: up.url };
+    }
+    const ext = (blob.type.split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '');
+    const path = `avatars/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error: upErr } = await sb.storage.from('glitchit-media').upload(path, blob, { upsert: false });
+    if (upErr) {
+      console.warn('GlitchIt: avatar upload failed', upErr);
+      return { ok: false, reason: /not found|no such bucket/i.test(String(upErr.message || upErr)) ? 'bucket' : 'upload', detail: String(upErr.message || upErr) };
+    }
+    const { data } = sb.storage.from('glitchit-media').getPublicUrl(path);
+    return { ok: true, url: data.publicUrl };
+  } catch (err) {
+    console.warn('GlitchIt: avatar upload threw', err);
+    return { ok: false, reason: 'error', detail: String(err && err.message || err) };
+  }
 }
 
 // ---------- media table (videos + images) ----------
@@ -150,7 +179,10 @@ export async function saveMedia(item) {
   try {
     const sb = await getClient();
     if (!sb) return { ok: false, reason: 'network' };
-    const kind = item.type === 'video' ? 'video' : (item.kind === 'story' ? 'story' : 'image');
+    // Stories are always stored with kind='story' (whether the media is an
+    // image or a video) so they surface on the story shelf — and never leak
+    // into the reels/video feeds — regardless of the underlying file type.
+    const kind = item.kind === 'story' ? 'story' : (item.type === 'video' ? 'video' : 'image');
     const owner = item.user || currentOwner;
     if (!owner) return { ok: false, reason: 'auth' };
     let url = item.preview || item.src || item.url || '';
@@ -196,10 +228,17 @@ export async function saveMedia(item) {
       likes: item.likes || 0,
       comments: item.comments || 0,
       shares: item.shares || 0,
-      // GlitchIt Verified: stamped when the uploader holds the Pro entitlement,
-      // so the ⚡ badge follows their posts and reels everywhere. Skipped
+      // Pass-through verified flag (⚡ badge on posts/reels). Kept as a plain
+      // display column — the paid verification system is gone. Skipped
       // gracefully if the column isn't in the media table yet.
       verified: item.verified ? true : false,
+      // Story flags (shake-to-reveal effect, close-friends-only visibility).
+      // Only written for stories; stripped gracefully when the columns don't
+      // exist yet so story posting never breaks while the schema catches up.
+      ...(item.kind === 'story' ? {
+        reveal: item.reveal ? true : false,
+        close_friends: item.closeFriends ? true : false,
+      } : {}),
     };
     const { data, error } = await insertMediaRow(sb, row);
     if (error) {
@@ -330,26 +369,6 @@ export async function countMedia(owner) {
   } catch (err) {
     console.warn('GlitchIt: media count failed', err);
     return 0;
-  }
-}
-
-// Stamp (or clear) the GlitchIt Verified flag on every media row a user has
-// posted, so the ⚡ badge appears on their older posts and reels too. Safe to
-// call when the `verified` column doesn't exist yet — it just no-ops.
-export async function updateMediaVerified(owner, verified = true) {
-  if (!owner) return { ok: false, reason: 'bad-owner' };
-  try {
-    const sb = await getClient();
-    if (!sb) return { ok: false, reason: 'network' };
-    const { error } = await sb.from('media').update({ verified: Boolean(verified) }).eq('user', owner);
-    if (error) {
-      console.warn('GlitchIt: updateMediaVerified failed (verified column exists?)', error);
-      return { ok: false, reason: 'column' };
-    }
-    return { ok: true };
-  } catch (err) {
-    console.warn('GlitchIt: updateMediaVerified threw', err);
-    return { ok: false, reason: 'error' };
   }
 }
 

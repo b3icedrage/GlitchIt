@@ -19,6 +19,9 @@ const zlib = require('node:zlib');
 const { readFile, stat } = require('node:fs/promises');
 const { join, normalize, extname, resolve, sep, basename } = require('node:path');
 
+// Account registry (lists every registered user via the Supabase Admin API).
+const accountsHandler = require('./api/accounts.js');
+
 const ROOT = resolve(__dirname);
 const PORT = Number(process.env.PORT || 4173);
 
@@ -470,13 +473,18 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Dynamic endpoints: AI chat (POST) and the music search proxy (GET).
+  // Dynamic endpoints: AI chat (POST), the music search proxy (GET), and the
+  // account registry (GET /api/accounts).
   if (req.method === 'POST' && new URL(req.url, 'http://glitchit.local').pathname === '/api/chat') {
     await handleChatRequest(req, res);
     return;
   }
   if (req.method === 'GET' && new URL(req.url, 'http://glitchit.local').pathname === '/api/music') {
     await handleMusicRequest(req, res);
+    return;
+  }
+  if (req.method === 'GET' && new URL(req.url, 'http://glitchit.local').pathname === '/api/accounts') {
+    await accountsHandler(req, res);
     return;
   }
 
