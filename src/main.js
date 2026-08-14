@@ -567,7 +567,12 @@ function srMediaTile(item, kind) {
   const src = kind === 'reels' ? (item.poster || item.url) : item.url;
   const play = kind === 'reels' ? '<span class="sr-count"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M7 2v5M12 2v5M17 2v5M2 12h20"/><path d="M10 15.5l5-3-5-3z"/></svg></span>' : '';
   const alt = escapeHtml(item.caption || item.title || (kind === 'reels' ? 'Glitch' : 'Post'));
-  return `<a class="sr-thumb" href="${href}" aria-label="${alt}"><img src="${escapeHtml(src)}" alt="${alt}" loading="lazy" decoding="async">${play}</a>`;
+  // Reel thumbnails carry the full video payload so the full-screen viewer
+  // (src/reels-viewer.js) can open at this video and swipe through the grid.
+  const reelAttrs = kind === 'reels'
+    ? ` data-sr-kind="reels" data-reel-id="${escapeHtml(item.id || '')}" data-reel-url="${escapeHtml(item.url || '')}" data-reel-poster="${escapeHtml(item.poster || '')}" data-reel-title="${escapeHtml(item.title || '')}" data-reel-caption="${escapeHtml(item.caption || '')}" data-reel-user="${escapeHtml(owner)}" data-reel-handle="${escapeHtml(displayUser(owner))}" data-reel-avatar="${escapeHtml(item.avatar || '')}" data-reel-likes="${escapeHtml(item.likes || 0)}" data-reel-comments="${escapeHtml(item.comments || 0)}" data-reel-shares="${escapeHtml(item.shares || 0)}" data-reel-verified="${item.verified ? '1' : ''}"`
+    : '';
+  return `<a class="sr-thumb"${reelAttrs} href="${href}" aria-label="${alt}"><img src="${escapeHtml(src)}" alt="${alt}" loading="lazy" decoding="async">${play}</a>`;
 }
 
 function srGridEmpty(kind, query) {
@@ -729,7 +734,7 @@ async function hydrateUserPage() {
       grid.innerHTML = `<p class="profile-empty">${isReel ? 'No reels yet.' : 'No posts yet.'}</p>`;
       return;
     }
-    grid.innerHTML = items.map((r) => profileTile(r, isReel)).join('');
+    grid.innerHTML = items.map((r) => profileTile(r, isReel, handle)).join('');
     // Outside viewers never see delete controls.
     grid.querySelectorAll('.profile-tile-delete').forEach((b) => b.remove());
   };
@@ -755,11 +760,16 @@ function profileEmpty(label) {
   return '<p class="profile-empty">No posts yet — share your first moment.</p>';
 }
 
-function profileTile(r, isReel) {
+function profileTile(r, isReel, handleOverride) {
   const src = isReel ? (r.poster || r.url) : r.url;
   const img = `<img src="${escapeHtml(src)}" alt="${escapeHtml(r.title || (isReel ? 'Reel' : 'Post'))}" loading="lazy">`;
   const play = isReel ? '<span class="profile-tile-play" aria-hidden="true">▶</span>' : '';
-  return `<div class="profile-tile" data-media-id="${r.id}">${img}${play}<button type="button" class="profile-tile-delete" data-delete-id="${r.id}" aria-label="Delete ${escapeHtml(r.title || 'this post')}">🗑</button></div>`;
+  // Reel tiles carry the full video payload so the full-screen viewer
+  // (src/reels-viewer.js) can open at this video and swipe through the grid.
+  const reelAttrs = isReel
+    ? ` data-reel="true" data-reel-id="${escapeHtml(r.id || '')}" data-reel-url="${escapeHtml(r.url || '')}" data-reel-poster="${escapeHtml(r.poster || '')}" data-reel-title="${escapeHtml(r.title || '')}" data-reel-caption="${escapeHtml(r.caption || '')}" data-reel-user="${escapeHtml(r.user || '')}" data-reel-handle="${escapeHtml(handleOverride || displayUser(r.user) || String(r.user || '').slice(0, 8))}" data-reel-avatar="${escapeHtml(r.avatar || '')}" data-reel-likes="${escapeHtml(r.likes || 0)}" data-reel-comments="${escapeHtml(r.comments || 0)}" data-reel-shares="${escapeHtml(r.shares || 0)}" data-reel-verified="${r.verified ? '1' : ''}"`
+    : '';
+  return `<div class="profile-tile"${reelAttrs} data-media-id="${r.id}">${img}${play}<button type="button" class="profile-tile-delete" data-delete-id="${r.id}" aria-label="Delete ${escapeHtml(r.title || 'this post')}">🗑</button></div>`;
 }
 
 function updateProfileCounts() {

@@ -41,3 +41,182 @@
   .reel-disc { width: 36px; height: 36px; }
   .reel-disc i { width: 30px; height: 30px; font-size: 12px; }
 }
+
+/* ============ FULL-SCREEN GLITCH VIEWER ============ */
+/* Tapping a reel anywhere opens this immersive player (see src/reels-viewer.js). */
+/* (Guest-gated actions live in src/main.js's GUEST_GATED_SELECTOR.) */
+body.reel-viewer-open { overflow: hidden; }
+body.reel-viewer-open main { overflow: hidden; }
+.reel-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: #000;
+  color: #fff;
+  animation: rvFade .18s ease;
+}
+@keyframes rvFade { from { opacity: 0; } to { opacity: 1; } }
+.rv-head {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: max(14px, env(safe-area-inset-top)) 14px 10px;
+  background: linear-gradient(rgba(0,0,0,.62), transparent);
+}
+.rv-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+.rv-logo { color: #d62976; font-size: 20px; }
+.rv-count {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.14);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+.rv-head-actions { display: inline-flex; align-items: center; gap: 10px; }
+.rv-sound, .rv-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.14);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+.rv-sound:hover, .rv-close:hover { background: rgba(255,255,255,.26); transform: scale(1.06); }
+.rv-close { font-size: 17px; }
+.rv-track {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+.rv-track::-webkit-scrollbar { display: none; }
+.rv-slide {
+  position: relative;
+  height: 100%;
+  min-height: 100%;
+  scroll-snap-align: start;
+  background: #000;
+  overflow: hidden;
+}
+.rv-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+.rv-scrim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 12%, transparent 42%, rgba(0,0,0,.26) 78%, rgba(0,0,0,.6) 100%);
+  pointer-events: none;
+}
+.rv-bottom {
+  position: absolute;
+  left: 0;
+  right: 86px;
+  bottom: 74px;
+  z-index: 2;
+  display: grid;
+  gap: 10px;
+  padding: 0 14px;
+}
+.rv-audio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255,255,255,.9);
+}
+.rv-audio .reel-disc { width: 30px; height: 30px; }
+.rv-audio .reel-disc i { width: 25px; height: 25px; font-size: 11px; }
+.rv-audio-label {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rv-rail { bottom: 178px; }
+.rv-disc-sm { width: 34px; height: 34px; }
+.rv-disc-sm i { width: 29px; height: 29px; font-size: 11px; }
+.rv-reply {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 15px;
+  border: 1px solid rgba(255,255,255,.24);
+  border-radius: 999px;
+  background: rgba(0,0,0,.38);
+  backdrop-filter: blur(8px);
+  color: rgba(255,255,255,.82);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.rv-reply:hover { background: rgba(0,0,0,.55); }
+.rv-reply-emojis { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+.rv-reply-emojis i { font-size: 14px; font-style: normal; }
+.rv-reply-emojis b { color: #ff3040; font-size: 14px; }
+.rv-self .rv-follow { display: none; }
+.rv-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.13);
+  backdrop-filter: blur(8px);
+  color: rgba(255,255,255,.85);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  pointer-events: none;
+  animation: rvHint 3.4s ease forwards;
+}
+@keyframes rvHint { 0%, 72% { opacity: 1; } 100% { opacity: 0; } }
+.reel-viewer .home-indicator {
+  position: relative;
+  width: 120px;
+  height: 5px;
+  margin: 6px auto 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.28);
+}
+@media (max-width: 760px) {
+  .rv-bottom { right: 66px; bottom: 88px; }
+  .rv-rail { bottom: 168px; right: 6px; }
+  .rv-hint { bottom: 104px; }
+}

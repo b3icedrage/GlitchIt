@@ -39,6 +39,7 @@ const SHELL_URLS = [
   './src/social.css',
   './src/main.js?v=33',
   './src/social-wire.js?v=4',
+  './src/reels-viewer.js',
   './src/edit-profile.js',
   './src/edit-profile.css',
   './src/story-features.js',
