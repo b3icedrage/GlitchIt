@@ -51,17 +51,28 @@
     // don't redeclare.
     storyTrays = [];
     const pushTray = (tray) => { storyTrays.push(tray); return storyTrays.length - 1; };
+    // A tray counts as "seen" once every story in it has been watched (the
+    // viewer records each story through storyViewRecord as it plays). Own
+    // trays never show a seen state.
+    const traySeen = (items) => items.length > 0
+      && !items.some((s) => s.own)
+      && items.every((s) => {
+        if (!s.key) return false;
+        const rec = storyViewRecord(s.key);
+        return rec && rec.count > 0;
+      });
     const trayRing = (trayIndex, name, items, avatarSrc) => {
+      const seen = traySeen(items);
       const link = document.createElement('a');
-      link.className = 'story';
+      link.className = 'story' + (seen ? ' seen' : '');
       link.href = '#';
       link.dataset.storyDynamic = 'true';
       link.dataset.storyTray = String(trayIndex);
       link.setAttribute('aria-label', `Open ${name}'s stories`);
       // The ring shows the creator's profile picture when we know it, with
-      // the story media as the fallback.
+      // the story media as the fallback. Watched trays get a gray ring.
       const thumb = avatarSrc || items[0].image;
-      link.innerHTML = `<span class="story-ring live"><img src="${escapeHtml(thumb)}" alt="${escapeHtml(name)} avatar">${items.length > 1 ? `<i class="story-count" aria-hidden="true">${items.length}</i>` : ''}</span><span>${escapeHtml(name)}</span>`;
+      link.innerHTML = `<span class="story-ring${seen ? ' seen' : ''} live"><img src="${escapeHtml(thumb)}" alt="${escapeHtml(name)} avatar">${items.length > 1 ? `<i class="story-count" aria-hidden="true">${items.length}</i>` : ''}</span><span>${escapeHtml(name)}</span>`;
       return link;
     };
 
@@ -242,6 +253,19 @@
   window.hydrateStoryShelf = hydrateStoryShelf;
   window.hydrateHighlights = hydrateHighlights;
   window.attachCloseFriendsSheet = attachCloseFriendsSheet;
+
+  // Refresh the shelf the moment the story viewer closes so trays that were
+  // just watched flip to their gray "seen" rings. The transition guard
+  // (viewerWasOpen) stops the re-hydration's own DOM changes from looping.
+  let viewerWasOpen = false;
+  const viewerWatch = new MutationObserver(() => {
+    const open = Boolean(document.getElementById('story-viewer'));
+    if (viewerWasOpen && !open && (document.body.dataset.page || 'home') === 'home') {
+      hydrateStoryShelf();
+    }
+    viewerWasOpen = open;
+  });
+  viewerWatch.observe(document.body, { childList: true, subtree: true });
 
   // Wire the upgraded behavior on the pages that need it (runPage in main.js
   // may already have run by the time this script loads, so re-hydrate here).

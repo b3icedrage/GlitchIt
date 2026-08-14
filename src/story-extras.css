@@ -218,6 +218,13 @@
 .highlight { position: relative; }
 .highlight:hover span { border-color: #d62976; }
 
+/* ---------- Story "seen" state (watched trays go gray) ---------- */
+.story-ring.seen { background: #a8a8a8; }
+.story.seen > span:last-child { color: #8f8f8f; }
+.story.seen .story-ring img { opacity: .85; }
+.story.seen .story-count { background: rgba(0, 0, 0, .55); }
+.story.seen:hover .story-ring { box-shadow: 0 10px 24px rgba(0, 0, 0, .28); }
+
 @media (prefers-reduced-motion: reduce) {
   .sv-react-tray, .sv-name-card, .cf-sheet, .cf-sheet-backdrop { animation: none !important; transition: none !important; }
 }

@@ -47,6 +47,12 @@
         event.stopPropagation();
         showGuestGate('Sign in to like, comment, follow, share & post');
       }
+      // Direct taps on the rail like button get the heart-burst feedback too
+      // (social-wire.js has already handled the actual toggle by this point).
+      if (!isGuest() && target.closest('.reel-like')) {
+        const slide = target.closest('.rv-slide');
+        if (slide) burstHeart(slide);
+      }
       return;
     }
 
@@ -230,7 +236,7 @@
     root.dataset.owner = v.owner || '';
     root.dataset.mediaKey = key;
     root.innerHTML = `
-      <video class="rv-video" src="${escapeHtml(v.url)}" poster="${escapeHtml(v.poster || '')}" muted loop playsinline preload="metadata" aria-label="${escapeHtml(v.title || 'Glitch')}"></video>
+      <video class="rv-video" src="${escapeHtml(v.url)}" poster="${escapeHtml(v.poster || '')}" muted playsinline preload="metadata" aria-label="${escapeHtml(v.title || 'Glitch')}"></video>
       <div class="rv-scrim" aria-hidden="true"></div>
       <div class="rv-bottom">
         <div class="reel-creator rv-creator">
@@ -252,15 +258,66 @@
     const video = root.querySelector('video');
     video.muted = !soundOn;
     video.dataset.playing = 'false';
-    // Tap the media itself to pause/resume (rail + reply controls stay their own).
+    // When a video finishes, advance to the next slide instead of looping;
+    // the last slide loops in place so the feed never goes quiet.
+    video.addEventListener('ended', () => {
+      video.dataset.playing = 'false';
+      if (!viewer) return;
+      if (slides.length > 1 && currentIndex < slides.length - 1) {
+        go(currentIndex + 1);
+      } else {
+        try { video.currentTime = 0; } catch (err) { /* ignore */ }
+        playVideo(video);
+      }
+    });
+    // Tap to pause/resume; double-tap to like (with a heart burst). The
+    // 300ms window delays the pause so the second tap never toggles it off.
+    let lastTapAt = 0;
+    let tapTimer = null;
     root.addEventListener('click', (e) => {
       if (e.target.closest('button, a')) return;
-      const playing = video.dataset.playing === 'true';
-      if (playing) pauseVideo(video);
-      else playVideo(video);
+      const now = Date.now();
+      if (now - lastTapAt < 300) {
+        if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+        lastTapAt = 0;
+        likeSlide(root);
+        return;
+      }
+      lastTapAt = now;
+      tapTimer = setTimeout(() => {
+        tapTimer = null;
+        const playing = video.dataset.playing === 'true';
+        if (playing) pauseVideo(video);
+        else playVideo(video);
+      }, 300);
     });
 
     return { root, video, key };
+  }
+
+  // Like the slide by clicking its real rail button, so every existing
+  // handler (social-wire's toggle + count sync, main.js's guest gate) keeps
+  // working exactly as if the user tapped the heart. Guests get the gate.
+  function likeSlide(root) {
+    const btn = root.querySelector('.reel-like');
+    if (!btn) return;
+    if (isGuest()) {
+      showGuestGate('Sign in to like');
+      return;
+    }
+    btn.click();
+    burstHeart(root);
+  }
+
+  // A big heart pops over the center of the slide and fades out.
+  function burstHeart(root) {
+    if (root.querySelector('.rv-heart-burst')) return;
+    const heart = document.createElement('span');
+    heart.className = 'rv-heart-burst';
+    heart.textContent = '♥';
+    heart.setAttribute('aria-hidden', 'true');
+    root.appendChild(heart);
+    heart.addEventListener('animationend', () => heart.remove());
   }
 
   function playVideo(video) {
