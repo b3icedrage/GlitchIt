@@ -3,6 +3,7 @@
   "version": 2,
   "cleanUrls": false,
   "trailingSlash": false,
+  "outputDirectory": "dist",
   "headers": [
     {
       "source": "/sw.js",
