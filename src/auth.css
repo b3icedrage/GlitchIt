@@ -292,6 +292,120 @@
 .auth-form.auth-swap { animation: authSwap 0.35s ease both; }
 .auth-error:not([hidden]) { animation: authShake 0.4s ease; }
 
+/* ---------- Signup step 2: profile setup ---------- */
+.auth-step-title { text-align: left; margin: 2px 0 16px; }
+.auth-step-title .eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #d62976;
+}
+.auth-step-title h2 { font-size: 21px; margin: 5px 0 4px; color: #262626; }
+:root[data-theme='dark'] .auth-step-title h2 { color: #f6f3ff; }
+.auth-step-title p { margin: 0; font-size: 13px; color: #8e8e8e; line-height: 1.5; }
+
+.auth-avatar { display: grid; justify-items: center; gap: 9px; margin: 0 0 6px; }
+.auth-avatar-img {
+  width: 94px;
+  height: 94px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #fff;
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  box-shadow: 0 8px 20px rgba(214, 41, 118, 0.3);
+  animation: authPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+:root[data-theme='dark'] .auth-avatar-img { border-color: #262626; }
+.auth-avatar-img[hidden] { display: none; }
+.auth-avatar-btn {
+  border: 0;
+  background: transparent;
+  color: #0095f6;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 8px;
+}
+.auth-avatar-btn:hover { text-decoration: underline; }
+.auth-avatar-hint { margin: 0 0 12px; font-size: 11px; color: #8e8e8e; }
+
+.auth-interests { text-align: left; margin: 0 0 14px; }
+.auth-interests > label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8e8e8e;
+  margin: 0 0 8px 2px;
+}
+.auth-chip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.auth-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid #dbdbdb;
+  border-radius: 10px;
+  background: #fafafa;
+  color: #262626;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+:root[data-theme='dark'] .auth-chip { border-color: #262626; background: #121212; color: #f6f3ff; }
+.auth-chip:hover { border-color: #d62976; transform: translateY(-1px); }
+.auth-chip:active { transform: scale(0.97); }
+.auth-chip.selected {
+  border-color: #d62976;
+  background: rgba(214, 41, 118, 0.1);
+  box-shadow: inset 0 0 0 1px #d62976;
+}
+.auth-chip .chip-check {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 800;
+  color: #d62976;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.auth-chip.selected .chip-check { opacity: 1; transform: scale(1); }
+
+.auth-back-row { margin-top: 12px; }
+.auth-back {
+  border: 0;
+  background: transparent;
+  color: #8e8e8e;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 6px;
+  transition: color 0.2s ease;
+}
+.auth-back:hover { color: #262626; }
+:root[data-theme='dark'] .auth-back:hover { color: #f6f3ff; }
+
+/* Step-2 entrance */
+#auth-onboarding:not([hidden]) .auth-step-title,
+#auth-onboarding:not([hidden]) .auth-avatar,
+#auth-onboarding:not([hidden]) .auth-avatar-hint,
+#auth-onboarding:not([hidden]) .auth-field,
+#auth-onboarding:not([hidden]) .auth-interests,
+#auth-onboarding:not([hidden]) .auth-error,
+#auth-onboarding:not([hidden]) .auth-submit,
+#auth-onboarding:not([hidden]) .auth-back-row {
+  animation: authRise 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+#auth-onboarding:not([hidden]) .auth-step-title { animation-delay: 0.04s; }
+#auth-onboarding:not([hidden]) .auth-avatar { animation-delay: 0.1s; }
+#auth-onboarding:not([hidden]) .auth-avatar-hint { animation-delay: 0.14s; }
+#auth-onboarding:not([hidden]) .auth-field { animation-delay: 0.18s; }
+#auth-onboarding:not([hidden]) .auth-interests { animation-delay: 0.24s; }
+#auth-onboarding:not([hidden]) .auth-submit { animation-delay: 0.32s; }
+#auth-onboarding:not([hidden]) .auth-back-row { animation-delay: 0.38s; }
+
 @media (prefers-reduced-motion: reduce) {
   .auth-page::before,
   .auth-page::after,
@@ -305,7 +419,16 @@
   .auth-tab.active,
   .auth-form.auth-swap,
   .auth-error:not([hidden]),
-  .auth-submit::after {
+  .auth-submit::after,
+  .auth-avatar-img,
+  #auth-onboarding:not([hidden]) .auth-step-title,
+  #auth-onboarding:not([hidden]) .auth-avatar,
+  #auth-onboarding:not([hidden]) .auth-avatar-hint,
+  #auth-onboarding:not([hidden]) .auth-field,
+  #auth-onboarding:not([hidden]) .auth-interests,
+  #auth-onboarding:not([hidden]) .auth-error,
+  #auth-onboarding:not([hidden]) .auth-submit,
+  #auth-onboarding:not([hidden]) .auth-back-row {
     animation: none !important;
   }
 }

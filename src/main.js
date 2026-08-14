@@ -538,7 +538,7 @@ function returnToPage() {
 // ---------- Supabase database (optional — see src/config.js) ----------
 // Loaded lazily so the app works identically when no keys are configured.
 let DB = null;
-import('./db.js?v=5').then((mod) => { DB = mod; }).catch((err) => { DB = null; if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'db-load' }); });
+import('./db.js?v=6').then((mod) => { DB = mod; }).catch((err) => { DB = null; if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'db-load' }); });
 
 // ---------- Shared state (persisted across pages) ----------
 const UPLOADS_KEY = 'glitchit.uploads.v1';
@@ -1521,16 +1521,89 @@ function attachGuestGuards() {
   }, true);
 }
 
+// Resize an image File to a small JPEG data URL (profile avatar).
+function resizeImage(file, size) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, size / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
+    img.src = url;
+  });
+}
+
+// Convert a data URL back into a Blob (used for the Cloudinary avatar upload).
+function dataUrlToBlob(dataUrl) {
+  try {
+    const [head, body] = dataUrl.split(',');
+    const mime = (head.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+    const bin = atob(body);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  } catch (err) { return null; }
+}
+
+// Sign-in / sign-up succeeded — persist the user and go to the app.
+function finishAuth(user, auth) {
+  try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
+  window.GLITCHIT_USER = user;
+  auth.setHandle(auth.userHandle(user));
+  import('./db.js?v=6').then((db) => db.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) })).catch(() => {});
+  location.href = returnToPage() || 'index.html';
+}
+
 // Guests may browse read-only, but every account action (follow, like,
 // comment, share, post, messages, profile, create, shop) requires sign-in.
+// Signup is a two-step flow: email + password first, then a profile setup
+// step (username, profile picture, and feed interests) before the account is
+// created — everything ships to Supabase in one user_metadata payload.
 function attachAuthPage(auth) {
   const form = document.getElementById('auth-form');
   if (!form || !auth) return;
   const tabs = [...document.querySelectorAll('.auth-tab')];
-  const usernameField = document.getElementById('auth-username-field');
+  const step1 = document.getElementById('auth-step-1');
+  const onboarding = document.getElementById('auth-onboarding');
   const errorEl = document.getElementById('auth-error');
+  const onboardingError = document.getElementById('auth-onboarding-error');
   const submit = document.getElementById('auth-submit');
+  const finish = document.getElementById('auth-finish');
+  const backBtn = document.getElementById('auth-back');
+  const guestRow = document.querySelector('.auth-guest');
+  const usernameInput = document.getElementById('auth-username');
+  const avatarBtn = document.getElementById('auth-avatar-btn');
+  const avatarInput = document.getElementById('auth-avatar-input');
+  const avatarPreview = document.getElementById('auth-avatar-preview');
+  const chips = [...document.querySelectorAll('.auth-chip')];
+
   let mode = 'login';
+  let pendingEmail = '';
+  let pendingPassword = '';
+  let pendingAvatar = '';
+  const selectedInterests = new Set();
+
+  const showError = (el, msg) => { if (el) { el.textContent = msg; el.hidden = false; } };
+  const hideErrors = () => { if (errorEl) errorEl.hidden = true; if (onboardingError) onboardingError.hidden = true; };
+
+  const setStep = (step) => {
+    if (!step1 || !onboarding) return;
+    step1.hidden = step === 2;
+    onboarding.hidden = step === 1;
+    if (guestRow) guestRow.hidden = step === 2;
+    if (step === 2 && usernameInput && !usernameInput.value) {
+      usernameInput.value = (pendingEmail.split('@')[0] || '').replace(/[^a-z0-9._-]/gi, '').slice(0, 20);
+    }
+    hideErrors();
+  };
+
   const setMode = (m) => {
     mode = m;
     tabs.forEach((t) => {
@@ -1538,41 +1611,91 @@ function attachAuthPage(auth) {
       t.classList.toggle('active', on);
       t.setAttribute('aria-selected', on ? 'true' : 'false');
     });
-    if (usernameField) usernameField.hidden = m !== 'signup';
     if (submit) submit.textContent = m === 'signup' ? 'Sign up' : 'Log in';
-    if (errorEl) errorEl.hidden = true;
+    setStep(1);
   };
   tabs.forEach((t) => t.addEventListener('click', () => setMode(t.dataset.authMode)));
-  document.getElementById('auth-toggle-password')?.addEventListener('click', (e) => {
-    const input = document.getElementById('auth-password');
-    const show = input.type === 'password';
-    input.type = show ? 'text' : 'password';
-    e.currentTarget.textContent = show ? '\U0001F647' : '\U0001F441';
-    e.currentTarget.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+
+  // Profile picture: resize locally, preview instantly, then push a durable
+  // CDN copy to Cloudinary when configured (the data URL stays as fallback).
+  avatarBtn?.addEventListener('click', () => avatarInput?.click());
+  avatarInput?.addEventListener('change', async () => {
+    const file = avatarInput.files && avatarInput.files[0];
+    if (!file || !/^image\//.test(file.type)) return;
+    try {
+      const dataUrl = await resizeImage(file, 256);
+      pendingAvatar = dataUrl;
+      if (avatarPreview) { avatarPreview.src = dataUrl; avatarPreview.hidden = false; }
+      try {
+        const db = await import('./db.js?v=6');
+        const up = await db.uploadToCloudinary(dataUrlToBlob(dataUrl), 'avatar');
+        if (up && up.ok) {
+          pendingAvatar = up.url;
+          if (avatarPreview) avatarPreview.src = up.url;
+        }
+      } catch (err) { /* keep the local data URL */ }
+    } catch (err) { /* unreadable image — ignore */ }
   });
+
+  // Interest chips: tap to toggle what the user wants in their feed.
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const key = chip.dataset.interest;
+      if (!key) return;
+      if (selectedInterests.has(key)) {
+        selectedInterests.delete(key);
+        chip.classList.remove('selected');
+        chip.setAttribute('aria-pressed', 'false');
+      } else {
+        selectedInterests.add(key);
+        chip.classList.add('selected');
+        chip.setAttribute('aria-pressed', 'true');
+      }
+    });
+  });
+
+  backBtn?.addEventListener('click', () => setStep(1));
   document.getElementById('auth-guest')?.addEventListener('click', () => {
     try { localStorage.setItem(GUEST_KEY, '1'); } catch (err) { /* storage unavailable */ }
     location.href = returnToPage() || 'index.html';
   });
-  const showError = (msg) => { if (errorEl) { errorEl.textContent = msg; errorEl.hidden = false; } };
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (errorEl) errorEl.hidden = true;
+    hideErrors();
     const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
-    const username = (document.getElementById('auth-username')?.value || '').trim();
-    if (!email || !password) { showError('Enter your email and password.'); return; }
-    if (submit) { submit.disabled = true; submit.textContent = 'Please wait\u2026'; }
-    const res = mode === 'signup'
-      ? await auth.signUp(email, password, username)
-      : await auth.signIn(email, password);
-    if (submit) { submit.disabled = false; submit.textContent = mode === 'signup' ? 'Sign up' : 'Log in'; }
-    if (!res.ok) { showError(res.error || 'Something went wrong.'); return; }
-    try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
-    window.GLITCHIT_USER = res.user;
-    auth.setHandle(auth.userHandle(res.user));
-    import('./db.js?v=5').then((db) => db.setCurrentUser?.({ id: res.user.id, username: auth.userHandle(res.user) })).catch(() => {});
-    location.href = returnToPage() || 'index.html';
+
+    if (mode !== 'signup') {
+      if (!email || !password) { showError(errorEl, 'Enter your email and password.'); return; }
+      if (submit) { submit.disabled = true; submit.textContent = 'Please wait…'; }
+      const res = await auth.signIn(email, password);
+      if (submit) { submit.disabled = false; submit.textContent = 'Log in'; }
+      if (!res.ok) { showError(errorEl, res.error || 'Something went wrong.'); return; }
+      finishAuth(res.user, auth);
+      return;
+    }
+
+    if (onboarding && !onboarding.hidden) {
+      // Step 2 — create the account with the complete profile.
+      const username = (usernameInput?.value || '').trim();
+      if (!username) { showError(onboardingError, 'Choose a username.'); return; }
+      if (finish) { finish.disabled = true; finish.textContent = 'Creating account…'; }
+      const res = await auth.signUp(email, password, username, {
+        avatarUrl: pendingAvatar || '',
+        interests: [...selectedInterests],
+      });
+      if (finish) { finish.disabled = false; finish.textContent = 'Create account'; }
+      if (!res.ok) { showError(onboardingError, res.error || 'Something went wrong.'); return; }
+      finishAuth(res.user, auth);
+      return;
+    }
+
+    // Step 1 (signup) — collect credentials, then move to profile setup.
+    if (!email || !password) { showError(errorEl, 'Enter your email and password.'); return; }
+    pendingEmail = email;
+    pendingPassword = password;
+    setStep(2);
   });
 }
 
@@ -1608,13 +1731,13 @@ function attachProfileAuth() {
 async function boot() {
   const isAuthPage = page === 'auth';
   let auth = null;
-  try { auth = await import('./auth.js?v=3'); } catch (err) { auth = null; }
+  try { auth = await import('./auth.js?v=4'); } catch (err) { auth = null; }
   window.GLITCHIT_AUTH = auth;
   let guest = false;
   try { guest = localStorage.getItem(GUEST_KEY) === '1'; } catch (err) { /* ignore */ }
   const dbReady = async () => {
     if (DB) return DB;
-    try { return await import('./db.js?v=5'); } catch (err) { return null; }
+    try { return await import('./db.js?v=6'); } catch (err) { return null; }
   };
   if (auth && auth.authAvailable()) {
     if (isAuthPage) {

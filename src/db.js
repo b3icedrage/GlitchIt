@@ -58,7 +58,8 @@ function cloudinaryConfigured() {
 
 // Upload a Blob straight to Cloudinary and return its public CDN URL.
 // Free-tier limits: 100 MB per file (unsigned uploads), 25 GB total.
-async function uploadToCloudinary(blob, kind) {
+// Exported so the signup onboarding step can reuse it for profile photos.
+export async function uploadToCloudinary(blob, kind) {
   const resource = /^video\//i.test(blob.type) ? 'video' : /^image\//i.test(blob.type) ? 'image' : 'auto';
   const ext = (blob.type.split('/')[1] || (kind === 'video' ? 'webm' : 'jpg')).replace(/[^a-z0-9]/gi, '');
   const name = `glitchit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;

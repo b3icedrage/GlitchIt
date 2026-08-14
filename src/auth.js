@@ -104,13 +104,19 @@ function friendlyError(error) {
   return msg;
 }
 
-export async function signUp(email, password, username) {
+export async function signUp(email, password, username, profile) {
   const sb = await getClient();
   if (!sb) return { ok: false, error: notReadyReason() };
+  // The onboarding step (signup step 2) collects username, avatar, and feed
+  // interests; everything ships together in user_metadata so the profile is
+  // complete from the very first session (even when email confirmation is on).
+  const metadata = { username: username || email.split('@')[0] };
+  if (profile?.avatarUrl) metadata.avatar_url = profile.avatarUrl;
+  if (Array.isArray(profile?.interests) && profile.interests.length) metadata.interests = profile.interests;
   const { data, error } = await sb.auth.signUp({
     email,
     password,
-    options: { data: { username: username || email.split('@')[0] } },
+    options: { data: metadata },
   });
   if (error) return { ok: false, error: friendlyError(error) };
   if (data.user && !data.session) {
