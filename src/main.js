@@ -18,6 +18,25 @@
     } catch (err) { /* never let this block the app */ }
   }
 
+  // Warm the CDN connections the media feed uses (Mixkit video CDN, Cloudinary,
+  // Supabase storage) so the first reel/poster bytes arrive sooner.
+  try {
+    import('./config.js?v=6').then((cfg) => {
+      const origins = [
+        cfg.SUPABASE_URL ? new URL(cfg.SUPABASE_URL).origin : '',
+        cfg.CLOUDINARY_CLOUD_NAME ? 'https://res.cloudinary.com' : '',
+        'https://assets.mixkit.co',
+      ].filter(Boolean);
+      origins.forEach((href) => {
+        if (document.querySelector(`link[rel="preconnect"][href="${href}"]`)) return;
+        const link = document.createElement('link');
+        link.rel = 'preconnect';
+        link.href = href;
+        document.head.appendChild(link);
+      });
+    }).catch(() => { /* no config, no preconnects */ });
+  } catch (e) { /* ignore */ }
+
   // Global error + promise-rejection capture. Works before Sentry finishes
   // loading; forwards to Sentry once it's ready.
   function reportError(err, extra) {
@@ -1072,7 +1091,7 @@ function glitchVideoCard(video, uploaded = false) {
   const avatarSrc = video.avatar || fallbackAvatar(video.user || profile.username);
   const key = mediaKeyOf(video);
   const liked = SOC ? SOC.isLiked(key) : false;
-  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}" data-owner="${video.owner || ''}" data-media-key="${escapeHtml(key)}"><video class="glitch-video" playsinline loop preload="metadata" poster="${video.poster || ''}" src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="${likes}" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action reel-comment" data-media-key="${escapeHtml(key)}" data-base-count="${comments}" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action reel-share" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><span class="verified-avatar-wrap"><img src="${avatarSrc}" alt="${video.user} avatar">${avatarBolt}</span><div class="reel-meta"><strong>${video.user}${nameBolt}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
+  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}" data-owner="${video.owner || ''}" data-media-key="${escapeHtml(key)}"><video class="glitch-video" playsinline loop preload="none" poster="${video.poster || ''}" data-src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="${likes}" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action reel-comment" data-media-key="${escapeHtml(key)}" data-base-count="${comments}" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action reel-share" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><span class="verified-avatar-wrap"><img src="${avatarSrc}" alt="${video.user} avatar">${avatarBolt}</span><div class="reel-meta"><strong>${video.user}${nameBolt}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
 }
 
 function renderUploads(type) {
@@ -2172,6 +2191,43 @@ function getGlitchVideos() {
   return [...document.querySelectorAll('.glitch-video')];
 }
 
+// ---------- Lazy video loading (faster Glitches feed) ----------
+// Cards render with a poster + data-src only, so the page never downloads
+// every reel at once. An IntersectionObserver attaches the real source just
+// before a reel scrolls into view (preload='auto'), and the active reel gets
+// bumped to auto preload so playback starts immediately.
+let glitchSrcObserver = null;
+
+function ensureGlitchSrc(video) {
+  if (!video || video.dataset.srcLoaded === 'true') return;
+  const src = video.dataset.src || '';
+  if (!src) return;
+  video.dataset.srcLoaded = 'true';
+  video.preload = 'auto';
+  video.src = src;
+  try { video.load(); } catch (e) { /* ignore */ }
+}
+
+function attachGlitchLazyLoad() {
+  if (!('IntersectionObserver' in window)) {
+    getGlitchVideos().forEach(ensureGlitchSrc);
+    return;
+  }
+  if (!glitchSrcObserver) {
+    glitchSrcObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) ensureGlitchSrc(entry.target);
+      });
+    }, { rootMargin: '900px 0px' });
+  }
+  getGlitchVideos().forEach((video) => {
+    if (!video.dataset.srcWatched) {
+      video.dataset.srcWatched = 'true';
+      glitchSrcObserver.observe(video);
+    }
+  });
+}
+
 function pauseGlitchVideo(video, byScroll = false) {
   const owner = video.closest('.video-card')?.dataset.owner;
   if (owner && video.dataset.lastTs) {
@@ -2186,6 +2242,8 @@ function pauseGlitchVideo(video, byScroll = false) {
 
 function playGlitchVideo(video) {
   if (video.dataset.userPaused === 'true') return;
+  // Make sure the lazy source is attached before we try to play.
+  ensureGlitchSrc(video);
   // Track engagement for the professional dashboard (views + watch hours).
   const owner = video.closest('.video-card')?.dataset.owner;
   if (owner && !video.dataset.viewCounted) { video.dataset.viewCounted = '1'; recordView(owner); }
@@ -2197,7 +2255,14 @@ function playGlitchVideo(video) {
   // restart it from the top instead of resuming where it left off.
   if (video.paused && video.dataset.scrollPaused === 'true') video.currentTime = 0;
   video.dataset.scrollPaused = '';
-  video.play().catch(() => pauseGlitchVideo(video));
+  const playPromise = video.play();
+  if (playPromise && playPromise.catch) {
+    playPromise.catch(() => {
+      // Not enough data buffered yet — start as soon as it can play.
+      const start = () => { video.removeEventListener('canplay', start); video.play().catch(() => {}); };
+      video.addEventListener('canplay', start);
+    });
+  }
   const card = video.closest('.video-card');
   card?.querySelector('.video-toggle')?.replaceChildren(document.createRange().createContextualFragment(icon('Ⅱ')));
 }
@@ -2248,6 +2313,7 @@ function attachGlitchAutoplay() {
     reel.dataset.scrollReady = 'true';
     reel.addEventListener('scroll', updateGlitchPlayback, { passive: true });
   }
+  attachGlitchLazyLoad();
   updateGlitchPlayback();
 }
 
@@ -2288,7 +2354,7 @@ function attachReelsActions() {
       const card = btn.closest('.video-card');
       const video = {
         id: btn.dataset.videoId || '',
-        src: card?.querySelector('video')?.getAttribute('src') || '',
+        src: card?.querySelector('video')?.getAttribute('src') || card?.querySelector('video')?.dataset.src || '',
         poster: card?.querySelector('video')?.getAttribute('poster') || '',
         title: card?.querySelector('video')?.getAttribute('aria-label') || '',
         caption: card?.querySelector('.reel-meta p')?.textContent || '',
@@ -2309,7 +2375,8 @@ function markSavedReels() {
   DB.loadSaved().then((saved) => {
     if (!saved.length) return;
     document.querySelectorAll('.reel-save').forEach((btn) => {
-      const src = btn.closest('.video-card')?.querySelector('video')?.getAttribute('src');
+      const vid = btn.closest('.video-card')?.querySelector('video');
+      const src = vid ? vid.getAttribute('src') || vid.dataset.src || '' : '';
       if (src && saved.some((s) => s.url === src)) {
         btn.classList.add('saved');
         btn.setAttribute('aria-label', `Unsave ${btn.closest('.video-card')?.querySelector('video')?.getAttribute('aria-label') || 'video'}`);

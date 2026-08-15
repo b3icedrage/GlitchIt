@@ -103,7 +103,7 @@
       const commentBtn = card.querySelector('.reel-comment');
       return {
         id: card.dataset.mediaKey || '',
-        url: vid ? vid.getAttribute('src') || '' : '',
+        url: vid ? vid.getAttribute('src') || vid.dataset.src || '' : '',
         poster: vid ? vid.getAttribute('poster') || '' : '',
         title: vid ? vid.getAttribute('aria-label') || '' : '',
         caption: card.querySelector('.reel-meta p')?.textContent?.trim() || '',
@@ -211,6 +211,13 @@
     if (countEl) {
       countEl.hidden = slides.length < 2;
       countEl.textContent = `1 / ${slides.length}`;
+    }
+    // The opening reel buffers immediately (auto preload) so the first frame
+    // appears as fast as possible instead of waiting on metadata.
+    const first = slides[startIndex];
+    if (first) {
+      first.video.preload = 'auto';
+      try { first.video.load(); } catch (e) { /* ignore */ }
     }
     go(startIndex, false);
   }
