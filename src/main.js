@@ -3345,6 +3345,10 @@ async function boot() {
       }
     }
   }
+  // Sync profile.avatar from the signed-in user (localStorage override +
+  // account metadata) before any page hydrates, so the story shelf, upload
+  // cards, notes and rails show the real profile picture — not the fallback.
+  applyCurrentUserProfile();
   runPage();
 }
 

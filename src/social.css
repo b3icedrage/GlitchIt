@@ -211,13 +211,19 @@
   text-decoration: none;
 }
 .activity-row:last-child { border-bottom: 0; }
-.activity-row .activity-avatar {
-  width: 44px;
-  height: 44px;
+.activity-row .activity-username {
   flex: 0 0 auto;
-  border-radius: 50%;
-  object-fit: cover;
-  background: #f2f2f2;
+  max-width: 170px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  box-shadow: 0 3px 10px rgba(214, 41, 118, .22);
 }
 .activity-row .activity-mark {
   display: grid;

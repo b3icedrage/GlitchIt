@@ -126,7 +126,10 @@
           <div class="editprofile-field editprofile-avatar-field">
             <label>Profile photo</label>
             <div class="editprofile-avatar-row">
-              <span class="editprofile-avatar" id="ep-avatar"><img src="${esc(avatarSrc)}" alt="Profile picture"></span>
+              <span class="editprofile-avatar-wrap">
+                <span class="editprofile-avatar" id="ep-avatar"><img src="${esc(avatarSrc)}" alt="Profile picture"></span>
+                <button type="button" class="editprofile-avatar-pen" id="ep-avatar-pen" aria-label="Change profile picture" title="Change profile picture">✎</button>
+              </span>
               <span class="editprofile-avatar-actions">
                 <button type="button" class="editprofile-avatar-btn" id="ep-avatar-change">Change photo</button>
                 <button type="button" class="editprofile-avatar-btn danger" id="ep-avatar-remove" hidden>Remove</button>
@@ -180,6 +183,7 @@
       if (window.applyCurrentUserProfile) window.applyCurrentUserProfile();
     };
     changeBtn?.addEventListener('click', () => avatarInput?.click());
+    wrap.querySelector('#ep-avatar-pen')?.addEventListener('click', () => avatarInput?.click());
     avatarInput?.addEventListener('change', async () => {
       const file = avatarInput.files && avatarInput.files[0];
       avatarInput.value = '';

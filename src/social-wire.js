@@ -302,7 +302,7 @@
       const mark = { like: '♥', comment: '◌', share: '↗', follow: '＋', post: 'ϟ' }[ev.type] || '♡';
       return `
         <div class="activity-row">
-          <img class="activity-avatar" src="${escapeHtml(ev.actorAvatar || fallbackAvatar(ev.actor))}" alt="${escapeHtml(ev.actor || 'you')}" loading="lazy">
+          <span class="activity-username" title="@${escapeHtml(ev.actor || 'you')}">@${escapeHtml(ev.actor || 'you')}</span>
           <span class="activity-mark" aria-hidden="true">${mark}</span>
           <div class="activity-body"><p>${activityText(ev)}</p><time>${SOC.timeAgo(ev.at)} ago</time></div>
         </div>`;
@@ -310,14 +310,13 @@
   }
 
   function activityText(ev) {
-    const actor = `<b>${escapeHtml(ev.actor || 'you')}</b>`;
     const media = ev.mediaType === 'reel' ? 'reel' : 'post';
-    if (ev.type === 'like') return `${actor} liked your ${media}.`;
-    if (ev.type === 'comment') return `${actor} commented on your ${media}.`;
-    if (ev.type === 'share') return `${actor} shared your ${media}.`;
-    if (ev.type === 'follow') return `${actor} started following you.`;
-    if (ev.type === 'post') return `${actor} posted a new ${media}.`;
-    return `${actor} ${escapeHtml(ev.text || 'interacted with your content')}.`;
+    if (ev.type === 'like') return `liked your ${media}.`;
+    if (ev.type === 'comment') return `commented on your ${media}.`;
+    if (ev.type === 'share') return `shared your ${media}.`;
+    if (ev.type === 'follow') return `started following you.`;
+    if (ev.type === 'post') return `posted a new ${media}.`;
+    return `${escapeHtml(ev.text || 'interacted with your content')}.`;
   }
 
   function pushActivity(type, mediaType) {

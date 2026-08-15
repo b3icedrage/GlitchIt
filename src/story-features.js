@@ -35,6 +35,21 @@
   }
 
   // ---------- Home shelf: creator trays + DB stories + close friends ----------
+  // Resolve the signed-in user's profile picture at hydration time (local
+  // override first, then account metadata, then the synced profile) so the
+  // "Your story" ring always shows the real picture — never the fallback.
+  function currentShelfAvatar() {
+    try {
+      const custom = localStorage.getItem('glitchit.avatar.v1') || '';
+      if (custom && /^(?:https?:\/\/|data:image\/|blob:)/i.test(custom)) return custom;
+    } catch (e) { /* ignore */ }
+    const u = window.GLITCHIT_USER;
+    const meta = (u && u.user_metadata) || {};
+    const identity = (u && u.identities && u.identities[0] && u.identities[0].identity_data) || {};
+    const found = [meta.avatar_url, meta.picture, meta.avatar, meta.image, identity.avatar_url, identity.picture]
+      .find((v) => typeof v === 'string' && /^(?:https?:\/\/|data:image\/|blob:)/i.test(v));
+    return found || profile.avatar || fallbackAvatar(profile.username || 'You');
+  }
   function hydrateStoryShelf() {
     const shelf = document.querySelector('.stories');
     if (!shelf) return;
@@ -42,7 +57,7 @@
 
     const mine = storyMine();
     const latest = mine[0] || storyLatest();
-    const avatar = profile.avatar || fallbackAvatar(profile.username || 'You');
+    const avatar = currentShelfAvatar();
     const user = window.GLITCHIT_USER;
     const myId = user && !user.guest ? user.id : '';
 
