@@ -27,6 +27,7 @@ const ENTRIES = [
   'user.html',
   'auth.html',
   'privacy.html',
+  'premium.html',
   'camera.html',
   'src',
   'sw.js',

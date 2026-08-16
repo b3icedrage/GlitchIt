@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="google-adsense-account" content="ca-pub-6010592277770538" />
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6010592277770538" crossorigin="anonymous"></script>
+    <title>GlitchIt Premium</title>
+    <link rel="stylesheet" href="src/styles.css?v=9" />
+    <link rel="stylesheet" href="src/story-extras.css?v=2" />
+    <link rel="stylesheet" href="src/bottombar.css?v=2" />
+    <style>
+      .prem-page { min-height: 100vh; padding: 40px 16px 64px; }
+      .prem-inner { width: min(920px, 100%); margin: 0 auto; }
+      .prem-hero { text-align: center; padding: 26px 0 10px; }
+      .prem-hero .eyebrow { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border: 1px solid rgba(162, 76, 255, .35); border-radius: 999px; background: rgba(162, 76, 255, .08); color: #a24cff; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+      .prem-hero h1 { margin: 16px 0 8px; font-size: 40px; line-height: 1.1; }
+      .prem-hero h1 span { background: linear-gradient(135deg, #ff2d78, #a24cff, #00d4ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .prem-hero p { max-width: 560px; margin: 0 auto; color: #626262; font-size: 16px; line-height: 1.6; }
+      .prem-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 34px 0 10px; }
+      .prem-card { padding: 22px; border: 1px solid #dbdbdb; border-radius: 20px; background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .05); }
+      .prem-card .prem-ic { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; font-size: 22px; background: linear-gradient(135deg, rgba(255, 45, 120, .12), rgba(162, 76, 255, .12)); }
+      .prem-card h3 { margin: 14px 0 6px; font-size: 17px; }
+      .prem-card p { margin: 0; color: #626262; font-size: 14px; line-height: 1.55; }
+      .prem-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 30px 0 8px; }
+      .prem-plan { position: relative; padding: 26px 24px; border: 1px solid #dbdbdb; border-radius: 22px; background: #fff; text-align: center; }
+      .prem-plan.popular { border-color: #a24cff; box-shadow: 0 18px 48px rgba(162, 76, 255, .16); }
+      .prem-plan .pop-tag { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 4px 12px; border-radius: 999px; background: linear-gradient(135deg, #ff2d78, #a24cff); color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+      .prem-plan h3 { margin: 4px 0 10px; font-size: 18px; }
+      .prem-plan .price { font-size: 34px; font-weight: 900; letter-spacing: -.02em; }
+      .prem-plan .price small { font-size: 14px; font-weight: 600; color: #8e8e8e; }
+      .prem-plan .save { display: inline-block; margin: 6px 0 14px; padding: 3px 10px; border-radius: 999px; background: rgba(0, 212, 255, .12); color: #0090b8; font-size: 12px; font-weight: 800; }
+      .prem-plan ul { margin: 0 0 20px; padding: 0; list-style: none; text-align: left; }
+      .prem-plan li { display: flex; gap: 8px; align-items: flex-start; padding: 5px 0; color: #3d3d3d; font-size: 14px; }
+      .prem-plan li i { font-style: normal; color: #ff2d78; font-weight: 900; }
+      .prem-cta { display: block; width: 100%; padding: 13px 18px; border: 0; border-radius: 999px; background: #171717; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; transition: transform .15s ease, background .15s ease; }
+      .prem-cta:hover { background: #000; transform: translateY(-1px); }
+      .prem-plan.popular .prem-cta { background: linear-gradient(135deg, #ff2d78, #a24cff); }
+      .prem-plan.popular .prem-cta:hover { filter: brightness(1.08); }
+      .prem-faq { margin: 30px 0 0; }
+      .prem-faq h2 { font-size: 22px; margin: 0 0 12px; }
+      .prem-faq details { padding: 14px 4px; border-bottom: 1px solid #dbdbdb; }
+      .prem-faq summary { cursor: pointer; font-weight: 800; font-size: 15px; }
+      .prem-faq p { margin: 8px 0 0; color: #626262; font-size: 14px; line-height: 1.6; }
+      .prem-back { display: inline-flex; align-items: center; gap: 6px; margin-top: 30px; padding: 10px 18px; border: 1px solid #dbdbdb; border-radius: 999px; background: #fff; color: #171717; font-weight: 800; text-decoration: none; }
+      .prem-back:hover { background: #fafafa; }
+      .prem-toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); z-index: 50; padding: 12px 18px; border-radius: 999px; background: #171717; color: #fff; font-size: 13px; font-weight: 700; opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
+      .prem-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      :root[data-theme="dark"] .prem-card, :root[data-theme="dark"] .prem-plan, :root[data-theme="dark"] .prem-back { border-color: #29253a; background: #141321; }
+      :root[data-theme="dark"] .prem-card p, :root[data-theme="dark"] .prem-plan li, :root[data-theme="dark"] .prem-faq p { color: #cfc9de; }
+      :root[data-theme="dark"] .prem-hero p, :root[data-theme="dark"] .prem-plan .price small { color: #a3a3a3; }
+      :root[data-theme="dark"] .prem-plan .save { background: rgba(0, 212, 255, .14); color: #4fd8ff; }
+      :root[data-theme="dark"] .prem-faq details { border-color: #29253a; }
+      @media (max-width: 760px) {
+        .prem-hero h1 { font-size: 30px; }
+        .prem-plan { padding: 22px 18px; }
+      }
+    </style>
+  </head>
+  <body data-page="premium">
+    <main class="prem-page">
+      <div class="prem-inner">
+        <section class="prem-hero">
+          <span class="eyebrow">ϟ GlitchIt Premium</span>
+          <h1>Level up your <span>Glitch</span></h1>
+          <p>The creators and viewers who get the most out of GlitchIt go Premium. Here's everything you unlock — and why it's worth it.</p>
+        </section>
+
+        <section class="prem-grid" aria-label="Premium benefits">
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">⚡</span><h3>Ad-free Glitch</h3><p>Sponsored slides disappear from your reels, home feed, and search — every scroll is pure content.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">✥</span><h3>Pro Badge</h3><p>A verified-style checkmark next to your name on your profile, reels, stories, comments, and DMs — instant credibility with followers.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">🚀</span><h3>Boosted Reach</h3><p>Your Glitches and posts get extra distribution in For You feeds — more views, more followers, more drops sold.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">📊</span><h3>Creator Insights</h3><p>See views, watch time, follower growth, and your best-performing posts at a glance — so you know exactly what's working.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">🎛</span><h3>Exclusive Glitch Effects</h3><p>A private pack of glitch filters, transitions, and overlays for the camera — your content stands out in the feed.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">🌙</span><h3>Extended Stories</h3><p>Stories live for 48 hours instead of 24, with unlimited saved highlights that never expire.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">⬇</span><h3>Reel Downloads</h3><p>Save any Glitch to your device to watch offline or share anywhere — no watermarks, no limits.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">💬</span><h3>Priority Support</h3><p>Skip the queue — your questions and complaints jump the line with real humans who actually resolve things.</p></article>
+        </section>
+
+        <section class="prem-plans" aria-label="Pricing">
+          <div class="prem-plan">
+            <h3>Monthly</h3>
+            <div class="price">$4.99<small>/mo</small></div>
+            <ul>
+              <li><i>✓</i>All Premium benefits</li>
+              <li><i>✓</i>Cancel anytime</li>
+              <li><i>✓</i>No ads, everywhere</li>
+            </ul>
+            <button type="button" class="prem-cta" data-plan="monthly">Get Premium</button>
+          </div>
+          <div class="prem-plan popular">
+            <span class="pop-tag">Best value</span>
+            <h3>Yearly</h3>
+            <div class="price">$39.99<small>/yr</small></div>
+            <span class="save">Save 33%</span>
+            <ul>
+              <li><i>✓</i>All Premium benefits</li>
+              <li><i>✓</i>2 months free vs monthly</li>
+              <li><i>✓</i>Priority support first</li>
+            </ul>
+            <button type="button" class="prem-cta" data-plan="yearly">Get Premium</button>
+          </div>
+        </section>
+
+        <section class="prem-faq" aria-label="Frequently asked questions">
+          <h2>Good questions</h2>
+          <details><summary>Can I cancel anytime?</summary><p>Yes. Cancel in one tap from Settings and you keep every benefit until the end of your billing period. No hoops, no hidden fees.</p></details>
+          <details><summary>Is it really ad-free?</summary><p>Yes. Premium members never see sponsored slides or banners anywhere in the app — your feed is 100% creator content.</p></details>
+          <details><summary>What does the Pro Badge actually do?</summary><p>It's a verified-style checkmark that appears next to your name everywhere. It builds trust — followers are far more likely to follow, like, and buy from accounts that look established.</p></details>
+          <details><summary>How does Boosted Reach work?</summary><p>Premium posts get a distribution boost in For You feeds, so your Glitches reach more people than organic posts — the fastest way to grow a following.</p></details>
+        </section>
+
+        <a class="prem-back" href="index.html">‹ Back to GlitchIt</a>
+      </div>
+      <div class="prem-toast" id="prem-toast" role="status"></div>
+    </main>
+    <script>
+      // Premium checkout is wired once a payment provider is connected.
+      // The buttons keep the intent visible (plan + frequency) for that step.
+      (function () {
+        var toast = document.getElementById('prem-toast');
+        var timer = null;
+        document.querySelectorAll('.prem-cta').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var plan = btn.dataset.plan === 'yearly' ? 'the yearly plan' : 'the monthly plan';
+            if (!toast) return;
+            toast.textContent = 'You picked ' + plan + ' — checkout is being wired up. Connect Stripe and we\'ll switch it on.';
+            toast.classList.add('show');
+            clearTimeout(timer);
+            timer = setTimeout(function () { toast.classList.remove('show'); }, 4200);
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>
