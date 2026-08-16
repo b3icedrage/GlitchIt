@@ -495,52 +495,6 @@ body::before {
 .upload-card { border-color: #f0d5e4; box-shadow: 0 18px 48px rgba(214,41,118,.10); }
 .video-grid { display: grid; gap: 18px; }
 
-/* ---------- 3D splash (home hero) ---------- */
-.hero-splash.hero-3d { perspective: 900px; perspective-origin: 50% 38%; padding: 34px 0 30px; }
-.hero-3d-scene { position: relative; transform-style: preserve-3d; will-change: transform; }
-.hero-3d-layer { position: relative; transform-style: preserve-3d; }
-.hero-3d-title { transform: translateZ(40px); }
-.hero-3d-mark {
-  position: absolute; top: 50%; left: 50%;
-  font-size: 150px; line-height: 1;
-  transform: translate(-50%, -50%) translateZ(-70px);
-  background: linear-gradient(135deg, #ff2d78, #a24cff, #00d4ff);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  opacity: .5; filter: blur(1px) drop-shadow(0 12px 40px rgba(162, 76, 255, .35));
-  animation: heroMarkFloat 7s ease-in-out infinite;
-  pointer-events: none;
-}
-.hero-3d-orbs { position: absolute; inset: 0; pointer-events: none; }
-.hero-3d-orbs .orb { position: absolute; border-radius: 50%; filter: blur(26px); opacity: .55; }
-.orb-a { width: 120px; height: 120px; top: -34px; left: 4%; background: #ff2d78; --z: -120px; animation: heroOrbFloat 9s ease-in-out infinite; }
-.orb-b { width: 150px; height: 150px; bottom: -52px; right: 2%; background: #4f5bd5; --z: -100px; animation: heroOrbFloat 11s ease-in-out infinite reverse; }
-.orb-c { width: 90px; height: 90px; top: 12px; right: 22%; background: #00d4ff; opacity: .4; --z: -60px; animation: heroOrbFloat 8s ease-in-out infinite 1.2s; }
-.hero-3d-shards { position: absolute; inset: 0; pointer-events: none; }
-.hero-3d-shards .shard {
-  position: absolute; font-size: 21px; line-height: 1; font-style: normal;
-  background: linear-gradient(135deg, #ff2d78, #a24cff);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  opacity: .85; filter: drop-shadow(0 6px 16px rgba(162, 76, 255, .35));
-}
-.shard-a { top: 4px; left: 16%; --z: 90px; animation: heroShardFloat 6s ease-in-out infinite; }
-.shard-b { top: -4px; right: 14%; --z: 120px; animation: heroShardFloat 7.5s ease-in-out infinite 1s; }
-.shard-c { bottom: -6px; left: 30%; --z: 70px; animation: heroShardFloat 6.8s ease-in-out infinite .5s; }
-@keyframes heroMarkFloat {
-  0%, 100% { transform: translate(-50%, -50%) translateZ(-70px); }
-  50% { transform: translate(-50%, -54%) translateZ(-70px); }
-}
-@keyframes heroOrbFloat {
-  0%, 100% { transform: translateZ(var(--z, -100px)) translateY(0); }
-  50% { transform: translateZ(var(--z, -100px)) translateY(-14px); }
-}
-@keyframes heroShardFloat {
-  0%, 100% { transform: translateZ(var(--z, 80px)) translateY(0); }
-  50% { transform: translateZ(var(--z, 80px)) translateY(-12px); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero-3d-mark, .hero-3d-orbs .orb, .hero-3d-shards .shard { animation: none; }
-}
-
 /* ---------- AdSense placements (see src/ads.js) ---------- */
 .ad-feed-card, .ad-banner {
   position: relative;

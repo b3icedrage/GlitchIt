@@ -84,6 +84,48 @@
 :root[data-theme='dark'] .auth-card h1 { color: #f6f3ff; }
 .auth-sub { color: #8e8e8e; font-size: 13px; margin: 0 0 18px; }
 
+/* ---------- GlitchIt boot glitch (runs once for 3s on load) ---------- */
+.auth-card.glitch-boot {
+  animation: glitchCard 3s cubic-bezier(.2, .6, .3, 1) both;
+}
+.auth-card.glitch-boot .auth-mark,
+.auth-card.glitch-boot h1,
+.auth-card.glitch-boot .auth-sub {
+  animation: glitchText 3s steps(1, end) both;
+}
+@keyframes glitchCard {
+  0%, 90%, 100% { transform: translate(0, 0); clip-path: inset(0 0 0 0); }
+  2% { transform: translate(-3px, 1px); clip-path: inset(8% 0 62% 0); }
+  4% { transform: translate(3px, -1px); clip-path: inset(52% 0 18% 0); }
+  6% { transform: translate(0, 0); clip-path: inset(0 0 0 0); }
+  18% { transform: translate(2px, 0); clip-path: inset(30% 0 42% 0); }
+  20% { transform: translate(-2px, 0); clip-path: inset(0 0 0 0); }
+  22% { transform: translate(0, 0); clip-path: inset(0 0 0 0); }
+  38% { transform: translate(-2px, 2px); clip-path: inset(10% 0 68% 0); }
+  40% { transform: translate(1px, -2px); clip-path: inset(60% 0 5% 0); }
+  42% { transform: translate(0, 0); clip-path: inset(0 0 0 0); }
+  62% { transform: translate(1px, 0); clip-path: inset(40% 0 30% 0); }
+  64% { transform: translate(0, 0); clip-path: inset(0 0 0 0); }
+}
+@keyframes glitchText {
+  0%, 90%, 100% { transform: translate(0, 0); text-shadow: none; }
+  3% { transform: translate(-2px, 0); text-shadow: -3px 0 rgba(255, 45, 120, .9), 3px 0 rgba(0, 212, 255, .9); }
+  5% { transform: translate(2px, 0); text-shadow: 3px 0 rgba(255, 45, 120, .9), -3px 0 rgba(0, 212, 255, .9); }
+  7% { transform: translate(0, 0); text-shadow: none; }
+  19% { transform: translate(-2px, 1px); text-shadow: -4px 0 rgba(255, 45, 120, .8), 4px 0 rgba(0, 212, 255, .8); }
+  21% { transform: translate(0, 0); text-shadow: none; }
+  39% { transform: translate(2px, -1px); text-shadow: 3px 0 rgba(255, 45, 120, .85), -3px 0 rgba(0, 212, 255, .85); }
+  41% { transform: translate(0, 0); text-shadow: none; }
+  63% { transform: translate(-2px, 0); text-shadow: -3px 0 rgba(255, 45, 120, .8), 3px 0 rgba(0, 212, 255, .8); }
+  65% { transform: translate(0, 0); text-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-card.glitch-boot,
+  .auth-card.glitch-boot .auth-mark,
+  .auth-card.glitch-boot h1,
+  .auth-card.glitch-boot .auth-sub { animation: none; }
+}
+
 .auth-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
