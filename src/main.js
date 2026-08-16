@@ -457,45 +457,6 @@ async function hydrateSearchAccounts() {
 // static placeholders. Search input filters whatever tab is active.
 const searchContent = { posts: [], reels: [], tags: [] };
 
-// ---------- For You / Following feed switch (home page) ----------
-// 'For You' shows every post on the home feed; 'Following' filters to
-// creators you follow (from the Follow toggle). The choice persists on this
-// device, and switching re-filters the DB feed without a reload.
-window.attachHomeFeedSwitch = function attachHomeFeedSwitch() {
-  const tabs = document.querySelectorAll('.feed-tab');
-  const feedTarget = document.getElementById('upload-feed');
-  if (!tabs.length || !feedTarget) return;
-  const saved = readStore('glitchit.feed.mode', 'foryou');
-  const renderFeed = (mode) => {
-    tabs.forEach((t) => {
-      const on = t.dataset.feedTab === mode;
-      t.classList.toggle('active', on);
-      t.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
-    writeStore('glitchit.feed.mode', mode);
-    if (!DB) {
-      feedTarget.innerHTML = '<div class="feed-empty"><span class="feed-empty-mark">ϟ</span><h3>No posts yet</h3><p>Be the first to share a moment.</p></div>';
-      return;
-    }
-    feedTarget.innerHTML = '<div class="feed-empty"><span class="feed-empty-mark">ϟ</span><h3>Loading…</h3><p>Pulling the latest moments.</p></div>';
-    DB.loadMedia('image').then((rows) => {
-      const list = (rows || []).filter((r) => r.kind !== 'story');
-      const shown = mode === 'following' ? list.filter((r) => isFollowing(r.user)) : list;
-      if (!shown.length) {
-        feedTarget.innerHTML = mode === 'following'
-          ? '<div class="feed-empty"><span class="feed-empty-mark">ϟ</span><h3>Nothing from your circle yet</h3><p>Follow creators to fill this feed.</p></div>'
-          : '<div class="feed-empty"><span class="feed-empty-mark">ϟ</span><h3>No posts yet</h3><p>Be the first to share a moment.</p></div>';
-        return;
-      }
-      feedTarget.innerHTML = shown.map((r) => uploadCard({ preview: r.url, title: r.title, caption: r.caption, type: 'image', user: displayUser(r.user), avatar: r.avatar, verified: r.verified, owner: r.user }, 'feed')).join('');
-    });
-  };
-  tabs.forEach((tab) => {
-    tab.addEventListener('click', () => renderFeed(tab.dataset.feedTab));
-  });
-  if (saved === 'following') renderFeed('following');
-};
-
 // ---------- Editable profile bio (profile page) ----------
 // Shows the bio from the account's profile (or this device's copy) and lets
 // the owner edit it inline; saves to Supabase user_metadata.bio + localStorage.
@@ -562,7 +523,6 @@ window.attachUserBio = function attachUserBio() {
 // Boot the home feed switch and profile bio work after all deferred scripts
 // have run (so helpers like readStore and auth exist).
 document.addEventListener('DOMContentLoaded', () => {
-  if (page === 'home') window.attachHomeFeedSwitch();
   if (page === 'profile') window.attachProfileBio();
   if (page === 'user') window.attachUserBio();
 });
