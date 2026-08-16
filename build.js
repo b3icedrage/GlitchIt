@@ -21,6 +21,7 @@ const ENTRIES = [
   'chat.html',
   'live.html',
   'activity.html',
+  'channels.html',
   'shop.html',
   'profile.html',
   'user.html',

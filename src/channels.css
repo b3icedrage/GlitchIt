@@ -1,0 +1,267 @@
+/* GlitchIt — Discover channels (channels.html) + the sticky entry button on
+   the activity page. The discovery panel is intentionally dark, matching the
+   channel-browsing reference, while the rest of the app shell stays as-is. */
+
+/* ---------- Sticky "Discover channels" button on the activity page ---------- */
+.activity-discover {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  margin-bottom: 16px;
+}
+.activity-discover-btn {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  color: #fff;
+  text-decoration: none;
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  box-shadow: 0 12px 30px rgba(79, 91, 213, 0.38);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.activity-discover-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 34px rgba(79, 91, 213, 0.5);
+}
+.activity-discover-btn:active { transform: scale(0.98); }
+.activity-discover-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  font-size: 21px;
+  background: rgba(255, 255, 255, 0.16);
+  flex: none;
+}
+.activity-discover-text { display: grid; gap: 2px; min-width: 0; }
+.activity-discover-text strong { font-size: 15.5px; font-weight: 800; letter-spacing: -0.2px; }
+.activity-discover-text em { font-style: normal; font-size: 12px; color: rgba(255, 255, 255, 0.82); }
+.activity-discover-arrow { margin-left: auto; font-size: 26px; font-weight: 400; color: rgba(255, 255, 255, 0.9); }
+
+/* ---------- Discover channels panel ---------- */
+.channels-page {
+  display: block;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #0c0c12;
+  color: #fff;
+  box-shadow: 0 20px 60px rgba(10, 10, 20, 0.35);
+}
+.channels-top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  background: rgba(12, 12, 18, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.channels-back {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.08);
+  transition: background 0.15s ease;
+}
+.channels-back:hover { background: rgba(255, 255, 255, 0.16); }
+.channels-top h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.channels-top-spacer { width: 34px; flex: none; }
+.channels-content { padding: 18px; display: grid; gap: 26px; }
+
+/* Featured topic card */
+.ch-feature {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(150deg, #6d28d9 0%, #d62976 60%, #f59e0b 130%);
+}
+.ch-feature-art {
+  position: relative;
+  height: 128px;
+  display: grid;
+  place-items: center;
+  font-size: 52px;
+  overflow: hidden;
+}
+.ch-feature-sun {
+  position: absolute;
+  top: -34px;
+  right: -30px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 214, 102, 0.55), rgba(255, 214, 102, 0) 68%);
+}
+.ch-feature-mark {
+  position: relative;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35));
+}
+.ch-feature-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(8, 8, 14, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.ch-feature-badge {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 18px;
+  background: rgba(255, 255, 255, 0.16);
+  flex: none;
+}
+.ch-feature-info div { display: grid; gap: 2px; }
+.ch-feature-info strong { font-size: 16.5px; font-weight: 800; letter-spacing: -0.3px; }
+.ch-feature-info em { font-style: normal; font-size: 12px; color: rgba(255, 255, 255, 0.78); }
+
+/* Sections */
+.channels-section { display: grid; gap: 12px; }
+.channels-section h2 { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+.channels-sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ch-seeall {
+  border: 0;
+  background: transparent;
+  color: #4fa8ff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 2px 4px;
+}
+.ch-seeall:hover { text-decoration: underline; }
+
+/* Topic chips */
+.ch-topics { display: flex; flex-wrap: wrap; gap: 9px; }
+.ch-topic {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.ch-topic:hover { background: rgba(255, 255, 255, 0.12); }
+.ch-topic:active { transform: scale(0.96); }
+.ch-topic.active {
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  border-color: transparent;
+}
+
+/* Channel rows */
+.ch-list { display: grid; gap: 6px; }
+.ch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  transition: background 0.15s ease;
+}
+.ch-row:hover { background: rgba(255, 255, 255, 0.05); }
+.ch-avatar {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 22px;
+  flex: none;
+}
+.ch-avatar i { font-style: normal; filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35)); }
+.ch-avatar.ring-white { border: 2px solid #fff; }
+.ch-avatar.ring-gold { border: 2px solid #f5c542; }
+.ch-avatar.ring-blue { border: 2px solid #4fa8ff; }
+.ch-meta { display: grid; gap: 2px; min-width: 0; }
+.ch-meta strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ch-meta em {
+  font-style: normal;
+  font-size: 12.5px;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ch-verified {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #2ea6ff;
+  flex: none;
+}
+.ch-verified svg { display: block; }
+.ch-join {
+  margin-left: auto;
+  flex: none;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #2ea6ff, #1877f2);
+  box-shadow: 0 6px 16px rgba(46, 166, 255, 0.3);
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+.ch-join:hover { filter: brightness(1.1); }
+.ch-join:active { transform: scale(0.95); }
+.ch-join.joined {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+  color: #b9f6ca;
+}
+.ch-empty {
+  padding: 22px 14px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 13px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+}
+
+/* Mobile: the dark panel fills the screen edge-to-edge */
+@media (max-width: 860px) {
+  .channels-page { border-radius: 0; box-shadow: none; }
+}
