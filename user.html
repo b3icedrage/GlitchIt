@@ -6,9 +6,9 @@
     <meta name="google-adsense-account" content="ca-pub-6010592277770538" />
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6010592277770538" crossorigin="anonymous"></script>
     <script>
-      // Public browsing: default every visitor (and crawler) to guest mode so
-      // the site is browsable without a login wall — AdSense can crawl it.
-      try { localStorage.setItem('glitchit.auth.guest.v1', '1'); } catch (err) {}
+      // Login wall for humans; Googlebot / AdSense crawlers browse read-only
+      // (no password) so indexing and ad review keep working.
+      try { if (/Googlebot|Mediapartners-Google|AdsBot-Google/i.test(navigator.userAgent || '')) localStorage.setItem('glitchit.auth.guest.v1', '1'); } catch (err) {}
     </script>
     <title>Profile · GlitchIt</title>
     <link rel="stylesheet" href="src/styles.css?v=9" />
