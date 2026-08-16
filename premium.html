@@ -35,6 +35,7 @@
       .prem-plan li i { font-style: normal; color: #ff2d78; font-weight: 900; }
       .prem-cta { display: block; width: 100%; padding: 13px 18px; border: 0; border-radius: 999px; background: #171717; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; transition: transform .15s ease, background .15s ease; }
       .prem-cta:hover { background: #000; transform: translateY(-1px); }
+      .prem-cta:disabled { opacity: .6; cursor: wait; }
       .prem-plan.popular .prem-cta { background: linear-gradient(135deg, #ff2d78, #a24cff); }
       .prem-plan.popular .prem-cta:hover { filter: brightness(1.08); }
       .prem-faq { margin: 30px 0 0; }
@@ -115,21 +116,75 @@
       <div class="prem-toast" id="prem-toast" role="status"></div>
     </main>
     <script>
-      // Premium checkout is wired once a payment provider is connected.
-      // The buttons keep the intent visible (plan + frequency) for that step.
+      // Real checkout: create a Stripe Checkout session via the serverless
+      // endpoint, then bounce the user to Stripe's hosted payment page.
       (function () {
         var toast = document.getElementById('prem-toast');
         var timer = null;
+
+        function show(msg) {
+          if (!toast) return;
+          toast.textContent = msg;
+          toast.classList.add('show');
+          clearTimeout(timer);
+          timer = setTimeout(function () { toast.classList.remove('show'); }, 6000);
+        }
+
+        // Best-effort prefill from the signed-in Supabase session so Stripe
+        // knows who's buying (the session JSON lives in localStorage).
+        function sessionUser() {
+          try {
+            var u = window.GLITCHIT_USER;
+            if (u && !u.guest && u.email) return { email: u.email, id: u.id };
+          } catch (e) { /* ignore */ }
+          try {
+            for (var i = 0; i < localStorage.length; i++) {
+              var key = localStorage.key(i);
+              if (!key || key.indexOf('sb-') !== 0 || key.indexOf('-auth-token') === -1) continue;
+              var data = JSON.parse(localStorage.getItem(key));
+              if (data && data.user) return { email: data.user.email || '', id: data.user.id || '' };
+            }
+          } catch (e) { /* ignore */ }
+          return { email: '', id: '' };
+        }
+
         document.querySelectorAll('.prem-cta').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            var plan = btn.dataset.plan === 'yearly' ? 'the yearly plan' : 'the monthly plan';
-            if (!toast) return;
-            toast.textContent = 'You picked ' + plan + ' — checkout is being wired up. Connect Stripe and we\'ll switch it on.';
-            toast.classList.add('show');
-            clearTimeout(timer);
-            timer = setTimeout(function () { toast.classList.remove('show'); }, 4200);
+          btn.addEventListener('click', async function () {
+            var plan = btn.dataset.plan === 'yearly' ? 'yearly' : 'monthly';
+            var user = sessionUser();
+            btn.disabled = true;
+            var original = btn.textContent;
+            btn.textContent = 'Opening secure checkout…';
+            try {
+              var res = await fetch('api/create-checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan: plan, email: user.email, userId: user.id })
+              });
+              var data = await res.json();
+              if (data && data.ok && data.url) {
+                location.href = data.url;
+                return;
+              }
+              if (data && data.error === 'not configured') {
+                show('Premium checkout is almost ready — Stripe just needs to be connected. Check back in a moment.');
+              } else {
+                show('Could not start checkout right now — please try again in a moment.');
+              }
+            } catch (err) {
+              show('Could not reach the payment service — please try again in a moment.');
+            }
+            btn.disabled = false;
+            btn.textContent = original;
           });
         });
+
+        // Returned from Stripe: confirm what happened.
+        if (location.search.indexOf('success=1') !== -1) {
+          show("You're Premium! 🎉 Your benefits are active.");
+        } else if (location.search.indexOf('canceled=1') !== -1) {
+          show('Checkout canceled — no charge was made.');
+        }
       })();
     </script>
   </body>
