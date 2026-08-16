@@ -244,6 +244,7 @@
     root.dataset.mediaKey = key;
     root.innerHTML = `
       <video class="rv-video" src="${escapeHtml(v.url)}" poster="${escapeHtml(v.poster || '')}" muted playsinline preload="metadata" aria-label="${escapeHtml(v.title || 'Glitch')}"></video>
+      <div class="video-buffering" aria-hidden="true"><span class="video-spinner"></span></div>
       <div class="rv-scrim" aria-hidden="true"></div>
       <div class="rv-bottom">
         <div class="reel-creator rv-creator">

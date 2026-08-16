@@ -90,6 +90,27 @@
   document.head.appendChild(bundle);
 })();
 
+// Flutterwave payments (pan-African: cards, mobile money, bank transfer, USSD):
+// shop listing form + "Buy now" checkout on draft drops. The module self-wires
+// on the shop page; the public key ships in src/config.js while the secret key
+// stays server-side.
+import('./flutterwave.js?v=1').catch((err) => { console.warn('GlitchIt: payments module unavailable', err); });
+
+// Video buffering indicator (event delegation — media events bubble, so this
+// one block covers every .glitch-video and .rv-video the app renders): show a
+// spinner while the browser waits for data, hide it once frames can play.
+(function attachVideoBuffering() {
+  const setBuffering = (video, on) => video.closest('.video-card')?.classList.toggle('buffering', on);
+  ['waiting', 'playing', 'canplay', 'pause', 'error'].forEach((type) => {
+    document.addEventListener(type, (event) => {
+      const video = event.target;
+      if (!video || !(video instanceof HTMLVideoElement)) return;
+      if (!video.matches('.glitch-video, .rv-video')) return;
+      setBuffering(video, type === 'waiting');
+    }, true);
+  });
+})();
+
 const icon = (name) => `<span class="icon" aria-hidden="true">${name}</span>`;
 
 // Instagram-Reels style line icons (heart / comment / send) used on glitch cards.
@@ -1051,7 +1072,7 @@ function glitchVideoCard(video, uploaded = false) {
   const avatarSrc = video.avatar || fallbackAvatar(video.user || profile.username);
   const key = mediaKeyOf(video);
   const liked = SOC ? SOC.isLiked(key) : false;
-  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}" data-owner="${video.owner || ''}" data-media-key="${escapeHtml(key)}"><video class="glitch-video" playsinline loop preload="none" poster="${video.poster || ''}" data-src="${video.src}" aria-label="${video.title}"></video><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="${likes}" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action reel-comment" data-media-key="${escapeHtml(key)}" data-base-count="${comments}" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action reel-share" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><span class="verified-avatar-wrap"><img src="${avatarSrc}" alt="${video.user} avatar">${avatarBolt}</span><div class="reel-meta"><strong>${video.user}${nameBolt}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
+  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}" data-owner="${video.owner || ''}" data-media-key="${escapeHtml(key)}"><video class="glitch-video" playsinline loop preload="none" poster="${video.poster || ''}" data-src="${video.src}" aria-label="${video.title}"></video><div class="video-buffering" aria-hidden="true"><span class="video-spinner"></span></div><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="${likes}" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action reel-comment" data-media-key="${escapeHtml(key)}" data-base-count="${comments}" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action reel-share" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><span class="verified-avatar-wrap"><img src="${avatarSrc}" alt="${video.user} avatar">${avatarBolt}</span><div class="reel-meta"><strong>${video.user}${nameBolt}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
 }
 
 function renderUploads(type) {
