@@ -43,8 +43,15 @@
         </div>
 
         <section class="page" id="home" data-page="home" aria-labelledby="home-title">
-          <div class="hero-splash">
-            <h1>Post the <span class="squiggle">little<svg viewBox="0 0 120 14" width="120" height="14" preserveAspectRatio="none" aria-hidden="true"><path d="M4 10 Q 30 4 60 8 T 116 7" fill="none" stroke="#262626" stroke-width="3" stroke-linecap="round"/></svg></span> moments</h1>
+          <div class="hero-splash hero-3d" id="hero3d">
+            <div class="hero-3d-scene" id="hero3d-scene">
+              <div class="hero-3d-layer hero-3d-orbs" aria-hidden="true"><i class="orb orb-a"></i><i class="orb orb-b"></i><i class="orb orb-c"></i></div>
+              <div class="hero-3d-layer hero-3d-mark" aria-hidden="true">ϟ</div>
+              <div class="hero-3d-layer hero-3d-title">
+                <h1>Post the <span class="squiggle">little<svg viewBox="0 0 120 14" width="120" height="14" preserveAspectRatio="none" aria-hidden="true"><path d="M4 10 Q 30 4 60 8 T 116 7" fill="none" stroke="#262626" stroke-width="3" stroke-linecap="round"/></svg></span> moments</h1>
+              </div>
+              <div class="hero-3d-layer hero-3d-shards" aria-hidden="true"><i class="shard shard-a">▣</i><i class="shard shard-b">◒</i><i class="shard shard-c">♡</i></div>
+            </div>
           </div>
 
           <section class="stories" aria-label="Stories"></section>
@@ -81,5 +88,35 @@
     <script src="src/music-ui.js?v=2" defer></script>
     <script src="src/ads.js?v=2" defer></script>
     <script src="src/profile-avatar.js" defer></script>
+    <script>
+      // 3D splash tilt: the hero scene follows the pointer with a subtle
+      // perspective tilt (layered translateZ depth + rAF smoothing). Skipped
+      // for touch devices and reduced-motion users.
+      (function () {
+        var root = document.getElementById('hero3d');
+        var scene = document.getElementById('hero3d-scene');
+        if (!root || !scene) return;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+        var target = { x: 0, y: 0 }, cur = { x: 0, y: 0 }, raf = null;
+        function tick() {
+          raf = null;
+          cur.x += (target.x - cur.x) * 0.12;
+          cur.y += (target.y - cur.y) * 0.12;
+          scene.style.transform = 'rotateX(' + (-cur.y * 12).toFixed(2) + 'deg) rotateY(' + (cur.x * 16).toFixed(2) + 'deg)';
+          if (Math.abs(target.x - cur.x) > 0.001 || Math.abs(target.y - cur.y) > 0.001) raf = requestAnimationFrame(tick);
+        }
+        root.addEventListener('pointermove', function (e) {
+          var r = root.getBoundingClientRect();
+          target.x = (e.clientX - r.left) / r.width - 0.5;
+          target.y = (e.clientY - r.top) / r.height - 0.5;
+          if (!raf) raf = requestAnimationFrame(tick);
+        }, { passive: true });
+        root.addEventListener('pointerleave', function () {
+          target.x = 0; target.y = 0;
+          if (!raf) raf = requestAnimationFrame(tick);
+        });
+      })();
+    </script>
   </body>
 </html>
