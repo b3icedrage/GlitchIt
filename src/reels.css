@@ -239,3 +239,53 @@ body.reel-viewer-open main { overflow: hidden; }
   .rv-rail { bottom: 168px; right: 6px; }
   .rv-hint { bottom: 104px; }
 }
+
+/* In-feed sponsored slides (AdSense — see src/ads.js) */
+.ad-card {
+  display: grid;
+  place-items: center;
+  gap: 0;
+  background: linear-gradient(160deg, #0b0b12, #1c0d22 55%, #0b0b12);
+}
+.ad-card .ad-head { position: absolute; top: 20px; left: 20px; z-index: 1; }
+.ad-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, .82);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.ad-card .adsbygoogle { display: block; width: 100%; min-height: 320px; border-radius: 16px; overflow: hidden; }
+.ad-placeholder {
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  padding: 60px 30px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  text-align: center;
+  cursor: default;
+}
+.ad-placeholder-mark {
+  font-size: 64px;
+  line-height: 1;
+  background: linear-gradient(135deg, #ff2d78, #a24cff, #00d4ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 8px 26px rgba(162, 76, 255, .45));
+}
+.ad-placeholder strong { font-size: 24px; font-weight: 900; letter-spacing: .02em; }
+.ad-placeholder p { max-width: 340px; margin: 0; color: rgba(255, 255, 255, .74); font-weight: 600; line-height: 1.45; }
+.ad-placeholder em { max-width: 300px; color: rgba(255, 255, 255, .4); font-size: 12px; font-style: normal; line-height: 1.5; }
