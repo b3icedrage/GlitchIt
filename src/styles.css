@@ -494,6 +494,41 @@ body::before {
 
 .upload-card { border-color: #f0d5e4; box-shadow: 0 18px 48px rgba(214,41,118,.10); }
 .video-grid { display: grid; gap: 18px; }
+
+/* ---------- AdSense placements (see src/ads.js) ---------- */
+.ad-feed-card, .ad-banner {
+  position: relative;
+  border: 1px solid #dbdbdb;
+  border-radius: 18px;
+  background: #fff;
+  overflow: hidden;
+}
+.ad-feed-card { margin: 18px 0; padding: 18px; }
+.ad-banner { margin: 14px 2px 4px; padding: 12px 14px 14px; border-radius: 16px; }
+.ad-feed-card .ad-head, .ad-banner .ad-head {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+.ad-feed-card .ad-label, .ad-banner .ad-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid rgba(0, 0, 0, .08);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .05);
+  color: #8a8a8a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.ad-feed-card .adsbygoogle, .ad-banner .adsbygoogle { display: block; width: 100%; }
+.ad-feed-card .adsbygoogle { min-height: 140px; }
+.ad-banner .adsbygoogle { min-height: 90px; }
+:root[data-theme="dark"] .ad-feed-card, :root[data-theme="dark"] .ad-banner { border-color: #29253a; background: #141321; }
+:root[data-theme="dark"] .ad-feed-card .ad-label, :root[data-theme="dark"] .ad-banner .ad-label { border-color: rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .06); color: #a3a3a3; }
 .video-card { overflow: hidden; padding: 18px; border: 1px solid #dbdbdb; border-radius: 18px; background: #fff; }
 .video-card video { width: 100%; min-height: 320px; border-radius: 16px; background: linear-gradient(135deg, #d62976, #4f5bd5); object-fit: cover; }
 .video-card h3 { margin: 14px 0 4px; }
