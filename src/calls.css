@@ -1,0 +1,225 @@
+/* ============ GlitchIt calls overlay (chat.html — 1:1 + group calls) ============ */
+.call-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(120% 120% at 50% 0%, #1c1733 0%, #0d0b1a 55%, #06050e 100%);
+  color: #fff;
+  animation: callFade .25s ease;
+}
+.call-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 50% 112%, rgba(214, 41, 118, .26), transparent 70%),
+    radial-gradient(45% 40% at 10% -10%, rgba(79, 91, 213, .3), transparent 70%);
+}
+@keyframes callFade { from { opacity: 0; } to { opacity: 1; } }
+
+.call-stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: min(920px, 100vw);
+  height: 100%;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+.call-head { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 32px; }
+.call-status { font-size: 15px; font-weight: 800; letter-spacing: .02em; color: #e9e6ff; }
+.call-status.connecting { color: #ffd76a; }
+.call-status.live { color: #7ef0a8; }
+.call-status.waiting { color: #ffd76a; }
+.call-status.ended { color: #b9b3d6; }
+.call-timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  color: #b9b3d6;
+}
+
+/* ---------- Tiles ---------- */
+.call-tiles { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 16px; width: 100%; }
+.call-overlay[data-kind="group"] .call-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  align-content: center;
+}
+.call-tile {
+  position: relative;
+  flex: 0 1 320px;
+  aspect-ratio: 9 / 16;
+  max-height: 60vh;
+  border-radius: 20px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity .3s ease, transform .3s ease;
+}
+.call-tile-fallback { position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; }
+.call-tile-fallback img { width: 100%; height: 100%; object-fit: cover; }
+.call-tile-initial {
+  display: grid;
+  place-items: center;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  font-size: 34px;
+  font-weight: 800;
+  box-shadow: 0 12px 30px rgba(214, 41, 118, .35);
+}
+.call-tile video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 2;
+}
+.call-tile-name {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 3;
+  max-width: calc(100% - 20px);
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .45);
+  backdrop-filter: blur(6px);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.call-live {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #31d97a;
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+.call-tile.live .call-live { opacity: 1; animation: callLive 1.8s ease-in-out infinite; }
+@keyframes callLive {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(49, 217, 122, .28); }
+  50% { box-shadow: 0 0 0 8px rgba(49, 217, 122, .1); }
+}
+
+/* Ringing pulse on the callee tile */
+.call-overlay[data-phase="ringing"] .call-tile.remote .call-tile-fallback { animation: callRing 1.5s ease-in-out infinite; }
+@keyframes callRing {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.035); filter: brightness(1.18); }
+}
+
+/* My picture-in-picture tile (1:1 calls) */
+.call-overlay[data-kind="direct"] .call-tiles { position: relative; }
+.call-tile.me { flex: 0 1 150px; max-height: 40vh; }
+.call-tile.pip {
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  flex: none;
+  width: 132px;
+  height: 234px;
+  aspect-ratio: auto;
+  max-height: none;
+  border-radius: 14px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .55);
+}
+.call-tile.me .call-tile-fallback { opacity: 0; }
+.call-tile.me.cam-off .call-tile-fallback { opacity: 1; }
+.call-tile.me.audio-only .call-tile-fallback { opacity: 1; }
+.call-tile.me .call-tile-name { left: auto; right: 8px; bottom: 8px; font-size: 10.5px; }
+.call-tile.pip .call-tile-name { left: 8px; right: auto; }
+
+/* ---------- Controls ---------- */
+.call-controls { display: flex; align-items: center; gap: 14px; }
+.call-ctl {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+  cursor: pointer;
+  transition: transform .15s ease, background .2s ease, filter .2s ease;
+}
+.call-ctl:hover { transform: translateY(-2px); }
+.call-ctl:active { transform: scale(.94); }
+.call-ctl svg { width: 22px; height: 22px; }
+.call-ctl.off { background: rgba(255, 255, 255, .08); color: #b9b3d6; filter: grayscale(.7); }
+.call-ctl.end {
+  background: linear-gradient(135deg, #ff3040, #d62976);
+  box-shadow: 0 8px 26px rgba(255, 48, 64, .45);
+}
+.call-ctl.end:hover { filter: brightness(1.1); }
+.call-note { font-size: 12.5px; font-weight: 600; color: #b9b3d6; text-align: center; }
+
+/* Test-with-another-window affordance (shown when LiveKit is configured) */
+.call-test-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .07);
+  color: #d9d4f2;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s ease, transform .15s ease, border-color .2s ease;
+}
+.call-test-btn:hover { background: rgba(255, 255, 255, .13); border-color: rgba(255, 255, 255, .3); transform: translateY(-1px); }
+.call-test-btn svg { width: 13px; height: 13px; }
+.call-test-btn[hidden] { display: none; }
+
+/* Full-screen notice when a test window can't reach LiveKit */
+.call-unconfigured {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: radial-gradient(120% 120% at 50% 0%, #1c1733 0%, #0d0b1a 55%, #06050e 100%);
+  color: #e9e6ff;
+  font: 600 15px/1.6 system-ui, -apple-system, sans-serif;
+  text-align: center;
+}
+
+.call-overlay.ended .call-tiles { opacity: .5; transform: scale(.985); }
+
+@media (max-width: 640px) {
+  .call-tile { flex: 1 1 100%; max-height: 52vh; }
+  .call-overlay[data-kind="direct"] .call-tiles { flex-direction: column; }
+  .call-tile.pip { right: 10px; bottom: 92px; width: 104px; height: 185px; }
+  .call-ctl { width: 48px; height: 48px; }
+  .call-tile-initial { width: 64px; height: 64px; font-size: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .call-overlay, .call-tile.live .call-live,
+  .call-overlay[data-phase="ringing"] .call-tile.remote .call-tile-fallback,
+  .call-overlay.ended .call-tiles { animation: none !important; transition: none !important; }
+}

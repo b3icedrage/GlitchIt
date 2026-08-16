@@ -23,7 +23,7 @@
     window.GLITCHIT_SOC = SOC;
     tryWire();
   });
-  import('./social.js?v=3').then((mod) => {
+  import('./social.js?v=5').then((mod) => {
     if (!window.GLITCHIT_SOC) { SOC = mod; window.GLITCHIT_SOC = mod; }
     tryWire();
   }).catch(() => { /* main.js will have reported it */ });
@@ -100,6 +100,13 @@
         openDmPicker();
         return;
       }
+      const newGroup = target.closest('#dm-new-group');
+      if (newGroup) {
+        event.preventDefault();
+        event.stopPropagation();
+        openGroupPicker();
+        return;
+      }
       const chip = target.closest('.interest-chip');
       if (chip) {
         toggleInterest(chip, event);
@@ -111,12 +118,14 @@
       }
       if (target.closest('.dm-picker-wrap') && (event.target === event.currentTarget || target.closest('.dm-picker-close'))) {
         closeDmPicker();
+        closeGroupPicker();
       }
     }, true);
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
       if (commentSheet) closeCommentSheet();
       if (dmPicker) closeDmPicker();
+      if (groupPicker) closeGroupPicker();
     });
 
     // Re-render state after main.js finishes filling the feed asynchronously.
@@ -347,7 +356,9 @@
   function refreshUnreadBadges() {
     if (!SOC) return;
     const n = SOC.unreadActivity();
-    const dms = typeof SOC.dmUnreadTotal === 'function' ? SOC.dmUnreadTotal() : 0;
+    const dms = typeof SOC.unreadMessagesTotal === 'function'
+      ? SOC.unreadMessagesTotal()
+      : (typeof SOC.dmUnreadTotal === 'function' ? SOC.dmUnreadTotal() : 0);
     document.querySelectorAll('.top-activity-btn, .bottom-bar a[href="activity.html"], .sidebar nav a[href="activity.html"]').forEach((el) => setBadge(el, n, 'unread activity items'));
     document.querySelectorAll('.top-dm-btn, .bottom-bar a[href="messages.html"], .sidebar nav a[href="messages.html"]').forEach((el) => setBadge(el, dms, 'unread messages'));
   }
@@ -368,37 +379,52 @@
     let lastSig = '';
     const render = () => {
       const convs = SOC.dmConversations();
-      if (!convs.length) {
-        list.innerHTML = '<div class="dm-empty"><span class="dm-empty-mark">✉</span><h3>No messages yet</h3><p>Tap ＋ and message a creator you follow — conversations show up here.</p></div>';
+      const groups = typeof SOC.groupConversations === 'function' ? SOC.groupConversations() : [];
+      const lastAt = (c) => (c && c.messages && c.messages.length ? c.messages[c.messages.length - 1].at : 0);
+      // 1:1 conversations and group chats share one inbox, most recent first.
+      const items = [
+        ...convs.map((c) => ({ kind: 'dm', c })),
+        ...groups.map((g) => ({ kind: 'group', c: g })),
+      ].sort((a, b) => lastAt(b.c) - lastAt(a.c));
+      if (!items.length) {
+        list.innerHTML = '<div class="dm-empty"><span class="dm-empty-mark">✉</span><h3>No messages yet</h3><p>Tap ＋ to message a creator you follow or start a group — chats show up here.</p></div>';
         return;
       }
       const unreadKeys = SOC.dmUnread();
-      list.innerHTML = convs.map((c) => {
+      list.innerHTML = items.map((it) => {
+        if (it.kind === 'group') return groupRowHtml(it.c);
+        const c = it.c;
         const p = c.partner || {};
         const last = c.messages[c.messages.length - 1];
         const name = escapeHtml(p.name || 'Creator');
         const avatar = p.avatar
           ? `<img src="${escapeHtml(p.avatar)}" alt="${name}" loading="lazy">`
           : `<span class="badge"><i>${escapeHtml(String(p.name || 'C')[0].toUpperCase())}</i></span>`;
-        const isUnread = unreadKeys.includes(String(p.id || ''));
+        const partnerKey = String(p.id || '');
+        // Count every unseen message from this specific user, not just a dot:
+        // the badge shows the number and the whole row glows while unread.
+        const unreadCount = (typeof SOC.dmUnreadCount === 'function' ? SOC.dmUnreadCount(partnerKey) : (unreadKeys.includes(partnerKey) ? 1 : 0));
+        const isUnread = unreadCount > 0;
         // Instagram-style preview line: message text + relative time on the
         // same line ("im good,, you?? · 23h"), no trailing camera icon.
         const time = last ? SOC.timeAgo(last.at) : '';
         const preview = last ? `${escapeHtml(last.text)}${time ? ` · ${time}` : ''}` : '';
         const q = new URLSearchParams();
-        q.set('to', String(p.id || ''));
+        q.set('to', partnerKey);
         q.set('name', p.name || 'Creator');
         return `
-        <a class="dm-row${isUnread ? ' dm-row-unread' : ''}" href="chat.html?${q.toString()}" ${isUnread ? `aria-label="${name}: unread messages"` : ''}>
+        <a class="dm-row${isUnread ? ' dm-row-unread' : ''}" href="chat.html?${q.toString()}" ${isUnread ? `aria-label="${name}: ${unreadCount} unread messages"` : ''}>
           <span class="dm-avatar">${avatar}</span>
           <span class="dm-meta"><strong>${name}</strong><em>${preview}</em></span>
-          ${isUnread ? '<i class="dm-unread-dot" aria-hidden="true"></i>' : ''}
+          ${isUnread ? `<i class="dm-unread-count" aria-hidden="true">${unreadCount > 9 ? '9+' : unreadCount}</i>` : ''}
         </a>`;
       }).join('');
       // The Primary pill shows how many conversations have unread messages.
       const countEl = document.querySelector('.dm-tab-count');
       if (countEl) {
-        const unread = typeof SOC.dmUnreadTotal === 'function' ? SOC.dmUnreadTotal() : 0;
+        const unread = typeof SOC.unreadMessagesTotal === 'function'
+          ? SOC.unreadMessagesTotal()
+          : (typeof SOC.dmUnreadTotal === 'function' ? SOC.dmUnreadTotal() : 0);
         countEl.textContent = unread > 0 ? String(unread) : '';
       }
     };
@@ -416,10 +442,42 @@
     const poll = window.setInterval(() => {
       if (!SOC || document.body.dataset.page !== 'messages') { window.clearInterval(poll); return; }
       SOC.processPendingDmReplies();
-      const sig = SOC.dmConversations().map((c) => `${c.partner?.id || ''}:${c.messages.length}:${(c.messages[c.messages.length - 1] || {}).id || ''}`).join('|');
+      const dmSig = SOC.dmConversations().map((c) => `d${c.partner?.id || ''}:${c.messages.length}:${(c.messages[c.messages.length - 1] || {}).id || ''}`).join('|');
+      const groupSig = (typeof SOC.groupConversations === 'function' ? SOC.groupConversations() : [])
+        .map((g) => `g${g.id}:${g.messages.length}:${(g.messages[g.messages.length - 1] || {}).id || ''}`).join('|');
+      const sig = `${dmSig}||${groupSig}`;
       if (sig !== lastSig) { lastSig = sig; render(); }
       refreshUnreadBadges();
     }, 4000);
+  }
+
+  // Group inbox row: stacked member avatars + name + last-message preview.
+  function groupAvatarHtml(g) {
+    const mems = ((g && g.members) || []).slice(0, 3);
+    const tiles = mems.map((m, i) => {
+      const nm = m.name || '?';
+      return m.avatar
+        ? `<img src="${escapeHtml(m.avatar)}" alt="" loading="lazy" style="--i:${i}">`
+        : `<i class="gi" style="--i:${i}">${escapeHtml(String(nm)[0].toUpperCase())}</i>`;
+    }).join('');
+    return `<span class="dm-avatar group" aria-hidden="true">${tiles}</span>`;
+  }
+
+  function groupRowHtml(g) {
+    const last = g.messages[g.messages.length - 1];
+    const unreadCount = typeof SOC.groupUnreadCount === 'function' ? SOC.groupUnreadCount(g.id) : 0;
+    const isUnread = unreadCount > 0;
+    const time = last ? SOC.timeAgo(last.at) : '';
+    const who = last && last.from === 'me' ? 'You: ' : (last && last.from !== 'system' && last.fromName ? `${last.fromName}: ` : '');
+    const preview = `${who}${(last && last.text) || ''}${time ? ` · ${time}` : ''}`;
+    const q = new URLSearchParams();
+    q.set('group', g.id);
+    return `
+      <a class="dm-row${isUnread ? ' dm-row-unread' : ''}" href="chat.html?${q.toString()}" ${isUnread ? `aria-label="${escapeHtml(g.name)}: ${unreadCount} unread messages"` : ''}>
+        ${groupAvatarHtml(g)}
+        <span class="dm-meta"><strong>${escapeHtml(g.name)}</strong><em>${escapeHtml(preview)}</em></span>
+        ${isUnread ? `<i class="dm-unread-count" aria-hidden="true">${unreadCount > 9 ? '9+' : unreadCount}</i>` : ''}
+      </a>`;
   }
 
   function hydrateChat() {
@@ -428,35 +486,112 @@
     if (!body || !input) return;
     const params = new URLSearchParams(location.search);
     const to = String(params.get('to') || '').trim();
+    const groupId = String(params.get('group') || '').trim();
     const name = String(params.get('name') || '').trim() || 'Creator';
+    const isGroup = Boolean(groupId);
+    const me = window.GLITCHIT_USER;
+    const meId = (me && !me.guest && me.id) || '';
     const nameEl = document.getElementById('chat-name');
-    if (nameEl) nameEl.textContent = name;
     const avatarEl = document.querySelector('.chat-avatar');
-    if (avatarEl) {
-      avatarEl.src = (typeof profile !== 'undefined' && profile.avatar) || fallbackAvatar(name);
-      avatarEl.alt = `${name} avatar`;
-    }
+    const subEl = document.querySelector('.chat-id em');
     const userLink = document.querySelector('.chat-user');
-    if (userLink && to) userLink.href = `user.html?id=${encodeURIComponent(to)}&name=${encodeURIComponent(name)}`;
+    const curGroup = () => (typeof SOC.groupConversation === 'function' ? SOC.groupConversation(groupId) : null);
+
+    if (isGroup) {
+      const group = curGroup();
+      if (!group) {
+        if (nameEl) nameEl.textContent = 'Group not found';
+        if (subEl) subEl.textContent = 'This group no longer exists';
+        return;
+      }
+      if (nameEl) nameEl.textContent = group.name;
+      // The member list excludes the creator, so the header count includes you.
+      if (subEl) subEl.textContent = `${(group.members || []).length + 1} members · Group chat`;
+      if (avatarEl) {
+        const stack = document.createElement('span');
+        stack.className = 'chat-avatar group';
+        stack.setAttribute('aria-hidden', 'true');
+        stack.innerHTML = ((group.members || []).slice(0, 3).map((m, i) => {
+          const nm = m.name || '?';
+          return m.avatar
+            ? `<img src="${escapeHtml(m.avatar)}" alt="" style="--i:${i}">`
+            : `<i class="gi" style="--i:${i}">${escapeHtml(String(nm)[0].toUpperCase())}</i>`;
+        })).join('');
+        avatarEl.replaceWith(stack);
+      }
+      if (userLink) {
+        userLink.setAttribute('role', 'button');
+        userLink.removeAttribute('href');
+        userLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          const cur = curGroup();
+          if (!cur) return;
+          glitchToast(`${cur.name}: ${cur.members.map((m) => m.name).join(', ')}`);
+        });
+      }
+    } else {
+      if (nameEl) nameEl.textContent = name;
+      if (subEl) subEl.textContent = 'Creator on GlitchIt';
+      if (avatarEl) {
+        avatarEl.src = (typeof profile !== 'undefined' && profile.avatar) || fallbackAvatar(name);
+        avatarEl.alt = `${name} avatar`;
+      }
+      if (userLink && to) userLink.href = `user.html?id=${encodeURIComponent(to)}&name=${encodeURIComponent(name)}`;
+    }
+    // The partner's real profile picture (from the creator list) makes the
+    // header and the call screen show them instead of the local user.
+    let partnerAvatar = '';
+    if (!isGroup && to && DB && DB.loadCreators) {
+      DB.loadCreators(100).then((rows) => {
+        const found = rows.find((r) => String(r.id) === String(to));
+        if (found && found.avatar) {
+          partnerAvatar = found.avatar;
+          if (avatarEl) avatarEl.src = found.avatar;
+        }
+      }).catch(() => {});
+    }
 
     // The creator answers shortly after you message them; show a typing bubble
     // while the reply is on its way.
     let typing = false;
     const render = () => {
-      const conv = to ? SOC.dmConversation(to) : null;
-      const msgs = conv ? conv.messages : [];
+      const msgs = isGroup
+        ? ((curGroup() || {}).messages || [])
+        : ((to ? SOC.dmConversation(to) : null) || {}).messages || [];
       if (!msgs.length && !typing) {
-        body.innerHTML = '<div class="chat-empty"><span class="chat-empty-mark">✉</span><h3>No conversation yet</h3><p>Say hi — your messages with this creator will show up here.</p></div>';
+        body.innerHTML = isGroup
+          ? '<div class="chat-empty"><span class="chat-empty-mark">◨</span><h3>Nothing here yet</h3><p>Say hi to the group — messages will show up here.</p></div>'
+          : '<div class="chat-empty"><span class="chat-empty-mark">✉</span><h3>No conversation yet</h3><p>Say hi — your messages with this creator will show up here.</p></div>';
         return;
       }
       const typingRow = typing ? '<div class="msg in msg-typing-row" aria-label="They are typing"><span class="msg-typing"><i></i><i></i><i></i></span></div>' : '';
-      body.innerHTML = msgs.map((m) => `<div class="msg ${m.from === 'me' ? 'out' : 'in'}"><span>${escapeHtml(m.text)}</span></div>`).join('') + typingRow;
+      body.innerHTML = msgs.map((m) => {
+        if (m.from === 'system') return `<div class="msg system"><span>${escapeHtml(m.text)}</span></div>`;
+        if (m.from === 'me') return `<div class="msg out"><span>${escapeHtml(m.text)}</span></div>`;
+        if (isGroup) {
+          const av = m.fromAvatar || fallbackAvatar(m.fromName || 'Member');
+          return `<div class="msg in group-msg"><img class="msg-avatar" src="${escapeHtml(av)}" alt="${escapeHtml(m.fromName || 'Member')}" loading="lazy"><div><b>${escapeHtml(m.fromName || 'Member')}</b><span>${escapeHtml(m.text)}</span></div></div>`;
+        }
+        return `<div class="msg in"><span>${escapeHtml(m.text)}</span></div>`;
+      }).join('') + typingRow;
       body.scrollTop = body.scrollHeight;
     };
     const send = () => {
       const text = input.value.trim();
       if (!text) return;
       if (isGuest()) { showGuestGate('Sign in to message creators'); return; }
+      if (isGroup) {
+        if (!groupId || !SOC.groupSend(groupId, text)) { glitchToast('This group no longer exists'); return; }
+        input.value = '';
+        const cur = curGroup();
+        const others = ((cur && cur.members) || []).filter((m) => String(m.id) !== String(meId));
+        if (others.length && typeof SOC.scheduleGroupReply === 'function') {
+          SOC.scheduleGroupReply(groupId, others[Math.floor(Math.random() * others.length)]);
+        }
+        render();
+        refreshUnreadBadges();
+        return;
+      }
       if (!to) { glitchToast('Pick someone to message first'); return; }
       SOC.dmSend(to, { name, avatar: '' }, text);
       input.value = '';
@@ -470,14 +605,17 @@
     input.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') { event.preventDefault(); send(); }
     });
-    // Opening the conversation marks it read.
-    if (to) SOC.dmMarkRead(to);
+    // Opening the conversation marks it read (DMs and groups alike).
+    if (isGroup) { if (typeof SOC.groupMarkRead === 'function') SOC.groupMarkRead(groupId); }
+    else if (to) SOC.dmMarkRead(to);
     const onDm = (event) => {
       const keys = event && event.detail && event.detail.keys;
-      if (!to || (Array.isArray(keys) && !keys.includes(to))) return;
+      const activeKey = isGroup ? groupId : to;
+      if (!activeKey || (Array.isArray(keys) && !keys.includes(activeKey))) return;
       typing = false;
       render();
-      SOC.dmMarkRead(to);
+      if (isGroup) { if (typeof SOC.groupMarkRead === 'function') SOC.groupMarkRead(groupId); }
+      else SOC.dmMarkRead(to);
       refreshUnreadBadges();
     };
     window.addEventListener('glitchit:dm', onDm);
@@ -488,6 +626,30 @@
       SOC.processPendingDmReplies();
       if (typing) { typing = false; render(); }
     }, 4000);
+    // Audio / video call buttons: 1:1 chats call the partner, groups call the
+    // whole room. The overlay itself lives in src/calls.js (GLITCHIT_CALLS).
+    document.querySelectorAll('.chat-act[data-call]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (isGuest()) { showGuestGate('Sign in to call creators'); return; }
+        if (!window.GLITCHIT_CALLS || typeof window.GLITCHIT_CALLS.startCall !== 'function') {
+          glitchToast('Calling isn’t available right now');
+          return;
+        }
+        const mode = btn.dataset.call === 'video' ? 'video' : 'audio';
+        if (isGroup) {
+          const cur = curGroup();
+          if (!cur) { glitchToast('This group no longer exists'); return; }
+          window.GLITCHIT_CALLS.startCall({ mode, kind: 'group', groupName: cur.name, members: cur.members });
+          return;
+        }
+        if (!to) { glitchToast('Pick someone to call first'); return; }
+        window.GLITCHIT_CALLS.startCall({
+          mode,
+          kind: 'direct',
+          target: { id: to, name, avatar: partnerAvatar || fallbackAvatar(name) },
+        });
+      });
+    });
     render();
   }
 
@@ -543,6 +705,96 @@
     if (!dmPicker) return;
     dmPicker.wrap.remove();
     dmPicker = null;
+  }
+
+  // ---------------- New-group picker (messages page) ----------------
+  // Bottom sheet with a group-name field and a multi-select of creators; the
+  // created group opens in the chat page.
+  let groupPicker = null;
+
+  async function openGroupPicker() {
+    if (groupPicker) { groupPicker.wrap.hidden = false; return; }
+    const wrap = document.createElement('div');
+    wrap.className = 'dm-picker-wrap';
+    wrap.setAttribute('role', 'dialog');
+    wrap.setAttribute('aria-modal', 'true');
+    wrap.setAttribute('aria-label', 'New group');
+    wrap.innerHTML = `
+      <div class="dm-picker group-picker">
+        <div class="dm-picker-head"><b>New group</b><button type="button" class="dm-picker-close" aria-label="Close">×</button></div>
+        <div class="group-picker-name"><input type="text" maxlength="60" placeholder="Group name (optional)" aria-label="Group name" autocomplete="off"></div>
+        <div class="dm-picker-list"></div>
+        <div class="group-picker-foot">
+          <span class="group-picker-count">0 selected</span>
+          <button type="button" class="group-picker-create" disabled>Create group</button>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+    groupPicker = {
+      wrap,
+      list: wrap.querySelector('.dm-picker-list'),
+      input: wrap.querySelector('.group-picker-name input'),
+      count: wrap.querySelector('.group-picker-count'),
+      create: wrap.querySelector('.group-picker-create'),
+      selected: new Set(),
+    };
+    wrap.querySelector('.dm-picker-close').addEventListener('click', closeGroupPicker);
+    wrap.addEventListener('click', (event) => { if (event.target === wrap) closeGroupPicker(); });
+    groupPicker.create.addEventListener('click', () => {
+      if (!groupPicker || !groupPicker.selected.size) return;
+      const name = groupPicker.input.value.trim();
+      const members = [];
+      groupPicker.list.querySelectorAll('.group-pick.selected').forEach((btn) => {
+        members.push({ id: btn.dataset.id, name: btn.dataset.name, avatar: btn.dataset.avatar });
+      });
+      const group = SOC.createGroup(name, members);
+      closeGroupPicker();
+      if (!group) { glitchToast('Couldn’t create the group'); return; }
+      location.href = `chat.html?group=${encodeURIComponent(group.id)}`;
+    });
+    let rows = [];
+    try {
+      rows = DB && DB.loadCreators ? (await DB.loadCreators(50)) : [];
+    } catch (err) { rows = []; }
+    const me = window.GLITCHIT_USER;
+    renderGroupMembers(rows.filter((c) => !me || String(c.id) !== String(me.id)));
+  }
+
+  function renderGroupMembers(rows) {
+    if (!groupPicker) return;
+    if (!rows.length) {
+      groupPicker.list.innerHTML = '<div class="dm-pick-empty">No creators to add yet — follow someone from Search and they’ll appear here.</div>';
+      return;
+    }
+    groupPicker.list.innerHTML = rows.map((c) => {
+      const handle = c.handle || c.username || String(c.id).slice(0, 8);
+      const avatar = c.avatar ? escapeHtml(c.avatar) : fallbackAvatar(handle);
+      return `<button type="button" class="group-pick" data-id="${escapeHtml(c.id)}" data-name="${escapeHtml(handle)}" data-avatar="${escapeHtml(c.avatar || '')}" aria-pressed="false"><img src="${escapeHtml(avatar)}" alt="" loading="lazy"><span><b>${escapeHtml(handle)}</b><em>Creator</em></span><i class="group-pick-check" aria-hidden="true">✓</i></button>`;
+    }).join('');
+    groupPicker.list.querySelectorAll('.group-pick').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const on = !groupPicker.selected.has(id);
+        if (on) groupPicker.selected.add(id); else groupPicker.selected.delete(id);
+        btn.classList.toggle('selected', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        updateGroupPickerFoot();
+      });
+    });
+    updateGroupPickerFoot();
+  }
+
+  function updateGroupPickerFoot() {
+    if (!groupPicker) return;
+    const n = groupPicker.selected.size;
+    groupPicker.count.textContent = n ? `${n} selected` : '0 selected';
+    groupPicker.create.disabled = n === 0;
+  }
+
+  function closeGroupPicker() {
+    if (!groupPicker) return;
+    groupPicker.wrap.remove();
+    groupPicker = null;
   }
 
   // ---------------- Message button (user.html) ----------------

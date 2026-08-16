@@ -1022,7 +1022,7 @@ import('./db.js?v=7').then((mod) => { DB = mod; }).catch((err) => { DB = null; i
 // Loaded lazily like db.js; every consumer guards with `SOC ?` so the app keeps
 // working identically if the module ever fails to load.
 let SOC = null;
-import('./social.js?v=3').then((mod) => {
+import('./social.js?v=5').then((mod) => {
   SOC = mod;
   window.GLITCHIT_SOC = mod;
   // src/social-wire.js (loaded after main.js) listens for this and wires the

@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="src/dm-inbox.css?v=2" />
     <link rel="stylesheet" href="src/ai-chat.css" />
     <link rel="stylesheet" href="src/music-ui.css?v=2" />
-    <link rel="stylesheet" href="src/social.css" />
+    <link rel="stylesheet" href="src/social.css?v=2" />
   </head>
   <body data-page="messages" data-ai-fab>
     <div id="app">
@@ -45,6 +45,9 @@
                 <a href="activity.html" class="dm-act" aria-label="Activity">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l3-4 3 2 5-7"/></svg>
                 </a>
+                <button type="button" class="dm-act" id="dm-new-group" aria-label="New group">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </button>
                 <button type="button" class="dm-act" id="dm-compose" aria-label="New message">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
                 </button>
@@ -98,7 +101,7 @@
       </nav>
     </div>
     <script src="src/main.js?v=36" defer></script>
-    <script src="src/social-wire.js?v=6" defer></script>
+    <script src="src/social-wire.js?v=8" defer></script>
     <script src="src/edit-profile.js?v=3" defer></script>
     <script src="src/story-features.js?v=3" defer></script>
     <script src="src/music-ui.js?v=2" defer></script>

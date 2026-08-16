@@ -21,6 +21,8 @@ const { join, normalize, extname, resolve, sep, basename } = require('node:path'
 
 // Account registry (lists every registered user via the Supabase Admin API).
 const accountsHandler = require('./api/accounts.js');
+// LiveKit Cloud access-token minting (real WebRTC calls on chat.html).
+const livekitTokenHandler = require('./api/livekit-token.js');
 
 const ROOT = resolve(__dirname);
 const PORT = Number(process.env.PORT || 4173);
@@ -485,6 +487,10 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === 'GET' && new URL(req.url, 'http://glitchit.local').pathname === '/api/accounts') {
     await accountsHandler(req, res);
+    return;
+  }
+  if (req.method === 'GET' && new URL(req.url, 'http://glitchit.local').pathname === '/api/livekit-token') {
+    await livekitTokenHandler(req, res);
     return;
   }
 

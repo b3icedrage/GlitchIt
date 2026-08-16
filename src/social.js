@@ -12,6 +12,8 @@ const ACTIVITY_READ_KEY = 'glitchit.social.read.v1';
 const DMS_KEY = 'glitchit.social.dms.v1';
 const DM_READ_KEY = 'glitchit.social.dmread.v1';
 const DM_PENDING_KEY = 'glitchit.social.dmpending.v1';
+const GROUPS_KEY = 'glitchit.social.groups.v1';
+const GROUP_READ_KEY = 'glitchit.social.groupread.v1';
 
 // Current identity ({ id, username, avatar }) — guests stay anonymous so they
 // never write anything into the per-user stores.
@@ -244,6 +246,18 @@ export function dmUnreadTotal() {
   return dmUnread().length;
 }
 
+// How many incoming messages in one conversation are still unseen — the
+// per-conversation count the inbox badge shows next to that user's row.
+export function dmUnreadCount(partnerKey) {
+  if (me.guest || !partnerKey) return 0;
+  const key = String(partnerKey);
+  const map = read(DMS_KEY, {})[me.id] || {};
+  const conv = map[key];
+  if (!conv || !Array.isArray(conv.messages)) return 0;
+  const readAt = Number((read(DM_READ_KEY, {})[me.id] || {})[key]) || 0;
+  return conv.messages.filter((m) => m.from !== 'me' && m.at > readAt).length;
+}
+
 // Mark one conversation read (called when the chat page opens it).
 export function dmMarkRead(partnerKey) {
   if (me.guest || !partnerKey) return;
@@ -251,6 +265,144 @@ export function dmMarkRead(partnerKey) {
   const box = all[me.id] || (all[me.id] = {});
   box[String(partnerKey)] = stamp();
   write(DM_READ_KEY, all);
+}
+
+// ---------------- Group chats ----------------
+// groups[userId][groupId] = {
+//   id, name, createdBy, at,
+//   members: [{id, name, avatar}],
+//   messages: [{id, from, fromName, fromAvatar, text, at}]  // from: 'me' | 'system' | member name
+// }
+export function groupConversations() {
+  if (me.guest) return [];
+  const map = read(GROUPS_KEY, {})[me.id] || {};
+  return Object.values(map)
+    .filter((g) => g && Array.isArray(g.messages) && g.messages.length)
+    .sort((a, b) => (lastMsgAt(b) - lastMsgAt(a)));
+}
+
+// Create a group with at least one other member. The creator is always a
+// member; the group appears in the inbox with a system message announcing it.
+export function createGroup(name, memberList) {
+  if (me.guest) return null;
+  const clean = String(name || '').trim().slice(0, 60) || 'New group';
+  const members = (Array.isArray(memberList) ? memberList : [])
+    .filter((m) => m && m.id && String(m.id) !== String(me.id))
+    .slice(0, 30)
+    .map((m) => ({
+      id: String(m.id),
+      name: String(m.name || m.username || m.handle || String(m.id).slice(0, 8)).slice(0, 40),
+      avatar: String((m.avatar && m.avatar) || ''),
+    }));
+  if (!members.length) return null;
+  const id = 'g' + stamp() + Math.random().toString(36).slice(2, 6);
+  const map = read(GROUPS_KEY, {});
+  const box = map[me.id] || (map[me.id] = {});
+  const group = {
+    id,
+    name: clean,
+    createdBy: me.id,
+    at: stamp(),
+    members,
+    messages: [{
+      id: 'm' + stamp() + Math.random().toString(36).slice(2, 6),
+      from: 'system',
+      fromName: '',
+      fromAvatar: '',
+      text: `You created this group — members: ${members.map((m) => m.name).join(', ')}`,
+      at: stamp(),
+    }],
+  };
+  box[id] = group;
+  write(GROUPS_KEY, map);
+  return group;
+}
+
+export function groupConversation(groupId) {
+  if (me.guest || !groupId) return null;
+  return (read(GROUPS_KEY, {})[me.id] || {})[String(groupId)] || null;
+}
+
+export function groupSend(groupId, text) {
+  if (!groupId || me.guest) return null;
+  const clean = String(text || '').trim().slice(0, 1000);
+  if (!clean) return null;
+  const key = String(groupId);
+  const map = read(GROUPS_KEY, {});
+  const box = map[me.id] || (map[me.id] = {});
+  const group = box[key];
+  if (!group) return null;
+  const msg = {
+    id: 'm' + stamp() + Math.random().toString(36).slice(2, 6),
+    from: 'me',
+    fromName: me.username,
+    fromAvatar: me.avatar,
+    text: clean,
+    at: stamp(),
+  };
+  group.messages.push(msg);
+  if (group.messages.length > 500) group.messages.splice(0, group.messages.length - 500);
+  write(GROUPS_KEY, map);
+  return msg;
+}
+
+// A group member replies (simulated like the 1:1 creator auto-replies).
+export function groupReceive(groupId, member, text) {
+  if (!groupId || me.guest) return null;
+  const clean = String(text || '').trim().slice(0, 1000);
+  if (!clean) return null;
+  const key = String(groupId);
+  const map = read(GROUPS_KEY, {});
+  const box = map[me.id] || (map[me.id] = {});
+  const group = box[key];
+  if (!group) return null;
+  const fallback = (group.members && group.members[0]) || {};
+  const name = String((member && (member.name || member.username)) || fallback.name || 'Member').slice(0, 40);
+  const avatar = String((member && member.avatar) || fallback.avatar || '');
+  const msg = {
+    id: 'm' + stamp() + Math.random().toString(36).slice(2, 6),
+    from: name,
+    fromName: name,
+    fromAvatar: avatar,
+    text: clean,
+    at: stamp(),
+  };
+  group.messages.push(msg);
+  if (group.messages.length > 500) group.messages.splice(0, group.messages.length - 500);
+  write(GROUPS_KEY, map);
+  return msg;
+}
+
+// Unseen member/system messages in one group (the badge on its inbox row).
+export function groupUnreadCount(groupId) {
+  if (me.guest || !groupId) return 0;
+  const key = String(groupId);
+  const map = read(GROUPS_KEY, {})[me.id] || {};
+  const group = map[key];
+  if (!group || !Array.isArray(group.messages)) return 0;
+  const readAt = Number((read(GROUP_READ_KEY, {})[me.id] || {})[key]) || 0;
+  return group.messages.filter((m) => m.from !== 'me' && m.from !== 'system' && m.at > readAt).length;
+}
+
+export function groupUnreadTotal() {
+  if (me.guest) return 0;
+  const map = read(GROUPS_KEY, {})[me.id] || {};
+  let n = 0;
+  for (const key in map) n += groupUnreadCount(key);
+  return n;
+}
+
+export function groupMarkRead(groupId) {
+  if (me.guest || !groupId) return;
+  const all = read(GROUP_READ_KEY, {});
+  const box = all[me.id] || (all[me.id] = {});
+  box[String(groupId)] = stamp();
+  write(GROUP_READ_KEY, all);
+}
+
+// 1:1 DMs + group chats, for the nav badge and the Primary tab count.
+export function unreadMessagesTotal() {
+  return dmUnreadTotal() + groupUnreadTotal();
 }
 
 // ---------------- Creator auto-replies ----------------
@@ -274,6 +426,16 @@ const STORY_REPLIES = [
   'thanks for watching! more coming soon ⚡',
   'aw appreciate the love on the story!',
   'glad you caught that story ✨',
+];
+const GROUP_REPLIES = [
+  'count me in 🙌',
+  'yo, facts!',
+  'same here haha',
+  'this group is lit ⚡',
+  'lol fr',
+  'say less — I’m in',
+  'ok ok I see you 👀',
+  'posting this in the group chat rn',
 ];
 
 function readPendingReplies() {
@@ -308,7 +470,10 @@ function processPendingReplies() {
     return p.due > now - 30 * 60 * 1000;
   });
   writePendingReplies(rest);
-  due.forEach((p) => dmReceive(p.key, p.partner, p.text));
+  due.forEach((p) => {
+    if (p.kind === 'group') groupReceive(p.key, p.member, p.text);
+    else dmReceive(p.key, p.partner, p.text);
+  });
   if (due.length) {
     try {
       window.dispatchEvent(new CustomEvent('glitchit:dm', { detail: { keys: due.map((p) => String(p.key)) } }));
@@ -325,7 +490,25 @@ export function scheduleCreatorReply(partnerKey, partner, opts) {
   const text = pool[Math.floor(Math.random() * pool.length)];
   const due = Date.now() + 2000 + Math.floor(Math.random() * 2200);
   const list = readPendingReplies();
-  list.push({ userId: me.id, key: String(partnerKey), partner: { name: String((partner && partner.name) || 'Creator').slice(0, 40), avatar: (partner && partner.avatar) || '' }, text, due });
+  list.push({ userId: me.id, key: String(partnerKey), kind: 'dm', partner: { name: String((partner && partner.name) || 'Creator').slice(0, 40), avatar: (partner && partner.avatar) || '' }, text, due });
+  writePendingReplies(list);
+  armPendingTimer();
+}
+
+// Queue a reply from a random group member a few seconds after you send.
+export function scheduleGroupReply(groupId, member) {
+  if (me.guest || !groupId) return;
+  const text = GROUP_REPLIES[Math.floor(Math.random() * GROUP_REPLIES.length)];
+  const due = Date.now() + 2500 + Math.floor(Math.random() * 3500);
+  const list = readPendingReplies();
+  list.push({
+    userId: me.id,
+    key: String(groupId),
+    kind: 'group',
+    member: member ? { name: String(member.name || '').slice(0, 40), avatar: String(member.avatar || '') } : undefined,
+    text,
+    due,
+  });
   writePendingReplies(list);
   armPendingTimer();
 }
