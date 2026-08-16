@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  const AD_CLIENT = 'ca-pub-6585667805986181';
+  const AD_CLIENT = 'ca-pub-6010592277770538';
   const AD_SLOT = ''; // TODO: paste your in-feed ad-unit slot id here
   const EVERY = 6; // insert a sponsored slide after every 6 reels
 
