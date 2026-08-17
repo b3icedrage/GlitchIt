@@ -75,18 +75,23 @@ export function openLocationPicker() {
     modal.setAttribute('aria-modal', 'true');
     modal.setAttribute('aria-label', 'Share your location');
     modal.innerHTML = `
-      <div class="loc-head">
-        <button type="button" class="loc-close" aria-label="Close">✕</button>
-        <h3>Share location</h3>
-      </div>
-      <div class="loc-tools">
-        <input class="loc-search" type="search" placeholder="Search for a place…" autocomplete="off" aria-label="Search for a place" />
-        <button type="button" class="loc-myloc">Use my location</button>
-      </div>
       <div class="loc-map" aria-label="Map — tap to drop a pin"></div>
-      <div class="loc-foot">
-        <div class="loc-label">Tap the map to drop a pin</div>
-        <button type="button" class="loc-send" disabled>Send location</button>
+      <button type="button" class="loc-close" aria-label="Close">‹</button>
+      <div class="loc-sheet">
+        <div class="loc-handle" aria-hidden="true"></div>
+        <div class="loc-search-wrap">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input class="loc-search" type="search" placeholder="Search for a place…" autocomplete="off" aria-label="Search for a place" />
+        </div>
+        <div class="loc-row">
+          <span class="loc-row-ico" aria-hidden="true">📍</span>
+          <span class="loc-row-meta"><strong>My location</strong><em>Use your device's GPS</em></span>
+          <button type="button" class="loc-myloc">Locate</button>
+        </div>
+        <div class="loc-foot">
+          <div class="loc-label">Tap the map to drop a pin</div>
+          <button type="button" class="loc-send" disabled>Send location</button>
+        </div>
       </div>`;
     document.body.appendChild(modal);
 

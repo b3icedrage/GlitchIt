@@ -487,7 +487,7 @@
     // Location sharing module (Leaflet + OSM) — lazy, loaded once per page.
     const locBtn = document.getElementById('chat-loc');
     let locShare = null;
-    const locShareLoading = import('./location-share.js?v=1').then((mod) => { locShare = mod; }).catch(() => {});
+    const locShareLoading = import('./location-share.js?v=2').then((mod) => { locShare = mod; }).catch(() => {});
     const params = new URLSearchParams(location.search);
     const to = String(params.get('to') || '').trim();
     const groupId = String(params.get('group') || '').trim();
@@ -637,7 +637,7 @@
     if (locBtn) {
       locBtn.addEventListener('click', () => {
         if (isGuest()) { showGuestGate('Sign in to share your location'); return; }
-        import('./location-share.js?v=1')
+        import('./location-share.js?v=2')
           .then((mod) => mod.openLocationPicker())
           .then((loc) => {
             if (!loc || !Number.isFinite(Number(loc.lat)) || !Number.isFinite(Number(loc.lng))) return;
