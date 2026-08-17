@@ -341,21 +341,24 @@
 
     const tryInject = () => {
       if (!demoEnabled()) return;
-      // Only fill when the container is truly empty (or holds an empty state).
-      const emptyState = container.querySelector('.feed-empty, .rail-empty, .sr-empty');
+      // Show the demo world whenever there is no real content — even if the
+      // container already holds something (local uploads, loading states or
+      // empty-state cards). Real DB content always wins: if it arrives after
+      // the demo, the demo is removed.
       const hasReal = container.querySelector('.video-card:not(.upload-card), .post:not(.upload-card), .seller, .sr-acct');
-      if (hasReal) return; // real content present — never touch it
-      if (container.children.length > 0 && !emptyState) return; // something else (local uploads)
+      if (hasReal) {
+        container.querySelector('.' + DEMO_ROOT_CLASS)?.remove();
+        return;
+      }
       // Accounts re-render on every keystroke (main.js renderSearchAccounts),
       // so allow re-injection when the empty state comes back.
       if (kind === 'accounts') injected = false;
       if (injected) return;
       injected = true;
 
-      if (kind === 'reels') {
-        container.appendChild(buildDemoRoot(container, USER_COUNT * VIDS_PER_USER));
-      } else if (kind === 'posts') {
-        // Home feed: demo reels as video cards (13 per creator).
+      if (kind === 'reels' || kind === 'posts') {
+        // Drop any "no posts yet" card so the demo chip sits on top.
+        container.querySelector('.feed-empty, .rail-empty, .sr-empty')?.remove();
         container.appendChild(buildDemoRoot(container, USER_COUNT * VIDS_PER_USER));
       } else if (kind === 'accounts') {
         container.innerHTML = '';
