@@ -63,6 +63,102 @@
     { id: 'science', name: 'Science', emoji: '🔬', grad: ['#38bdf8', '#155e75'], words: ['lab', 'quanta', 'cosmos', 'reactor', 'specimen', 'theory', 'orbit', 'fusion'], nouns: ['lab experiment', 'night sky', 'rocket test', 'microscope session', 'physics demo', 'volcano kit', 'battery build', 'weather watch'], adj: ['explosive', 'tiny', 'glowing', 'precise', 'spacey', 'fizzy', 'cold', 'mind-bending'], tags: ['science', 'space', 'experiment', 'lab', 'physics', 'stem'], titles: ['{adj} {noun} at home', 'The {noun} explained', 'Building {noun}', '{noun} in slow motion', 'Why {noun} happens'] },
   ];
 
+  // ---------- GlitchIt — the AI creator ----------
+  // A pinned creator whose handle is "glitchit" and who posts a fresh
+  // AI-themed video every minute while a feed is open. Every post is
+  // deterministic (title, caption, neural poster art, trending stats) and
+  // uses the same sample clips with sound as the rest of the demo world.
+  const GLITCHIT_ID = 'demo-glitchit';
+  const GLITCHIT_HANDLE = 'glitchit';
+  const GLITCHIT_AVATAR = svgUri(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">${gradient('giglitchit', '#6366f1', '#06b6d4')}<circle cx="48" cy="48" r="48" fill="url(#giglitchit)"/><text x="48" y="60" font-size="42" text-anchor="middle">⚡</text></svg>`
+  );
+
+  const AI_VERBS = ['rendered', 'imagined', 'dreamed', 'generated', 'animated', 'painted', 'hallucinated', 'simulated'];
+  const AI_ADJ = ['neon', 'surreal', 'holographic', 'infinite', 'cyberpunk', 'glowing', 'liquid', 'impossible', 'vibrant', 'soft'];
+  const AI_NOUNS = ['cityscape', 'dreamscape', 'dance loop', 'skyline', 'ocean dream', 'neon forest', 'fashion show', 'robot ballet', 'galaxy road', 'concert hall', 'night street', 'sports arena', 'secret garden', 'desert highway'];
+  const AI_TITLE_TPL = [
+    'AI {verb} a {adj} {noun}',
+    'The {adj} {noun} — AI made this',
+    '{noun} but it\'s AI',
+    'Neural {noun} loop',
+    'What AI sees: {adj} {noun}',
+    'Watch AI {verb} a {noun}',
+    '{adj} {noun} — trending now',
+    'AI {noun} in motion',
+  ];
+  const AI_TAGS = ['ai', 'aivideo', 'aiart', 'neural', 'future', 'trending', 'glitchit'];
+
+  function glitchItUser() {
+    return {
+      id: GLITCHIT_ID,
+      handle: GLITCHIT_HANDLE,
+      display: 'GlitchIt',
+      avatar: GLITCHIT_AVATAR,
+      bio: 'AI videos, new every minute ⚡',
+      verified: true,
+      followers: 482000,
+      category: null,
+    };
+  }
+
+  // Neural-style poster art: dark canvas, glowing gradient orb, circuit lines.
+  function glitchItPoster(seed, title) {
+    const rng = mulberry32(seed);
+    const hue = Math.floor(rng() * 360);
+    const gid = 'gi' + seed;
+    const c1 = `hsl(${hue} 95% 62%)`;
+    const c2 = `hsl(${(hue + 120) % 360} 95% 45%)`;
+    const lines = Array.from({ length: 6 }, () => {
+      const x = Math.floor(rng() * 370);
+      const y = Math.floor(rng() * 470);
+      return `<path d="M ${x} ${y} l ${20 + rng() * 50} ${10 + rng() * 70}" stroke="rgba(255,255,255,.35)" stroke-width="1.5" fill="none"/>`;
+    }).join('');
+    const nodes = Array.from({ length: 5 }, () => {
+      const cx = Math.floor(rng() * 380);
+      const cy = Math.floor(rng() * 480);
+      return `<circle cx="${cx}" cy="${cy}" r="${(1.5 + rng() * 2).toFixed(1)}" fill="#fff" opacity=".8"/>`;
+    }).join('');
+    const bars = Array.from({ length: 3 }, () => {
+      const y = Math.floor(rng() * 300);
+      const h = 1 + Math.floor(rng() * 6);
+      const x = Math.floor(rng() * 40);
+      return `<rect x="${x}" y="${y}" width="${80 - x}" height="${h}" fill="rgba(255,255,255,.14)"/>`;
+    }).join('');
+    return svgUri(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500">${gradient(gid, c1, c2)}<rect width="400" height="500" fill="#05060f"/><circle cx="200" cy="230" r="118" fill="url(#${gid})" opacity=".9"/><circle cx="200" cy="230" r="118" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="1.5"/>${lines}${nodes}${bars}<text x="200" y="112" font-size="16" text-anchor="middle" fill="rgba(255,255,255,.65)" font-family="sans-serif" letter-spacing="7">AI VIDEO</text><text x="200" y="408" font-size="22" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="700">${esc(title.slice(0, 30))}</text><text x="200" y="434" font-size="13" text-anchor="middle" fill="rgba(255,255,255,.6)" font-family="sans-serif">@glitchit · neural render</text></svg>`
+    );
+  }
+
+  // The n-th AI post (n = minutes ago it was "published"). Trending stats and
+  // a rotating caption make every post feel fresh.
+  function glitchItVideoAt(n) {
+    const seed = hashStr('glitchit-ai:' + n);
+    const rng = mulberry32(seed);
+    const title = pick(rng, AI_TITLE_TPL)
+      .replace('{verb}', pick(rng, AI_VERBS))
+      .replace('{adj}', pick(rng, AI_ADJ))
+      .replace('{noun}', pick(rng, AI_NOUNS));
+    const tags = [...AI_TAGS].sort(() => rng() - 0.5).slice(0, 3);
+    const caption = `${title}${tags.map((t) => ' #' + t).join('')}`;
+    return {
+      id: GLITCHIT_ID + '-ai-' + n,
+      title,
+      caption,
+      src: SAMPLE_VIDEOS[(n + 7) % SAMPLE_VIDEOS.length],
+      poster: glitchItPoster(seed, title),
+      user: GLITCHIT_HANDLE,
+      display: 'GlitchIt',
+      avatar: GLITCHIT_AVATAR,
+      verified: true,
+      owner: GLITCHIT_ID,
+      likes: String(1400 + Math.floor(rng() * 9600)),
+      comments: String(120 + Math.floor(rng() * 900)),
+      shares: String(60 + Math.floor(rng() * 700)),
+      created_at: Date.now() - n * 60000,
+    };
+  }
+
   // ---------- deterministic PRNG ----------
   function mulberry32(seed) {
     let a = seed >>> 0;
@@ -233,11 +329,54 @@
     const root = document.createElement('div');
     root.className = DEMO_ROOT_CLASS;
     root.innerHTML = chipHtml(total);
+
+    // GlitchIt — pinned AI creator that posts a new video every minute.
+    const live = document.createElement('div');
+    live.className = 'glitchit-live';
+    const glitchRow = document.createElement('div');
+    glitchRow.className = 'glitchit-row';
+    glitchRow.innerHTML = `<span class="glitchit-avatar"><img src="${GLITCHIT_AVATAR}" alt="GlitchIt avatar"></span><div class="glitchit-meta"><strong>GlitchIt${typeof window.verifiedBolt === 'function' ? window.verifiedBolt('verified-bolt-inline') : ''}</strong><span><i class="glitchit-dot" aria-hidden="true"></i>AI creator · posting a new video every minute</span></div><b class="glitchit-count">…</b>`;
+    const countEl = glitchRow.querySelector('.glitchit-count');
+    root.appendChild(glitchRow);
+    root.appendChild(live);
+
     const cards = document.createElement('div');
     cards.className = 'demo-cards';
     root.appendChild(cards);
     const perChunk = 12;
     let offset = 0;
+    let liveTimer = null;
+    let postIndex = 6;
+
+    const glitchItCard = (v, newest) => {
+      if (typeof window.glitchVideoCard !== 'function') return null;
+      const node = htmlToNode(window.glitchVideoCard({
+        id: v.id, title: v.title, caption: v.caption, src: v.src, poster: v.poster,
+        user: v.user, avatar: v.avatar, verified: v.verified, owner: v.owner,
+        likes: v.likes, comments: v.comments, shares: v.shares,
+      }));
+      if (newest) node.classList.add('glitchit-new');
+      return node;
+    };
+    const refreshLive = () => {
+      const node = glitchItCard(glitchItVideoAt(postIndex), true);
+      if (!node) return;
+      live.prepend(node);
+      while (live.children.length > 12) live.lastChild.remove();
+      if (countEl) countEl.textContent = `${live.children.length} fresh`;
+      if (typeof window.attachGlitchAutoplay === 'function') window.attachGlitchAutoplay();
+      if (typeof window.attachReelsActions === 'function') window.attachReelsActions();
+      if (typeof window.markSavedReels === 'function') window.markSavedReels();
+    };
+    // Backfill the last six minutes so the creator isn't silent on load
+    // (newest first, matching the live order).
+    for (let i = 5; i >= 0; i--) {
+      const node = glitchItCard(glitchItVideoAt(i), false);
+      if (node) live.prepend(node);
+    }
+    if (countEl) countEl.textContent = `${live.children.length} fresh`;
+    liveTimer = setInterval(() => { if (root.isConnected) refreshLive(); }, 60000);
+
     const renderNext = () => {
       const remaining = total - offset;
       if (remaining <= 0) return;
@@ -255,6 +394,7 @@
     };
     renderNext();
     root.querySelector('.demo-hide')?.addEventListener('click', () => {
+      if (liveTimer) clearInterval(liveTimer);
       try { localStorage.setItem(DEMO_OFF_KEY, '1'); } catch (e) { /* ignore */ }
       root.remove();
       restoreEmpty(container);
@@ -291,13 +431,18 @@
   function renderDemoAccounts(list, total, query) {
     const frag = document.createDocumentFragment();
     const q = String(query || '').trim().toLowerCase();
+    // GlitchIt (the AI creator) is pinned to the top of the account list
+    // whenever the query is empty or mentions GlitchIt / AI.
+    if (!q || q === 'glitchit' || 'glitchit'.includes(q) || 'ai'.includes(q)) {
+      frag.appendChild(htmlToNode(accountRow(glitchItUser())));
+    }
     const rows = [];
     for (let i = 0; i < Math.min(total, USER_COUNT); i++) {
       const u = userAt(i);
       if (q && !u.handle.toLowerCase().includes(q)) continue;
       rows.push(u);
     }
-    if (q && !rows.length) {
+    if (q && !rows.length && !frag.childNodes.length) {
       // Keep the demo chip visible and show the no-match message under it,
       // so the observer never churns (re-injecting the chip repeatedly).
       list.appendChild(htmlToNode(`<div class="sr-empty"><span class="sr-empty-mark">⌕</span><h3>No accounts found</h3><p>No demo creator matches “${esc(q)}”.</p></div>`));
@@ -310,14 +455,16 @@
   // Right-rail suggestions (same markup as main.js hydrateRail).
   function renderDemoRail(list) {
     list.innerHTML = '';
-    for (let i = 0; i < Math.min(4, USER_COUNT); i++) {
-      const u = userAt(i);
+    // GlitchIt is pinned first; then the usual demo creators.
+    const rows = [glitchItUser()];
+    for (let i = 0; i < Math.min(4, USER_COUNT); i++) rows.push(userAt(i));
+    rows.forEach((u) => {
       const handle = esc(u.handle);
       const bolt = u.verified && typeof window.verifiedBolt === 'function' ? window.verifiedBolt('verified-bolt-inline') : '';
       const seller = document.createElement('div');
       seller.className = 'seller';
       seller.dataset.owner = u.id;
-      seller.innerHTML = `<div><strong>${handle}${bolt}</strong><span>Creator</span></div><button type="button">Follow</button>`;
+      seller.innerHTML = `<div><strong>${handle}${bolt}</strong><span>${u.display && u.display !== u.handle ? 'AI creator' : 'Creator'}</span></div><button type="button">Follow</button>`;
       const btn = seller.querySelector('button');
       const syncBtn = () => {
         const on = typeof window.isFollowing === 'function' && window.isFollowing(u.id);
@@ -333,7 +480,7 @@
         syncBtn();
       });
       list.appendChild(seller);
-    }
+    });
   }
 
   // ---------- wiring ----------
