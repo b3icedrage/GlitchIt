@@ -489,27 +489,23 @@
     let injected = false;
 
     // Demo cards reuse the real card markup (main.js glitchVideoCard /
-    // uploadCard / srAccountRow / seller), so "real content" only counts
-    // elements sitting OUTSIDE the demo root. The demo's own cards never
-    // trigger a removal or a re-inject.
+    // uploadCard / srAccountRow / seller). For accounts & rail we only fill
+    // when there is no real content at all. For feeds the demo world always
+    // shows — cloud posts that load later appear ABOVE it instead of
+    // removing it (the user asked for it to stay even when not empty).
     const REAL_SELECTOR = '.video-card:not(.upload-card), .post:not(.upload-card), .seller, .sr-acct';
     const tryInject = () => {
       if (!demoEnabled()) return;
-      const demoRoot = container.querySelector('.' + DEMO_ROOT_CLASS);
-      const real = demoRoot
-        ? [...container.querySelectorAll(REAL_SELECTOR)].find((el) => !demoRoot.contains(el))
-        : container.querySelector(REAL_SELECTOR);
-      if (real) {
-        // Real DB content appeared after the demo — remove the demo.
-        if (demoRoot) demoRoot.remove();
-        return;
-      }
-      if (demoRoot) return; // demo already showing, no real content — stable
+      if (container.querySelector('.' + DEMO_ROOT_CLASS)) return; // already up — never removed
+      if ((kind === 'accounts' || kind === 'rail') && container.querySelector(REAL_SELECTOR)) return;
       // main.js re-renders the search accounts list on every keystroke and
       // wipes the demo chip when it does; allow re-injection only while the
       // chip is gone, so observer churn never duplicates the demo rows.
       if (kind === 'accounts' && !container.querySelector('.demo-chip')) injected = false;
-      if (injected) return;
+      // Feeds re-inject whenever the root is missing (e.g. main.js replaced
+      // the container with local uploads); the root presence check above
+      // keeps that from ever duplicating.
+      if (injected && kind !== 'reels' && kind !== 'posts') return;
       injected = true;
 
       if (kind === 'reels' || kind === 'posts') {
