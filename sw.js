@@ -1,16 +1,22 @@
 // GlitchIt — service worker caching layer (registered by src/main.js).
 // Quota-friendly strategy (video is never cached):
-//  - App shell:        precached at install so the app opens instantly and works offline.
-//  - Navigations:      network-first, cached fallback for offline.
+//  - App shell:          precached at install so the app opens instantly and works offline.
+//  - Navigations:        network-first, cached fallback for offline.
 //  - Same-origin assets: stale-while-revalidate (instant repeat loads).
 //  - Supabase images:    stale-while-revalidate with a small FIFO budget.
+//  - Map (Leaflet + OSM): SDK is stale-while-revalidate; tiles are cache-first
+//    (immutable URLs) with a FIFO budget so maps open instantly on repeat visits.
 'use strict';
 
 const CACHE_NAME = 'glitchit-cache-v3';
 const MEDIA_CACHE_NAME = 'glitchit-media-v2';
 const MEDIA_BUDGET = 40;
+const MAP_CACHE_NAME = 'glitchit-map-v1';
+const TILE_BUDGET = 400; // ~4-8 MB of tiles; trims oldest-first once full
 const ASSET_RE = /\.(css|js|mjs|svg|png|jpe?g|webp|gif|ico|woff2?)$/;
 const MEDIA_RE = /supabase\.co\/storage/;
+const OSM_TILE_RE = /tile\.openstreetmap\.org\//;
+const LEAFLET_RE = /unpkg\.com\/leaflet@/;
 
 // The app shell: every page plus the core assets it needs. Fetched once during
 // install so first loads are instant and later loads keep working offline
@@ -70,7 +76,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key !== CACHE_NAME && key !== MEDIA_CACHE_NAME).map((key) => caches.delete(key)));
+    await Promise.all(keys.filter((key) => key !== CACHE_NAME && key !== MEDIA_CACHE_NAME && key !== MAP_CACHE_NAME).map((key) => caches.delete(key)));
     await self.clients.claim();
   })());
 });
@@ -84,7 +90,8 @@ function staleWhileRevalidate(cacheName, request) {
         .then((response) => {
           if (response && response.ok) {
             cache.put(request, response.clone());
-            if (cacheName === MEDIA_CACHE_NAME) trimMedia(cache);
+            if (cacheName === MEDIA_CACHE_NAME) trimCache(cache, MEDIA_BUDGET);
+            if (cacheName === MAP_CACHE_NAME) trimCache(cache, TILE_BUDGET);
           }
           return response;
         })
@@ -95,10 +102,27 @@ function staleWhileRevalidate(cacheName, request) {
   ));
 }
 
-async function trimMedia(cache) {
+// Cache-first for immutable URLs (map tiles): serve the cached copy instantly,
+// fetching only on a miss. Trimmed FIFO-style once it exceeds the budget.
+function cacheFirst(cacheName, request, budget) {
+  return caches.open(cacheName).then((cache) => (
+    cache.match(request).then((hit) => {
+      if (hit) return hit;
+      return fetch(request).then((response) => {
+        if (response && response.ok) {
+          cache.put(request, response.clone());
+          if (budget) trimCache(cache, budget);
+        }
+        return response;
+      }).catch(() => Response.error());
+    })
+  ));
+}
+
+async function trimCache(cache, budget) {
   const keys = await cache.keys();
-  if (keys.length <= MEDIA_BUDGET) return;
-  await Promise.all(keys.slice(0, keys.length - MEDIA_BUDGET).map((key) => cache.delete(key)));
+  if (keys.length <= budget) return;
+  await Promise.all(keys.slice(0, keys.length - budget).map((key) => cache.delete(key)));
 }
 
 self.addEventListener('fetch', (event) => {
@@ -127,6 +151,20 @@ self.addEventListener('fetch', (event) => {
   // Supabase-stored images: SWR with a budget (video passes through untouched).
   if (MEDIA_RE.test(url.href) && /\.(png|jpe?g|webp|gif|svg)$/i.test(url.pathname)) {
     event.respondWith(staleWhileRevalidate(MEDIA_CACHE_NAME, request));
+    return;
+  }
+
+  // OpenStreetMap tiles: cache-first — tile URLs are immutable, so the cached
+  // copy is always correct; only fetch when a tile is seen for the first time.
+  if (OSM_TILE_RE.test(url.href)) {
+    event.respondWith(cacheFirst(MAP_CACHE_NAME, request, TILE_BUDGET));
+    return;
+  }
+
+  // Leaflet SDK from unpkg: stale-while-revalidate so pickers and map cards
+  // open instantly on repeat visits.
+  if (LEAFLET_RE.test(url.href) && ASSET_RE.test(url.pathname)) {
+    event.respondWith(staleWhileRevalidate(MAP_CACHE_NAME, request));
     return;
   }
 
