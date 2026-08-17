@@ -148,7 +148,7 @@
     const row = document.createElement('div');
     row.className = 'glitchit-row';
     const bolt = typeof window.verifiedBolt === 'function' ? window.verifiedBolt('verified-bolt-inline') : '';
-    row.innerHTML = `<span class="glitchit-avatar"><img src="${GLITCHIT_AVATAR}" alt="GlitchIt avatar"></span><div class="glitchit-meta"><strong>GlitchIt${bolt}</strong><span><i class="glitchit-dot" aria-hidden="true"></i>AI creator · new video every minute</span></div><b class="glitchit-count">…</b><button type="button" class="glitchit-hide" aria-label="Hide GlitchIt">Hide</button>`;
+    row.innerHTML = `<span class="glitchit-avatar"><img src="${GLITCHIT_AVATAR}" alt="GlitchIt avatar"></span><div class="glitchit-meta"><strong>GlitchIt${bolt}</strong><span class="glitchit-status"><i class="glitchit-dot" aria-hidden="true"></i><em class="glitchit-status-text">AI creator · new video every minute</em></span></div><b class="glitchit-count">…</b><button type="button" class="glitchit-hide" aria-label="Hide GlitchIt">Hide</button>`;
     const live = document.createElement('div');
     live.className = 'glitchit-live';
     root.appendChild(row);
@@ -170,7 +170,8 @@
       if (newest) node.classList.add('glitchit-new');
       return node;
     };
-    const refresh = () => {
+    // Local stock-clip fallback (used only while the AI pipeline is off).
+    const refreshStock = () => {
       const node = card(videoAt(postIndex), true);
       if (!node) return;
       live.prepend(node);
@@ -188,10 +189,65 @@
     if (countEl) countEl.textContent = `${live.children.length} fresh`;
     attach();
     let postIndex = 6;
-    const timer = setInterval(() => { if (root.isConnected) refresh(); }, 60000);
+
+    // ---- AI pipeline: ask the serverless endpoint for freshly generated
+    // videos. Real AI clips replace the stock fallback whenever available.
+    const statusEl = row.querySelector('.glitchit-status-text');
+    const setStatus = (text) => { if (statusEl) statusEl.textContent = text; };
+    let aiMode = false;
+    let lastAiUrl = '';
+
+    const prependAi = (v) => {
+      const node = card({
+        id: v.id || 'glitchit-ai-' + Date.now(),
+        title: v.title || 'AI video',
+        caption: v.caption || `${v.title || 'AI video'} #ai #aivideo`,
+        src: v.url,
+        poster: v.poster || v.url,
+        user: GLITCHIT_HANDLE,
+        avatar: GLITCHIT_AVATAR,
+        verified: true,
+        owner: GLITCHIT_ID,
+        likes: '0', comments: '0', shares: '0',
+      }, true);
+      if (!node) return;
+      live.prepend(node);
+      while (live.children.length > 12) live.lastChild.remove();
+      if (countEl) countEl.textContent = `${live.children.length} fresh`;
+      attach();
+    };
+
+    const pumpAi = async () => {
+      let res = null;
+      try {
+        const r = await fetch('/api/glitchit-video', { cache: 'no-store' });
+        if (r.ok) res = await r.json();
+      } catch (err) { res = null; }
+      if (res && res.ok && res.ai) {
+        if (res.error) { aiMode = false; setStatus('AI creator · new video every minute'); return; }
+        aiMode = true;
+        if (res.video && res.video.url && res.video.url !== lastAiUrl) {
+          lastAiUrl = res.video.url;
+          prependAi(res.video);
+          setStatus('AI video just generated');
+        } else if (res.generating) {
+          setStatus('AI is generating the next video…');
+        }
+      } else {
+        // Endpoint unavailable (no key / preview without the function) —
+        // keep the local realistic clips flowing.
+        aiMode = false;
+        setStatus('AI creator · new video every minute');
+      }
+    };
+
+    const stockTimer = setInterval(() => { if (root.isConnected && !aiMode) refreshStock(); }, 60000);
+    const aiTimer = setInterval(() => { if (root.isConnected) pumpAi(); }, 60000);
+    pumpAi();
 
     row.querySelector('.glitchit-hide')?.addEventListener('click', () => {
-      clearInterval(timer);
+      clearInterval(stockTimer);
+      clearInterval(aiTimer);
       try { localStorage.setItem(OFF_KEY, '1'); } catch (e) { /* ignore */ }
       root.remove();
     });

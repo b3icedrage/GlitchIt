@@ -18,6 +18,7 @@
 .glitchit-meta { display: flex; flex-direction: column; min-width: 0; }
 .glitchit-meta strong { font-size: 14px; display: flex; align-items: center; gap: 4px; }
 .glitchit-meta span { font-size: 12px; opacity: .78; display: flex; align-items: center; gap: 6px; }
+.glitchit-status-text { font-style: normal; }
 .glitchit-dot {
   width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex: none;
   animation: glitchit-blink 1.6s ease-in-out infinite;

@@ -12,6 +12,10 @@
     {
       "source": "/api/chat",
       "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    },
+    {
+      "source": "/api/glitchit-video",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
     }
   ]
 }
