@@ -4,11 +4,12 @@
 // secret key stays server-side (env var FLUTTERWAVE_SECRET_KEY) for future
 // webhook / transaction verification work.
 //
-// This module wires the shop payments flow:
-//   1. Listing form  — "Save draft listing" stores a draft product (name,
-//      price, story) in localStorage and renders it into the shop feed.
-//   2. Shop feed     — draft products render as .product cards; "Buy now"
-//      opens a Flutterwave checkout for the listed price (KES).
+// This module wires the app's payments flow:
+//   - Shop          — draft products render as .product cards; "Buy now"
+//     opens a Flutterwave checkout for the listed price (KES).
+//   - Premium page  — premium.html imports flutterwaveCheckout() directly to
+//     sell GlitchIt Premium (USD).
+// The exported flutterwaveCheckout() is the shared entry point for both.
 import { FLUTTERWAVE_PUBLIC_KEY } from './config.js?v=6';
 
 const SDK_URL = 'https://checkout.flutterwave.com/v3.js';

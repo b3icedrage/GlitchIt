@@ -23,10 +23,6 @@ const { join, normalize, extname, resolve, sep, basename } = require('node:path'
 const accountsHandler = require('./api/accounts.js');
 // LiveKit Cloud access-token minting (real WebRTC calls on chat.html).
 const livekitTokenHandler = require('./api/livekit-token.js');
-// Stripe Premium checkout session creation (premium.html).
-const createCheckoutHandler = require('./api/create-checkout.js');
-// Stripe webhook — verifies subscription events and records premium status.
-const stripeWebhookHandler = require('./api/stripe-webhook.js');
 
 const ROOT = resolve(__dirname);
 const PORT = Number(process.env.PORT || 4173);
@@ -495,14 +491,6 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === 'GET' && new URL(req.url, 'http://glitchit.local').pathname === '/api/livekit-token') {
     await livekitTokenHandler(req, res);
-    return;
-  }
-  if (req.method === 'POST' && new URL(req.url, 'http://glitchit.local').pathname === '/api/create-checkout') {
-    await createCheckoutHandler(req, res);
-    return;
-  }
-  if (req.method === 'POST' && new URL(req.url, 'http://glitchit.local').pathname === '/api/stripe-webhook') {
-    await stripeWebhookHandler(req, res);
     return;
   }
 
