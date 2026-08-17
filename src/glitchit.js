@@ -1,33 +1,35 @@
 // GlitchIt — the AI creator.
 // A pinned, verified creator (@glitchit) that posts a fresh AI-themed video
 // every minute while a feed is open. Runs client-side: every clip is REAL
-// footage with sound (no cartoons), and each post gets deterministic
-// cinematic poster art, a caption and trending stats. The live row is
-// appended below any real cloud posts — real videos always sit above it —
-// and is never removed once shown.
+// footage of physical characters — people dancing and moving on real
+// streets — and each post gets deterministic cinematic poster art, a caption
+// and trending stats. The live row is appended below any real cloud posts —
+// real videos always sit above it — and is never removed once shown.
 (function () {
   'use strict';
 
   const ROOT_CLASS = 'glitchit-root';
   const OFF_KEY = 'glitchit.bot.off';
 
-  // Real-footage clips with audio (stable Google-hosted sample bucket:
-  // Chromecast commercials + car reviews — real people, places and cars).
+  // Real-footage clips of PHYSICAL characters — people in motion, on real
+  // streets (live-action Chromecast ads, which have audio, plus Mixkit's
+  // free-license urban dancer clips).
   const CLIPS = [
     'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
     'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
     'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4',
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4',
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4',
+    'https://assets.mixkit.co/videos/276/276-720.mp4',
+    'https://assets.mixkit.co/videos/441/441-720.mp4',
+    'https://assets.mixkit.co/videos/51306/51306-720.mp4',
+    'https://assets.mixkit.co/videos/51298/51298-720.mp4',
+    'https://assets.mixkit.co/videos/51303/51303-720.mp4',
   ];
 
-  const AI_VERBS = ['directed', 'graded', 'rendered', 'framed', 'cut', 'composed', 'stabilized', 'color-graded'];
-  const AI_ADJ = ['cinematic', 'golden-hour', 'street-level', 'aerial', 'night', 'coastal', 'urban', 'desert'];
-  const AI_NOUNS = ['city drive', 'coastal road', 'downtown flythrough', 'market day', 'morning commute', 'highway run', 'sunset cruise', 'street story', 'harbor scene', 'suburb loop'];
+  const AI_VERBS = ['directed', 'graded', 'framed', 'cut', 'composed', 'stabilized', 'color-graded', 'followed'];
+  const AI_ADJ = ['cinematic', 'golden-hour', 'street-level', 'night', 'urban', 'soulful', 'energetic', 'raw'];
+  const AI_NOUNS = ['street dancer', 'city dancer', 'dance crew', 'dancer at night', 'street performer', 'urban dancer', 'mover in the city', 'dancer under neon', 'night dancer', 'street character'];
   const AI_TITLE_TPL = [
     'AI {verb} a {adj} {noun}',
     'The {adj} {noun} — AI cut',
