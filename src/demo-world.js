@@ -298,7 +298,9 @@
       rows.push(u);
     }
     if (q && !rows.length) {
-      list.innerHTML = `<div class="sr-empty"><span class="sr-empty-mark">⌕</span><h3>No accounts found</h3><p>No demo creator matches “${esc(q)}”.</p></div>`;
+      // Keep the demo chip visible and show the no-match message under it,
+      // so the observer never churns (re-injecting the chip repeatedly).
+      list.appendChild(htmlToNode(`<div class="sr-empty"><span class="sr-empty-mark">⌕</span><h3>No accounts found</h3><p>No demo creator matches “${esc(q)}”.</p></div>`));
       return;
     }
     rows.forEach((u) => frag.appendChild(htmlToNode(accountRow(u))));
@@ -339,20 +341,27 @@
     if (!container) return;
     let injected = false;
 
+    // Demo cards reuse the real card markup (main.js glitchVideoCard /
+    // uploadCard / srAccountRow / seller), so "real content" only counts
+    // elements sitting OUTSIDE the demo root. The demo's own cards never
+    // trigger a removal or a re-inject.
+    const REAL_SELECTOR = '.video-card:not(.upload-card), .post:not(.upload-card), .seller, .sr-acct';
     const tryInject = () => {
       if (!demoEnabled()) return;
-      // Show the demo world whenever there is no real content — even if the
-      // container already holds something (local uploads, loading states or
-      // empty-state cards). Real DB content always wins: if it arrives after
-      // the demo, the demo is removed.
-      const hasReal = container.querySelector('.video-card:not(.upload-card), .post:not(.upload-card), .seller, .sr-acct');
-      if (hasReal) {
-        container.querySelector('.' + DEMO_ROOT_CLASS)?.remove();
+      const demoRoot = container.querySelector('.' + DEMO_ROOT_CLASS);
+      const real = demoRoot
+        ? [...container.querySelectorAll(REAL_SELECTOR)].find((el) => !demoRoot.contains(el))
+        : container.querySelector(REAL_SELECTOR);
+      if (real) {
+        // Real DB content appeared after the demo — remove the demo.
+        if (demoRoot) demoRoot.remove();
         return;
       }
-      // Accounts re-render on every keystroke (main.js renderSearchAccounts),
-      // so allow re-injection when the empty state comes back.
-      if (kind === 'accounts') injected = false;
+      if (demoRoot) return; // demo already showing, no real content — stable
+      // main.js re-renders the search accounts list on every keystroke and
+      // wipes the demo chip when it does; allow re-injection only while the
+      // chip is gone, so observer churn never duplicates the demo rows.
+      if (kind === 'accounts' && !container.querySelector('.demo-chip')) injected = false;
       if (injected) return;
       injected = true;
 
