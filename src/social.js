@@ -176,7 +176,7 @@ function lastMsgAt(conv) {
   return msgs && msgs.length ? msgs[msgs.length - 1].at : 0;
 }
 
-export function dmSend(partnerKey, partner, text) {
+export function dmSend(partnerKey, partner, text, extra) {
   if (!partnerKey || me.guest) return null;
   const clean = String(text || '').trim().slice(0, 1000);
   if (!clean) return null;
@@ -191,7 +191,15 @@ export function dmSend(partnerKey, partner, text) {
     },
     messages: [],
   });
-  const msg = { id: 'm' + stamp() + Math.random().toString(36).slice(2, 6), from: 'me', text: clean, at: stamp() };
+  // extra carries structured payloads (e.g. { kind: 'location', lat, lng, label })
+  // so the message keeps a readable `text` AND renderable data. Core fields win.
+  const msg = {
+    ...(extra && typeof extra === 'object' ? extra : {}),
+    id: 'm' + stamp() + Math.random().toString(36).slice(2, 6),
+    from: 'me',
+    text: clean,
+    at: stamp(),
+  };
   conv.messages.push(msg);
   if (conv.messages.length > 500) conv.messages.splice(0, conv.messages.length - 500);
   write(DMS_KEY, map);
@@ -323,7 +331,7 @@ export function groupConversation(groupId) {
   return (read(GROUPS_KEY, {})[me.id] || {})[String(groupId)] || null;
 }
 
-export function groupSend(groupId, text) {
+export function groupSend(groupId, text, extra) {
   if (!groupId || me.guest) return null;
   const clean = String(text || '').trim().slice(0, 1000);
   if (!clean) return null;
@@ -332,7 +340,9 @@ export function groupSend(groupId, text) {
   const box = map[me.id] || (map[me.id] = {});
   const group = box[key];
   if (!group) return null;
+  // extra carries structured payloads (e.g. { kind: 'location', lat, lng, label }).
   const msg = {
+    ...(extra && typeof extra === 'object' ? extra : {}),
     id: 'm' + stamp() + Math.random().toString(36).slice(2, 6),
     from: 'me',
     fromName: me.username,

@@ -484,6 +484,10 @@
     const body = document.getElementById('chat-body');
     const input = document.getElementById('chat-input');
     if (!body || !input) return;
+    // Location sharing module (Leaflet + OSM) — lazy, loaded once per page.
+    const locBtn = document.getElementById('chat-loc');
+    let locShare = null;
+    const locShareLoading = import('./location-share.js?v=1').then((mod) => { locShare = mod; }).catch(() => {});
     const params = new URLSearchParams(location.search);
     const to = String(params.get('to') || '').trim();
     const groupId = String(params.get('group') || '').trim();
@@ -565,7 +569,27 @@
         return;
       }
       const typingRow = typing ? '<div class="msg in msg-typing-row" aria-label="They are typing"><span class="msg-typing"><i></i><i></i><i></i></span></div>' : '';
+      // Location messages render as a map card (Leaflet mini-map); the card
+      // markup is static, and the maps are hydrated once the module loads.
+      const locCardFallback = (m) => {
+        const lat = Number(m.lat); const lng = Number(m.lng);
+        const label = m.label || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+        return `<div class="msg-loc-card"><div class="msg-loc-map" data-lat="${lat}" data-lng="${lng}"></div><div class="msg-loc-meta"><strong>📍 ${escapeHtml(label)}</strong><a href="${mapsUrl}" target="_blank" rel="noopener">Open in Maps ↗</a></div></div>`;
+      };
+      const renderLoc = (m) => {
+        const card = (locShare && locShare.locationCardHtml) ? locShare.locationCardHtml(m) : locCardFallback(m);
+        const side = m.from === 'me' ? 'out' : 'in';
+        if (isGroup && m.from !== 'me') {
+          const av = m.fromAvatar || fallbackAvatar(m.fromName || 'Member');
+          return `<div class="msg in group-msg"><img class="msg-avatar" src="${escapeHtml(av)}" alt="${escapeHtml(m.fromName || 'Member')}" loading="lazy"><div><b>${escapeHtml(m.fromName || 'Member')}</b>${card}</div></div>`;
+        }
+        return `<div class="msg-loc ${side}">${card}</div>`;
+      };
       body.innerHTML = msgs.map((m) => {
+        if (m.kind === 'location' && Number.isFinite(Number(m.lat)) && Number.isFinite(Number(m.lng))) {
+          return renderLoc(m);
+        }
         if (m.from === 'system') return `<div class="msg system"><span>${escapeHtml(m.text)}</span></div>`;
         if (m.from === 'me') return `<div class="msg out"><span>${escapeHtml(m.text)}</span></div>`;
         if (isGroup) {
@@ -575,6 +599,9 @@
         return `<div class="msg in"><span>${escapeHtml(m.text)}</span></div>`;
       }).join('') + typingRow;
       body.scrollTop = body.scrollHeight;
+      // Hydrate any location mini-maps now that the fresh cards are in the DOM.
+      if (locShare && locShare.hydrateLocationCards) locShare.hydrateLocationCards(body);
+      else locShareLoading.then(() => { if (locShare && locShare.hydrateLocationCards) locShare.hydrateLocationCards(body); });
     };
     const send = () => {
       const text = input.value.trim();
@@ -605,6 +632,37 @@
     input.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') { event.preventDefault(); send(); }
     });
+    // Share a location: opens the Leaflet picker and sends a location message
+    // (works in 1:1 DMs and group chats, same reply simulation as text).
+    if (locBtn) {
+      locBtn.addEventListener('click', () => {
+        if (isGuest()) { showGuestGate('Sign in to share your location'); return; }
+        import('./location-share.js?v=1')
+          .then((mod) => mod.openLocationPicker())
+          .then((loc) => {
+            if (!loc || !Number.isFinite(Number(loc.lat)) || !Number.isFinite(Number(loc.lng))) return;
+            const label = loc.label || `${Number(loc.lat).toFixed(5)}, ${Number(loc.lng).toFixed(5)}`;
+            const text = `📍 ${label}`;
+            const extra = { kind: 'location', lat: Number(loc.lat), lng: Number(loc.lng), label };
+            if (isGroup) {
+              if (!groupId || !SOC.groupSend(groupId, text, extra)) { glitchToast('This group no longer exists'); return; }
+              const cur = curGroup();
+              const others = ((cur && cur.members) || []).filter((m) => String(m.id) !== String(meId));
+              if (others.length && typeof SOC.scheduleGroupReply === 'function') {
+                SOC.scheduleGroupReply(groupId, others[Math.floor(Math.random() * others.length)]);
+              }
+            } else {
+              if (!to) { glitchToast('Pick someone to message first'); return; }
+              SOC.dmSend(to, { name, avatar: '' }, text, extra);
+              SOC.scheduleCreatorReply(to, { name, avatar: '' }, { story: false });
+            }
+            typing = false;
+            render();
+            refreshUnreadBadges();
+          })
+          .catch(() => { /* user closed the picker without sending */ });
+      });
+    }
     // Opening the conversation marks it read (DMs and groups alike).
     if (isGroup) { if (typeof SOC.groupMarkRead === 'function') SOC.groupMarkRead(groupId); }
     else if (to) SOC.dmMarkRead(to);

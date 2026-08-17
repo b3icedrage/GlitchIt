@@ -643,3 +643,152 @@
 :root[data-theme="dark"] .chat-icon { color: #b5b0cd; }
 :root[data-theme="dark"] .chat-icon:hover { background: #26223a; }
 :root[data-theme="dark"] .home-indicator { background: #29253a; }
+
+/* ---------- Location sharing (Leaflet + OSM) ---------- */
+.msg-loc {
+  max-width: 78%;
+  padding: 2px;
+  animation: msgIn .25s cubic-bezier(.22, .61, .36, 1);
+}
+.msg-loc.in { align-self: flex-start; }
+.msg-loc.out { align-self: flex-end; }
+.msg-loc-card {
+  width: 244px;
+  max-width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, .08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .08);
+}
+.msg-loc-map {
+  height: 132px;
+  background: #e8e6f2;
+  cursor: default;
+}
+.msg-loc-map .leaflet-control-attribution { font-size: 8px; }
+.msg-loc-meta { padding: 8px 10px 9px; }
+.msg-loc-meta strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1c1830;
+  line-height: 1.35;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.msg-loc-meta a {
+  font-size: 11px;
+  font-weight: 700;
+  color: #d62976;
+  text-decoration: none;
+}
+.msg-loc-meta a:hover { text-decoration: underline; }
+
+/* Picker modal */
+.loc-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  animation: locSlideUp .28s cubic-bezier(.2, .8, .2, 1);
+}
+@keyframes locSlideUp {
+  from { transform: translateY(44px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.loc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #ece9f5;
+}
+.loc-head h3 { margin: 0; font-size: 16px; font-weight: 700; color: #1c1830; flex: 1; }
+.loc-close {
+  border: 0;
+  background: #f1effa;
+  color: #5c5678;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background .15s ease;
+}
+.loc-close:hover { background: #e5e1f3; }
+.loc-tools {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+}
+.loc-search {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #dcd7ec;
+  background: #f7f6fc;
+  padding: 0 12px;
+  font-size: 14px;
+  color: #1c1830;
+  outline: none;
+}
+.loc-search:focus { border-color: #d62976; background: #fff; }
+.loc-myloc {
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter .15s ease;
+}
+.loc-myloc:hover { filter: brightness(1.08); }
+.loc-map { flex: 1; min-height: 220px; background: #e8e6f2; }
+.loc-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid #ece9f5;
+}
+.loc-label { flex: 1; font-size: 12.5px; color: #7a7493; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.loc-send {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter .15s ease;
+}
+.loc-send:disabled { opacity: .45; cursor: not-allowed; }
+.loc-send:not(:disabled):hover { filter: brightness(1.08); }
+.loc-pin { background: none; border: none; }
+.loc-modal .leaflet-control-attribution { font-size: 9px; }
+.loc-modal .leaflet-container { font-family: inherit; }
+
+:root[data-theme="dark"] .msg-loc-card { background: #26223a; border-color: #322d45; box-shadow: 0 2px 12px rgba(0, 0, 0, .35); }
+:root[data-theme="dark"] .msg-loc-meta strong { color: #f6f3ff; }
+:root[data-theme="dark"] .loc-modal { background: #141321; }
+:root[data-theme="dark"] .loc-head { border-bottom-color: #29253a; }
+:root[data-theme="dark"] .loc-head h3 { color: #f6f3ff; }
+:root[data-theme="dark"] .loc-close { background: #26223a; color: #b5b0cd; }
+:root[data-theme="dark"] .loc-close:hover { background: #322d45; }
+:root[data-theme="dark"] .loc-search { background: #1b1929; border-color: #322d45; color: #f6f3ff; }
+:root[data-theme="dark"] .loc-search:focus { background: #26223a; border-color: #d62976; }
+:root[data-theme="dark"] .loc-foot { border-top-color: #29253a; }
+:root[data-theme="dark"] .loc-label { color: #9b96b5; }
