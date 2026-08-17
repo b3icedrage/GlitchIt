@@ -1,0 +1,39 @@
+/* GlitchIt — Demo world (src/demo-world.js) */
+/* #video-feed is display:contents inside .video-grid — keep the demo cards
+   as direct grid items (root + card wrapper flatten into the grid). */
+.demo-world-root, .demo-cards { display: contents; }
+.demo-chip, .demo-more { grid-column: 1 / -1; }
+.demo-chip {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: linear-gradient(135deg, rgba(214, 41, 118, .14), rgba(79, 91, 213, .14));
+  border: 1px solid rgba(214, 41, 118, .25);
+  border-radius: 14px; padding: 10px 14px; margin-bottom: 12px;
+  color: var(--text, #222); font-size: 13px;
+}
+.demo-chip-dot {
+  display: inline-grid; place-items: center; width: 26px; height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  color: #fff; font-size: 13px; font-weight: 800; flex: none;
+}
+.demo-chip b { font-weight: 800; }
+.demo-chip span:not(.demo-chip-dot) { opacity: .75; }
+.demo-hide {
+  margin-left: auto; border: 0; border-radius: 999px; cursor: pointer;
+  background: rgba(0, 0, 0, .12); color: inherit; font-size: 12px; font-weight: 700;
+  padding: 6px 12px;
+}
+.demo-hide:hover { background: rgba(0, 0, 0, .2); }
+.demo-cards { display: contents; }
+.demo-more {
+  width: 100%; margin: 14px 0 4px; padding: 12px; border: 0; border-radius: 14px;
+  background: linear-gradient(135deg, #d62976, #4f5bd5); color: #fff;
+  font-weight: 800; font-size: 14px; cursor: pointer;
+}
+.demo-more:active { opacity: .85; }
+:root[data-theme="dark"] .demo-chip {
+  background: linear-gradient(135deg, rgba(214, 41, 118, .22), rgba(79, 91, 213, .22));
+  border-color: rgba(214, 41, 118, .4); color: #f5f5f5;
+}
+:root[data-theme="dark"] .demo-hide { background: rgba(255, 255, 255, .14); }
+:root[data-theme="dark"] .demo-hide:hover { background: rgba(255, 255, 255, .22); }
