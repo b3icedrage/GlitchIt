@@ -16,7 +16,10 @@
 'use strict';
 
 const FAL_MODEL = 'fal-ai/wan-t2v';
-const FAL_BASE = 'https://queue.fal.ai';
+// queue.fal.run is the same queue API as queue.fal.ai — both are official
+// fal hosts — but fal.run resolves reliably in every network environment
+// (some sandboxes/VPNs fail to resolve queue.fal.ai).
+const FAL_BASE = 'https://queue.fal.run';
 const REQUEST_INTERVAL_MS = 60000; // start a new clip at most once a minute
 
 // Character-driven cinematic prompts (physical people in real scenes).
@@ -47,6 +50,7 @@ let pendingId = null;
 let latest = null; // { id, url, poster, title, caption, created_at }
 let latestTitle = 'AI video';
 let lastStart = 0;
+let lastFail = 0; // backoff after billing/network errors so we don't hammer fal
 
 function json(res, status, payload) {
   res.statusCode = status;
@@ -116,15 +120,24 @@ async function handleAi(res) {
 
   // Start a fresh generation when idle and the previous one is stale
   // (>= 60s old), so @glitchit keeps producing while someone is watching.
+  // After a submit failure (e.g. exhausted balance) pause for 10 minutes so
+  // we don't hammer fal; the client falls back to stock clips meanwhile.
   if (!pendingId && (!latest || Date.now() - latest.created_at >= REQUEST_INTERVAL_MS) && Date.now() - lastStart >= REQUEST_INTERVAL_MS) {
-    const idx = Math.floor(Math.random() * PROMPTS.length);
-    latestTitle = TITLES[idx] || 'AI video';
-    try {
-      pendingId = await falSubmit(PROMPTS[idx]);
-      lastStart = Date.now();
-    } catch (err) {
-      console.warn('GlitchIt: fal.ai submit failed', err && err.message ? err.message : err);
-      json(res, 200, { ok: false, error: 'ai unavailable' });
+    if (Date.now() - lastFail >= 600000) {
+      const idx = Math.floor(Math.random() * PROMPTS.length);
+      latestTitle = TITLES[idx] || 'AI video';
+      try {
+        pendingId = await falSubmit(PROMPTS[idx]);
+        lastStart = Date.now();
+      } catch (err) {
+        const msg = String((err && err.message) || err);
+        lastFail = Date.now();
+        console.warn('GlitchIt: fal.ai submit failed', msg);
+        json(res, 200, { ok: true, ai: false, error: msg });
+        return;
+      }
+    } else {
+      json(res, 200, { ok: true, ai: false, error: 'ai paused' });
       return;
     }
   }
