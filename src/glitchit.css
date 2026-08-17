@@ -1,0 +1,48 @@
+/* GlitchIt — the AI creator row + live posts */
+/* The feed grids flatten the root and live block so the row spans the full
+   width (grid-column: 1 / -1) and the video cards become normal grid items. */
+.glitchit-root, .glitchit-live { display: contents; }
+.glitchit-row {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, .16), rgba(6, 182, 212, .14));
+  border: 1px solid rgba(99, 102, 241, .35);
+  border-radius: 14px; padding: 10px 14px; margin-bottom: 10px;
+  color: var(--text, #222);
+}
+.glitchit-avatar {
+  width: 38px; height: 38px; border-radius: 50%; overflow: hidden; flex: none;
+  border: 2px solid rgba(99, 102, 241, .55);
+}
+.glitchit-avatar img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.glitchit-meta { display: flex; flex-direction: column; min-width: 0; }
+.glitchit-meta strong { font-size: 14px; display: flex; align-items: center; gap: 4px; }
+.glitchit-meta span { font-size: 12px; opacity: .78; display: flex; align-items: center; gap: 6px; }
+.glitchit-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex: none;
+  animation: glitchit-blink 1.6s ease-in-out infinite;
+}
+@keyframes glitchit-blink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+.glitchit-count {
+  margin-left: auto; font-size: 12px; font-weight: 800; white-space: nowrap;
+  color: #6366f1; background: rgba(99, 102, 241, .12);
+  border-radius: 999px; padding: 4px 10px;
+}
+.glitchit-hide {
+  border: 0; border-radius: 999px; cursor: pointer;
+  background: rgba(0, 0, 0, .12); color: inherit; font-size: 12px; font-weight: 700;
+  padding: 6px 12px;
+}
+.glitchit-hide:hover { background: rgba(0, 0, 0, .2); }
+.glitchit-new { animation: glitchit-pop .6s ease; }
+@keyframes glitchit-pop {
+  0% { transform: scale(.95); box-shadow: 0 0 0 4px rgba(99, 102, 241, .5); }
+  60% { transform: scale(1.015); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  100% { transform: scale(1); }
+}
+:root[data-theme="dark"] .glitchit-row {
+  background: linear-gradient(135deg, rgba(99, 102, 241, .24), rgba(6, 182, 212, .2));
+  border-color: rgba(99, 102, 241, .5); color: #f5f5f5;
+}
+:root[data-theme="dark"] .glitchit-hide { background: rgba(255, 255, 255, .14); }
+:root[data-theme="dark"] .glitchit-hide:hover { background: rgba(255, 255, 255, .22); }
