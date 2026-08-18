@@ -1,0 +1,53 @@
+# Builds the GlitchIt Android APK on GitHub's Android-equipped runners and
+# uploads it as a downloadable artifact.
+#
+#   - Runs on every push to main and manually via the "Run workflow" button
+#     (Actions tab -> Build Android APK -> Run workflow).
+#   - The APK loads the live site (see capacitor.config.json -> server.url).
+#     Point that at your production domain before building for real users.
+#   - The artifact `glitchit-apk` contains app-debug.apk, which installs
+#     directly (sideload) — no Play Store needed.
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java 21 (required by Capacitor 7 / compileSdk 35)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: node build.js
+
+      - name: Sync web assets into the Android project
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: glitchit-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
