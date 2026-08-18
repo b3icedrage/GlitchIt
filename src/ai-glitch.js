@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var API = '/api/nvidia-video';
+  var API = (window.GLITCHIT_API_BASE || '') + '/api/nvidia-video';
   var POLL_MS = 4000;
   var MAX_POLLS = 75; // ~5 minutes — long generations time out gracefully
   var MODELS = [

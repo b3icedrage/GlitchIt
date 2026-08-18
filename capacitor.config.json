@@ -1,13 +1,5 @@
 {
   "appId": "com.glitchit.app",
   "appName": "GlitchIt",
-  "webDir": "dist",
-  "server": {
-    "androidScheme": "https",
-    "url": "https://glitchit.app",
-    "cleartext": false
-  },
-  "android": {
-    "allowMixedContent": false
-  }
+  "webDir": "dist"
 }

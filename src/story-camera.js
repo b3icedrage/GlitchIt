@@ -881,7 +881,7 @@
   async function musicLoadTrending() {
     els.musicList.innerHTML = '<p class="cam-music-empty">Loading trending songs…</p>';
     try {
-      const res = await fetch('/api/music?chart=1');
+      const res = await fetch((window.GLITCHIT_API_BASE || '') + '/api/music?chart=1');
       const data = await res.json();
       if (!data || !data.ok || !Array.isArray(data.tracks) || !data.tracks.length) throw new Error('empty');
       musicTracksCache = data.tracks;
@@ -894,7 +894,7 @@
   async function musicSearch(q) {
     els.musicList.innerHTML = '<p class="cam-music-empty">Searching…</p>';
     try {
-      const res = await fetch('/api/music?q=' + encodeURIComponent(q));
+      const res = await fetch((window.GLITCHIT_API_BASE || '') + '/api/music?q=' + encodeURIComponent(q));
       const data = await res.json();
       if (!data || !data.ok || !Array.isArray(data.tracks)) throw new Error('bad');
       musicTracksCache = data.tracks;

@@ -11,7 +11,9 @@
    ============================================================ */
 (function bootstrapGlitchItPlatform() {
   // Caching layer: register the service worker (offline + fast repeat loads).
-  if ('serviceWorker' in navigator) {
+  // Skipped inside the native APK — WebViews don't run service workers and the
+  // app's assets are bundled locally there anyway.
+  if ('serviceWorker' in navigator && !(window.Capacitor && window.Capacitor.isNativePlatform())) {
     try {
       navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none', scope: './' })
         .catch((err) => { console.warn('GlitchIt: service worker registration failed', err); reportError(err, { phase: 'sw-register' }); });
@@ -447,7 +449,7 @@ async function hydrateSearchAccounts() {
   // the browser anon key cannot read auth.users). Falls back to the
   // media-derived creator list when the endpoint is unavailable.
   try {
-    const res = await fetch('/api/accounts', { cache: 'no-store' });
+    const res = await fetch((window.GLITCHIT_API_BASE || '') + '/api/accounts', { cache: 'no-store' });
     const data = await res.json().catch(() => null);
     if (data && data.ok && Array.isArray(data.accounts) && data.accounts.length) {
       creators = data.accounts.map((a) => ({
@@ -532,7 +534,7 @@ window.attachUserBio = function attachUserBio() {
   const params = new URLSearchParams(location.search);
   const targetId = String(params.get('id') || '').trim();
   if (!targetId) return;
-  fetch('/api/accounts', { cache: 'no-store' })
+  fetch((window.GLITCHIT_API_BASE || '') + '/api/accounts', { cache: 'no-store' })
     .then((res) => res.json().catch(() => null))
     .then((data) => {
       const acct = data && data.ok && Array.isArray(data.accounts) ? data.accounts.find((a) => a.id === targetId) : null;

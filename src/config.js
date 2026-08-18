@@ -33,3 +33,22 @@ export const SENTRY_DSN = 'https://939ccfce91ed2bac818479f05a2ff492@o45118713445
 export const FLUTTERWAVE_PUBLIC_KEY = 'FLWPUBK_TEST-fd61af2bf519d47f573c72aa742f19c7-X';
 export const FLUTTERWAVE_ENV = 'test'; // set 'live' when you swap in live keys
 
+// GlitchIt — API base for the server proxies (/api/chat, /api/music,
+// /api/nvidia-video, /api/livekit-token, /api/accounts).
+//   - Website: ''  → same origin (the server serves both the site and /api).
+//   - Native APK: the app is bundled inside the APK (no website), so these
+//     proxies live on a backend — set this to that backend's origin, e.g.
+//     'https://your-backend.example.com'. The app also honors a localStorage
+//     override ('glitchit.apiBase') so you can point it at a server without
+//     rebuilding, and exposes the resolved value as window.GLITCHIT_API_BASE
+//     for the classic scripts (ai-chat, music-ui, calls, …) that can't import
+//     ES modules.
+export const API_BASE = (() => {
+  try {
+    const override = localStorage.getItem('glitchit.apiBase');
+    if (override) return override.replace(/\/+$/, '');
+  } catch (err) { /* storage unavailable */ }
+  return '';
+})();
+try { window.GLITCHIT_API_BASE = API_BASE; } catch (err) { /* ignore */ }
+

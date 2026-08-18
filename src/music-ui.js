@@ -96,7 +96,7 @@ function musicLoadTrending(list) {
     return;
   }
   list.innerHTML = '<p class="music-empty">Loading trending songs…</p>';
-  fetch('api/music?chart=1')
+  fetch((window.GLITCHIT_API_BASE || '') + '/api/music?chart=1')
     .then((r) => r.json())
     .then((data) => {
       if (!data || !data.ok || !Array.isArray(data.tracks) || !data.tracks.length) throw new Error('empty');
@@ -112,7 +112,7 @@ function musicLoadTrending(list) {
 /* ---------- override: web search through the same-origin proxy ---------- */
 function searchWeb(q, list) {
   list.innerHTML = '<p class="music-empty">Searching the web…</p>';
-  fetch(`api/music?q=${encodeURIComponent(q)}`)
+  fetch((window.GLITCHIT_API_BASE || '') + '/api/music?q=' + encodeURIComponent(q))
     .then((r) => r.json())
     .then((data) => {
       if (!data || !data.ok || !Array.isArray(data.tracks)) throw new Error('bad');
