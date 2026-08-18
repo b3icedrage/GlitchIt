@@ -223,10 +223,20 @@
   });
 
   // ---------- top bar / misc ----------
-  els.dismiss.addEventListener('click', () => {
-    if (history.length > 1) history.back();
-    else location.href = 'index.html';
-  });
+  // Back navigation: go to the last page the user visited, or index.html
+  function goBack() {
+    stopStream();
+    let prev = '';
+    try { prev = sessionStorage.getItem('glitchit.lastPage') || ''; } catch (e) {}
+    if (prev && prev !== 'camera.html' && prev !== location.pathname.split('/').pop()) {
+      location.href = prev;
+    } else if (history.length > 2) {
+      history.back();
+    } else {
+      location.href = 'index.html';
+    }
+  }
+  if (els.dismiss) els.dismiss.addEventListener('click', goBack);
   els.flash.addEventListener('click', () => {
     setFlash(flash === 'off' ? 'on' : flash === 'on' ? 'auto' : 'off');
   });
@@ -255,6 +265,11 @@
     });
   });
   window.addEventListener('pagehide', () => stopStream(), { once: true });
+  // Save where the user came from so we can navigate back to it
+  try {
+    const ref = document.referrer ? document.referrer.split('/').pop() : '';
+    if (ref && ref !== 'camera.html') sessionStorage.setItem('glitchit.lastPage', ref);
+  } catch (e) {}
 
   // ---------- shutter: photo / boomerang / hands-free ----------
   els.shutter.addEventListener('click', () => {
@@ -881,10 +896,17 @@
   async function musicLoadTrending() {
     els.musicList.innerHTML = '<p class="cam-music-empty">Loading trending songs…</p>';
     try {
-      const res = await fetch((window.GLITCHIT_API_BASE || '') + '/api/music?chart=1');
+      // Call Deezer chart directly (no server needed — works in the APK)
+      const res = await fetch('https://api.deezer.com/chart/0/tracks?limit=30');
       const data = await res.json();
-      if (!data || !data.ok || !Array.isArray(data.tracks) || !data.tracks.length) throw new Error('empty');
-      musicTracksCache = data.tracks;
+      if (!data || !Array.isArray(data.data) || !data.data.length) throw new Error('empty');
+      musicTracksCache = data.data.map((t) => ({
+        title: t.title || '',
+        artist: (t.artist && t.artist.name) || '',
+        art: t.album && t.album.cover_medium ? t.album.cover_medium : '',
+        url: t.preview || '',
+        source: 'Deezer',
+      }));
       renderMusicRows(musicTracksCache);
     } catch (e) {
       els.musicList.innerHTML = '<p class="cam-music-empty">Trending songs are unavailable right now — try again soon.</p>';
@@ -894,10 +916,39 @@
   async function musicSearch(q) {
     els.musicList.innerHTML = '<p class="cam-music-empty">Searching…</p>';
     try {
-      const res = await fetch((window.GLITCHIT_API_BASE || '') + '/api/music?q=' + encodeURIComponent(q));
-      const data = await res.json();
-      if (!data || !data.ok || !Array.isArray(data.tracks)) throw new Error('bad');
-      musicTracksCache = data.tracks;
+      // Search Deezer + iTunes directly (no server needed — works in the APK)
+      const [deezerRes, itunesRes] = await Promise.allSettled([
+        fetch('https://api.deezer.com/search?q=' + encodeURIComponent(q) + '&limit=15'),
+        fetch('https://itunes.apple.com/search?media=music&limit=15&term=' + encodeURIComponent(q)),
+      ]);
+      const tracks = [];
+      if (deezerRes.status === 'fulfilled') {
+        const d = await deezerRes.value.json();
+        if (d && d.data) d.data.forEach((t) => {
+          if (t.preview) tracks.push({
+            title: t.title || '', artist: (t.artist && t.artist.name) || '',
+            art: t.album && t.album.cover_medium ? t.album.cover_medium : '',
+            url: t.preview, source: 'Deezer',
+          });
+        });
+      }
+      if (itunesRes.status === 'fulfilled') {
+        const it = await itunesRes.value.json();
+        if (it && it.results) it.results.forEach((t) => {
+          if (t.previewUrl) tracks.push({
+            title: t.trackName || '', artist: t.artistName || '',
+            art: t.artworkUrl100 || '', url: t.previewUrl, source: 'Apple Music',
+          });
+        });
+      }
+      // Deduplicate by title+artist
+      const seen = new Set();
+      musicTracksCache = tracks.filter((t) => {
+        const k = (t.title + '|' + t.artist).toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
       renderMusicRows(musicTracksCache, 'No songs found for that search.');
     } catch (e) {
       els.musicList.innerHTML = '<p class="cam-music-empty">Search is unavailable right now — try again soon.</p>';
@@ -1003,7 +1054,7 @@
     if (!els.sheet.hidden) { els.sheet.hidden = true; return; }
     if (!els.menu.hidden) { openMenu(false); return; }
     if (!els.preview.hidden) closePreview();
-    else els.dismiss.click();
+    else goBack();
   });
 
   boot();

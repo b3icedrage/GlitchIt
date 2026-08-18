@@ -3337,6 +3337,11 @@ async function boot() {
   // account metadata) before any page hydrates, so the story shelf, upload
   // cards, notes and rails show the real profile picture — not the fallback.
   applyCurrentUserProfile();
+  // Remember this page so camera.html can navigate back to it on exit
+  try {
+    const pg = (typeof page === 'string' ? page : '') || 'index';
+    if (pg !== 'camera') sessionStorage.setItem('glitchit.lastPage', pg + '.html');
+  } catch (e) { /* storage unavailable */ }
   runPage();
 }
 
