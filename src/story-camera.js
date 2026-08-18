@@ -47,7 +47,7 @@
     { name: 'Perpetua', css: 'contrast(1.1) brightness(1.05) saturate(.9) sepia(.1)' },
   ];
   const TEXT_COLORS = ['#ffffff', '#000000', '#ff3040', '#0095f6', '#ffd60a', '#37e237', '#ff5ce1', 'rainbow'];
-  const STORY_RATIO = { w: 1080, h: 1440 }; // 9:16 story canvas
+  const STORY_RATIO = { w: 1280, h: 1920 }; // 1280×1920 story canvas
   const TIMERS = [3, 5, 10];
 
   let stream = null;
@@ -324,10 +324,10 @@
 
   // Boomerang: record ~1.6s of the filtered viewfinder via a capture-stream canvas.
   function startBoomerang() {
-    const vw = els.video.videoWidth || 720;
-    const vh = els.video.videoHeight || 1280;
-    const W = 720;
-    const H = 1280;
+    const vw = els.video.videoWidth || 1280;
+    const vh = els.video.videoHeight || 1920;
+    const W = 1280;
+    const H = 1920;
     els.canvas.width = W;
     els.canvas.height = H;
     const ctx = els.canvas.getContext('2d');
@@ -365,10 +365,10 @@
   const REEL_MAX = 90;
 
   function startReelRecording() {
-    const vw = els.video.videoWidth || 720;
-    const vh = els.video.videoHeight || 1280;
-    const W = 720;
-    const H = 1280;
+    const vw = els.video.videoWidth || 1280;
+    const vh = els.video.videoHeight || 1920;
+    const W = 1280;
+    const H = 1920;
     els.canvas.width = W;
     els.canvas.height = H;
     const ctx = els.canvas.getContext('2d');
@@ -418,7 +418,7 @@
   }
 
   // First frame of a video source as a small JPEG poster (for the story ring).
-  function framePoster(src, w = 540, h = 960) {
+  function framePoster(src, w = 640, h = 960) {
     try {
       const c = document.createElement('canvas');
       c.width = w;
@@ -976,11 +976,11 @@
   }
 
   // Re-encode the preview video with the chosen song as its audio track.
-  async function remixWithAudio() {
+  async  function remixWithAudio() {
     const v = els.previewVideo;
     if (!v || !v.videoWidth) return null;
-    const W = 720;
-    const H = 1280;
+    const W = 1280;
+    const H = 1920;
     const c = document.createElement('canvas');
     c.width = W;
     c.height = H;
