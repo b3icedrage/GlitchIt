@@ -1,22 +1,23 @@
-signingConfigs {
-    release {
-        def ksBase64 = System.getenv('ANDROID_KEYSTORE_BASE64')
-        if (ksBase64 && ksBase64.trim()) {
-            def ksFile = file('release.keystore')
-            ksFile.bytes = Base64.decoder.decode(ksBase64.trim())
-            storeFile ksFile
-            storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: ''
-            keyAlias System.getenv('ANDROID_KEY_ALIAS') ?: ''
-            keyPassword System.getenv('ANDROID_KEY_PASSWORD') ?: ''
-        }
-    }
-}
-
 apply plugin: 'com.android.application'
 
 android {
     namespace "com.glitchit.app"
     compileSdk rootProject.ext.compileSdkVersion
+
+    signingConfigs {
+        release {
+            def ksBase64 = System.getenv('ANDROID_KEYSTORE_BASE64')
+            if (ksBase64 && ksBase64.trim()) {
+                def ksFile = file('release.keystore')
+                ksFile.bytes = Base64.decoder.decode(ksBase64.trim())
+                storeFile ksFile
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: ''
+                keyAlias System.getenv('ANDROID_KEY_ALIAS') ?: ''
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD') ?: ''
+            }
+        }
+    }
+
     defaultConfig {
         applicationId "com.glitchit.app"
         minSdkVersion rootProject.ext.minSdkVersion
