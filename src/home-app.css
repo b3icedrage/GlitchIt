@@ -243,15 +243,14 @@
 
 
 /* ============ Bottom bar: EXACT Instagram flat black bar ============ */
-/* Kill bottombar.css floating pill completely on the home page */
-.home-shell .bottom-bar,
-.home-shell .bottom-bar *,
-.home-shell .bottom-bar *::before,
-.home-shell .bottom-bar *::after {
-  all: unset !important;
-  box-sizing: border-box !important;
-}
+/*
+ * Override bottombar.css completely for the home page.
+ * bottombar.css uses @media (max-width: 760px) with a floating
+ * glass pill (border-radius: 28px, 6-column grid, gradient chips).
+ * We need higher specificity inside the same media query to win.
+ */
 
+/* Base: always visible, flat, full-width */
 .home-shell .bottom-bar {
   position: fixed !important;
   left: 0 !important;
@@ -261,9 +260,12 @@
   z-index: 40 !important;
   display: grid !important;
   grid-template-columns: repeat(5, 1fr) !important;
+  align-items: center !important;
+  gap: 0 !important;
   width: 100% !important;
   max-width: 100% !important;
-  padding: 6px 0 calc(6px + env(safe-area-inset-bottom)) !important;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom)) !important;
+  border: none !important;
   border-top: 1px solid #262626 !important;
   border-radius: 0 !important;
   background: #000 !important;
@@ -271,12 +273,34 @@
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   transition: none !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  transform: none !important;
 }
 
+/* Override bottombar.css @media (max-width: 760px) — same specificity but later */
+@media (max-width: 760px) {
+  .home-shell .bottom-bar {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    transform: none !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom)) !important;
+    border: none !important;
+    border-top: 1px solid #262626 !important;
+    border-radius: 0 !important;
+    background: #000 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    transition: none !important;
+  }
+}
+
+/* Never hide the home bottom bar */
 .home-shell .bottom-bar.bottom-bar-hidden {
   opacity: 1 !important;
   visibility: visible !important;
@@ -284,52 +308,112 @@
   transform: none !important;
 }
 
+/* Links: icon-only, gray inactive, white active */
 .home-shell .bottom-bar a {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
+  display: grid !important;
+  place-items: center !important;
   gap: 0 !important;
+  min-width: 0 !important;
   padding: 4px 0 !important;
+  border-radius: 0 !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
   color: #8e8e8e !important;
-  text-decoration: none !important;
+  background: transparent !important;
   -webkit-tap-highlight-color: transparent !important;
+  transition: none !important;
 }
 
-.home-shell .bottom-bar a span:not(.nav-icon) {
-  display: none !important;
+@media (max-width: 760px) {
+  .home-shell .bottom-bar a {
+    display: grid !important;
+    place-items: center !important;
+    gap: 0 !important;
+    min-width: 0 !important;
+    padding: 4px 0 !important;
+    border-radius: 0 !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+    color: #8e8e8e !important;
+    background: transparent !important;
+    transition: none !important;
+  }
 }
 
+.home-shell .bottom-bar a span:not(.nav-icon) { display: none !important; }
+
+/* Nav icon container: no background, no gradient chip */
 .home-shell .bottom-bar .nav-icon {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 24px !important;
-  height: 24px !important;
+  display: grid !important;
+  place-items: center !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+
+@media (max-width: 760px) {
+  .home-shell .bottom-bar .nav-icon {
+    display: grid !important;
+    place-items: center !important;
+    width: auto !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    transition: none !important;
+  }
 }
 
 .home-shell .bottom-bar .nav-icon svg {
+  display: block !important;
   width: 24px !important;
   height: 24px !important;
 }
 
+/* Hover: no background, no scale */
+.home-shell .bottom-bar a:hover {
+  color: #8e8e8e !important;
+  background: transparent !important;
+  transform: none !important;
+}
+.home-shell .bottom-bar a:hover .nav-icon {
+  background: transparent !important;
+}
+.home-shell .bottom-bar a:hover .nav-icon svg {
+  transform: none !important;
+}
+.home-shell .bottom-bar a:active {
+  transform: none !important;
+}
+
+/* Active tab: white text, no gradient chip */
 .home-shell .bottom-bar a.active {
   color: #fff !important;
+  font-weight: 700 !important;
+  background: transparent !important;
 }
-
+.home-shell .bottom-bar a.active .nav-icon {
+  background: transparent !important;
+  box-shadow: none !important;
+}
 .home-shell .bottom-bar a.active .nav-icon svg {
   stroke: #fff !important;
+  fill: none !important;
+  transform: none !important;
 }
 
-/* Home tab: solid filled white when active (Instagram style) */
+/* Home tab active: filled white house (Instagram style) */
 .home-shell .bottom-bar a.active[data-tab="home"] .nav-icon svg {
-  stroke: #fff !important;
   fill: #fff !important;
+  stroke: #fff !important;
 }
 
-/* Profile avatar: circle with border */
+/* Profile avatar circle */
 .home-shell .bottom-bar .nav-icon .profile-nav-avatar,
 .home-shell .bottom-bar .nav-icon img.profile-nav-avatar {
   width: 24px !important;
@@ -338,17 +422,14 @@
   border-radius: 50% !important;
   object-fit: cover !important;
 }
-
 .home-shell .bottom-bar a.active .nav-icon .profile-nav-avatar,
 .home-shell .bottom-bar a.active .nav-icon img.profile-nav-avatar {
   border-color: #fff !important;
 }
-
-/* Hide person SVG when avatar img replaces it */
 .home-shell .bottom-bar a:last-child .nav-icon svg { display: none !important; }
 .home-shell .bottom-bar a:last-child .nav-icon img.profile-nav-avatar { display: block !important; }
 
-/* ============ Dark-theme overrides ============ */
+/* ============ Dark-theme overrides ============ *//* ============ Dark-theme overrides ============ */
 :root[data-theme="dark"] .home-shell { background: #000; }
 :root[data-theme="dark"] .home-shell main,
 :root[data-theme="dark"] .home-shell .page { background: #000; }
