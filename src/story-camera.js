@@ -237,6 +237,15 @@
     }
   }
   if (els.dismiss) els.dismiss.addEventListener('click', goBack);
+  // Top bar flip button (same as settings sheet flip)
+  const camFlipBtn = document.getElementById('cam-flip');
+  if (camFlipBtn) {
+    camFlipBtn.addEventListener('click', () => {
+      facing = facing === 'user' ? 'environment' : 'user';
+      startCamera();
+      toast(facing === 'user' ? 'Front camera' : 'Back camera');
+    });
+  }
   els.flash.addEventListener('click', () => {
     setFlash(flash === 'off' ? 'on' : flash === 'on' ? 'auto' : 'off');
   });

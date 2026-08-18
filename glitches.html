@@ -92,5 +92,40 @@
     <script src="src/edit-profile.js?v=3" defer></script>
     <script src="src/story-features.js?v=3" defer></script>
     <script src="src/profile-avatar.js" defer></script>
+
+    <script>
+      // Glitches page: reels-title dropdown to filter by recent/popular
+      (function () {
+        var titleBtn = document.querySelector('.reels-title');
+        if (!titleBtn) return;
+
+        // Create dropdown menu
+        var dropdown = document.createElement('div');
+        dropdown.className = 'reels-dropdown';
+        dropdown.hidden = true;
+        dropdown.innerHTML = '<button type="button" class="reels-dropdown-item active" data-filter="recent">Recent</button>' +
+          '<button type="button" class="reels-dropdown-item" data-filter="popular">Popular</button>' +
+          '<button type="button" class="reels-dropdown-item" data-filter="following">Following</button>';
+        titleBtn.parentElement.appendChild(dropdown);
+
+        titleBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          dropdown.hidden = !dropdown.hidden;
+        });
+
+        dropdown.querySelectorAll('.reels-dropdown-item').forEach(function (item) {
+          item.addEventListener('click', function () {
+            dropdown.querySelectorAll('.reels-dropdown-item').forEach(function (i) { i.classList.remove('active'); });
+            item.classList.add('active');
+            dropdown.hidden = true;
+            titleBtn.querySelector('.reels-title-text, span') || 
+              (titleBtn.childNodes[0].textContent = 'Glitches · ' + item.textContent);
+          });
+        });
+
+        document.addEventListener('click', function () { dropdown.hidden = true; });
+      })();
+    </script>
+
   </body>
 </html>

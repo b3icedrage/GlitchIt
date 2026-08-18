@@ -144,5 +144,55 @@
         });
       })();
     </script>
+
+    <script>
+      // Messages page buttons: menu opens settings, title toggles account dropdown
+      (function () {
+        var menuBtn = document.getElementById('dm-menu');
+        var titleBtn = document.getElementById('dm-title');
+        var settingsPanel = document.querySelector('.settings-panel');
+        var settingsBackdrop = document.querySelector('.settings-backdrop');
+
+        if (menuBtn) {
+          menuBtn.addEventListener('click', function () {
+            // Open the profile settings panel (same as profile page settings)
+            if (settingsPanel) {
+              document.body.classList.add('settings-open');
+            } else {
+              // Fallback: navigate to profile settings
+              location.href = 'profile.html#settings';
+            }
+          });
+        }
+
+        if (titleBtn) {
+          titleBtn.addEventListener('click', function () {
+            // Toggle account dropdown or navigate to profile
+            var me = window.GLITCHIT_USER;
+            if (me && !me.guest) {
+              location.href = 'profile.html';
+            } else {
+              location.href = 'auth.html?returnTo=messages.html';
+            }
+          });
+        }
+
+        // DM search input: filter conversations
+        var searchInput = document.getElementById('dm-search-input');
+        if (searchInput) {
+          searchInput.addEventListener('input', function () {
+            var q = this.value.trim().toLowerCase();
+            var rows = document.querySelectorAll('.dm-row, .dm-thread');
+            rows.forEach(function (row) {
+              var name = (row.querySelector('.dm-name, .dm-thread-name') || {}).textContent || '';
+              var preview = (row.querySelector('.dm-preview, .dm-thread-preview') || {}).textContent || '';
+              var match = !q || name.toLowerCase().includes(q) || preview.toLowerCase().includes(q);
+              row.style.display = match ? '' : 'none';
+            });
+          });
+        }
+      })();
+    </script>
+
   </body>
 </html>

@@ -120,5 +120,163 @@
     <script src="src/edit-profile.js?v=3" defer></script>
     <script src="src/story-features.js?v=3" defer></script>
     <script src="src/profile-avatar.js" defer></script>
+
+    <script>
+      // Chat page action buttons: camera, location, voice, gallery, stickers, more
+      (function () {
+        // Camera button — open camera page
+        var camBtn = document.querySelector('.chat-cam');
+        if (camBtn) {
+          camBtn.addEventListener('click', function () {
+            location.href = 'camera.html';
+          });
+        }
+
+        // Location sharing
+        var locBtn = document.getElementById('chat-loc');
+        if (locBtn) {
+          locBtn.addEventListener('click', function () {
+            if (!navigator.geolocation) {
+              alert('Location not available on this device');
+              return;
+            }
+            navigator.geolocation.getCurrentPosition(function (pos) {
+              var lat = pos.coords.latitude.toFixed(4);
+              var lon = pos.coords.longitude.toFixed(4);
+              var chat = document.getElementById('chat-messages');
+              if (chat) {
+                var msg = document.createElement('div');
+                msg.className = 'chat-msg chat-msg-loc';
+                msg.innerHTML = '<div class="chat-bubble">📍 Location: ' + lat + ', ' + lon + '</div>';
+                chat.appendChild(msg);
+                chat.scrollTop = chat.scrollHeight;
+              }
+            }, function () {
+              alert('Location access was denied. Please enable it in your device settings.');
+            }, { enableHighAccuracy: true, timeout: 10000 });
+          });
+        }
+
+        // Voice message — record audio
+        var voiceBtn = document.querySelector('[aria-label="Voice message"]');
+        if (voiceBtn) {
+          var recording = false;
+          var mediaRecorder = null;
+          var chunks = [];
+          voiceBtn.addEventListener('click', function () {
+            if (recording) {
+              // Stop recording
+              if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+              }
+              recording = false;
+              voiceBtn.classList.remove('recording');
+              voiceBtn.style.color = '';
+              return;
+            }
+            // Start recording
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+              alert('Microphone not available');
+              return;
+            }
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+              chunks = [];
+              mediaRecorder = new MediaRecorder(stream);
+              mediaRecorder.ondataavailable = function (e) { if (e.data.size) chunks.push(e.data); };
+              mediaRecorder.onstop = function () {
+                stream.getTracks().forEach(function (t) { t.stop(); });
+                if (chunks.length) {
+                  var blob = new Blob(chunks, { type: 'audio/webm' });
+                  var chat = document.getElementById('chat-messages');
+                  if (chat) {
+                    var msg = document.createElement('div');
+                    msg.className = 'chat-msg chat-msg-voice';
+                    msg.innerHTML = '<div class="chat-bubble">🎤 Voice message (' + Math.round(blob.size / 1024) + 'KB)</div>';
+                    chat.appendChild(msg);
+                    chat.scrollTop = chat.scrollHeight;
+                  }
+                }
+              };
+              mediaRecorder.start();
+              recording = true;
+              voiceBtn.classList.add('recording');
+              voiceBtn.style.color = '#ff3040';
+            }).catch(function () {
+              alert('Microphone access was denied');
+            });
+          });
+        }
+
+        // Gallery — pick image
+        var galleryBtn = document.querySelector('[aria-label="Gallery"]');
+        if (galleryBtn) {
+          var fileInput = document.createElement('input');
+          fileInput.type = 'file';
+          fileInput.accept = 'image/*';
+          fileInput.hidden = true;
+          document.body.appendChild(fileInput);
+          galleryBtn.addEventListener('click', function () { fileInput.click(); });
+          fileInput.addEventListener('change', function () {
+            var file = fileInput.files && fileInput.files[0];
+            fileInput.value = '';
+            if (!file) return;
+            var url = URL.createObjectURL(file);
+            var chat = document.getElementById('chat-messages');
+            if (chat) {
+              var msg = document.createElement('div');
+              msg.className = 'chat-msg chat-msg-img';
+              msg.innerHTML = '<div class="chat-bubble"><img src="' + url + '" alt="Shared photo" style="max-width:240px;border-radius:12px;"></div>';
+              chat.appendChild(msg);
+              chat.scrollTop = chat.scrollHeight;
+            }
+          });
+        }
+
+        // Stickers & emoji — open emoji picker
+        var stickerBtn = document.querySelector('[aria-label="Stickers and emoji"]');
+        if (stickerBtn) {
+          var emojiPicker = document.createElement('div');
+          emojiPicker.className = 'chat-emoji-picker';
+          emojiPicker.hidden = true;
+          emojiPicker.style.cssText = 'position:absolute;bottom:70px;right:16px;background:#1a1a2e;border-radius:16px;padding:12px;display:grid;grid-template-columns:repeat(6,1fr);gap:4px;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,.4);';
+          var emojis = ['😀','😂','❤️','🔥','👍','😍','😢','😮','🤔','😎','🥺','💪','🎉','🙏','✨','💯','👀','🫡','💀','😭','🥳','🤩','😘','🤗','😏','🤷','🎵','📸','🌍','⚡'];
+          emojis.forEach(function (e) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = e;
+            btn.style.cssText = 'font-size:24px;background:none;border:0;cursor:pointer;padding:4px;border-radius:8px;';
+            btn.addEventListener('click', function () {
+              var input = document.getElementById('chat-input');
+              if (input) { input.value += e; input.focus(); }
+              emojiPicker.hidden = true;
+            });
+            emojiPicker.appendChild(btn);
+          });
+          stickerBtn.parentElement.style.position = 'relative';
+          stickerBtn.parentElement.appendChild(emojiPicker);
+          stickerBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            emojiPicker.hidden = !emojiPicker.hidden;
+          });
+          document.addEventListener('click', function () { emojiPicker.hidden = true; });
+        }
+
+        // More — show additional options
+        var moreBtn = document.querySelector('[aria-label="More"]');
+        if (moreBtn) {
+          moreBtn.addEventListener('click', function () {
+            var actions = ['Share contact', 'Mute notifications', 'Block user', 'Report'];
+            var choice = prompt('More options:\n1. Share contact\n2. Mute notifications\n3. Block user\n4. Report\n\nType a number:');
+            if (choice) {
+              var idx = parseInt(choice) - 1;
+              if (idx >= 0 && idx < actions.length) {
+                alert(actions[idx] + ' — coming soon!');
+              }
+            }
+          });
+        }
+      })();
+    </script>
+
   </body>
 </html>
