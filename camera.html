@@ -22,7 +22,7 @@
     <meta name="twitter:title" content="Story Camera · GlitchIt" />
     <meta name="twitter:description" content="Record short videos and stories, add music and effects, add music and effects, and share them with your followers." />
     <title>Story Camera · GlitchIt</title>
-    <link rel="stylesheet" href="src/story-camera.css?v=3" />
+    <link rel="stylesheet" href="src/story-camera.css?v=4" />
   </head>
   <body>
     <div class="cam" id="cam">
@@ -103,6 +103,9 @@
         <button type="button" class="cam-refresh" id="cam-refresh" aria-label="Refresh camera">↻</button>
       </nav>
 
+      <!-- Filter chips (horizontal scroll strip) -->
+      <div class="cam-filters" id="cam-filters" role="listbox" aria-label="Filters"></div>
+
       <!-- Capture preview -->
       <section class="cam-preview" id="cam-preview" hidden>
         <div class="cam-preview-stage">
@@ -175,6 +178,6 @@
       <input type="file" id="cam-file" accept="image/*,video/*" hidden />
     </div>
 
-    <script src="src/story-camera.js?v=4" defer></script>
+    <script src="src/story-camera.js?v=5" defer></script>
   </body>
 </html>

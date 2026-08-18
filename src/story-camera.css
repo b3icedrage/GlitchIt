@@ -92,7 +92,7 @@ button { font: inherit; cursor: pointer; color: inherit; background: transparent
 .cam-shutter:active::after { transform: scale(.82); }
 .cam-shutter.recording::after { background: #ff3040; animation: camPulse 1s ease-in-out infinite; }
 @keyframes camPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(.76); } }
-.cam-filters { justify-self: end; display: flex; flex-direction: column; gap: 10px; align-items: center; max-height: 40vh; overflow-y: auto; scrollbar-width: none; }
+.cam-filters { position: absolute; right: 10px; bottom: calc(160px + env(safe-area-inset-bottom)); z-index: 6; display: flex; flex-direction: column; gap: 10px; align-items: center; max-height: 40vh; overflow-y: auto; scrollbar-width: none; }
 .cam-filters::-webkit-scrollbar { display: none; }
 .cam-filter { display: grid; justify-items: center; gap: 4px; padding: 0; transition: transform .15s ease; }
 .cam-filter:hover { transform: scale(1.08); }
