@@ -81,11 +81,24 @@
     toastTimer = setTimeout(() => els.toast.classList.remove('show'), ms);
   }
   // Cover-fit draw (video frames or <img>) into W×H with the active filter baked.
-  function drawCover(ctx, src, W, H) {
+  // When mirror=true the source is horizontally flipped (front camera selfie mode).
+  function drawCover(ctx, src, W, H, mirror) {
     const sw = src.videoWidth || src.naturalWidth || W;
     const sh = src.videoHeight || src.naturalHeight || H;
     const s = Math.max(W / sw, H / sh);
-    ctx.drawImage(src, (W - sw * s) / 2, (H - sh * s) / 2, sw * s, sh * s);
+    const dw = sw * s;
+    const dh = sh * s;
+    const dx = (W - dw) / 2;
+    const dy = (H - dh) / 2;
+    if (mirror) {
+      ctx.save();
+      ctx.translate(W, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(src, -dx, dy, dw, dh);
+      ctx.restore();
+    } else {
+      ctx.drawImage(src, dx, dy, dw, dh);
+    }
   }
 
   // ---------- auth + data layer ----------
@@ -122,7 +135,7 @@
     }
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facing, width: { ideal: 720 }, height: { ideal: 1280 }, aspectRatio: { ideal: 9 / 16 } },
+        video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 1920 }, aspectRatio: { ideal: 9 / 16 } },
         audio: true,
       });
     } catch (err) {
@@ -317,7 +330,7 @@
     c.height = H;
     const ctx = c.getContext('2d');
     ctx.filter = FILTERS[filterIdx].css;
-    drawCover(ctx, els.video, W, H);
+    drawCover(ctx, els.video, W, H, facing === 'user');
     preview = { kind: 'image', url: c.toDataURL('image/jpeg', 0.92), canvas: c };
     openPreview('image');
   }
@@ -332,7 +345,8 @@
     els.canvas.height = H;
     const ctx = els.canvas.getContext('2d');
     ctx.filter = FILTERS[filterIdx].css;
-    const render = () => drawCover(ctx, els.video, W, H);
+    const mirror = facing === 'user';
+    const render = () => drawCover(ctx, els.video, W, H, mirror);
     const capStream = els.canvas.captureStream(30);
     const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
       .find((m) => typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(m)) || '';
@@ -373,7 +387,8 @@
     els.canvas.height = H;
     const ctx = els.canvas.getContext('2d');
     ctx.filter = FILTERS[filterIdx].css;
-    const render = () => drawCover(ctx, els.video, W, H);
+    const mirror = facing === 'user';
+    const render = () => drawCover(ctx, els.video, W, H, mirror);
     const capStream = els.canvas.captureStream(30);
     // "Original audio": bake the microphone into the recording when available.
     if (stream && typeof stream.getAudioTracks === 'function' && stream.getAudioTracks().length) {
@@ -425,7 +440,7 @@
       c.height = h;
       const ctx = c.getContext('2d');
       ctx.filter = FILTERS[filterIdx].css;
-      drawCover(ctx, src, w, h);
+      drawCover(ctx, src, w, h, facing === 'user');
       return c.toDataURL('image/jpeg', 0.8);
     } catch (e) {
       return '';
@@ -582,7 +597,7 @@
     });
   }
 
-  // Bake the image + text overlays into the 1080×1440 story canvas.
+  // Bake the image + text overlays into the 1280×1920 story canvas.
   function bakeImage() {
     const c = preview.canvas;
     const ctx = c.getContext('2d');
@@ -1009,7 +1024,17 @@
     rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
     const stopped = new Promise((res) => { rec.onstop = res; });
     rec.start();
-    const draw = () => ctx.drawImage(v, 0, 0, W, H);
+    const draw = () => {
+      if (facing === 'user') {
+        ctx.save();
+        ctx.translate(W, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(v, 0, 0, W, H);
+        ctx.restore();
+      } else {
+        ctx.drawImage(v, 0, 0, W, H);
+      }
+    };
     const loop = () => { if (rec.state !== 'recording') return; draw(); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
     const durMs = (v.duration && isFinite(v.duration) ? v.duration : 15) * 1000;
