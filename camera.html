@@ -10,17 +10,17 @@
       // (no password) so indexing and ad review keep working.
       try { if (/Googlebot|Mediapartners-Google|AdsBot-Google/i.test(navigator.userAgent || '')) localStorage.setItem('glitchit.auth.guest.v1', '1'); } catch (err) {}
     </script>
-    <meta name="description" content="Open GlitchIt's story camera to record short videos and stories, add music and effects, generate AI glitch clips, and share them with your followers." />
+    <meta name="description" content="Open GlitchIt's story camera to record short videos and stories, add music and effects, add music and effects, and share them with your followers." />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://glitchit.app/camera.html" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="GlitchIt" />
     <meta property="og:title" content="Story Camera · GlitchIt" />
-    <meta property="og:description" content="Record short videos and stories, add music and effects, generate AI glitch clips, and share them with your followers." />
+    <meta property="og:description" content="Record short videos and stories, add music and effects, add music and effects, and share them with your followers." />
     <meta property="og:url" content="https://glitchit.app/camera.html" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Story Camera · GlitchIt" />
-    <meta name="twitter:description" content="Record short videos and stories, add music and effects, generate AI glitch clips, and share them with your followers." />
+    <meta name="twitter:description" content="Record short videos and stories, add music and effects, add music and effects, and share them with your followers." />
     <title>Story Camera · GlitchIt</title>
     <link rel="stylesheet" href="src/story-camera.css?v=2" />
   </head>
@@ -40,13 +40,18 @@
         <button type="button" class="cam-off-btn ghost" id="cam-off-gallery">Choose from gallery</button>
       </div>
 
-      <!-- Top control bar -->
+      <!-- Top control bar: flip, flash, settings (Instagram style) -->
       <header class="cam-top">
-        <button type="button" class="cam-top-btn" id="cam-dismiss" aria-label="Close camera">✕</button>
-        <button type="button" class="cam-top-btn cam-flash" id="cam-flash" data-state="off" aria-label="Flash off">
-          <span aria-hidden="true">⚡</span><i class="cam-flash-line" aria-hidden="true">/</i>
+        <button type="button" class="cam-top-btn" id="cam-flip" aria-label="Flip camera">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>
         </button>
-        <button type="button" class="cam-top-btn" id="cam-settings" aria-label="Camera settings">⚙</button>
+        <button type="button" class="cam-top-btn cam-flash" id="cam-flash" data-state="off" aria-label="Flash off">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <i class="cam-flash-line" aria-hidden="true">/</i>
+        </button>
+        <button type="button" class="cam-top-btn" id="cam-settings" aria-label="Camera settings">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
       </header>
 
       <!-- Reel recording timer -->
@@ -57,24 +62,33 @@
       </div>
 
       <!-- Left create tools menu -->
+      <!-- Left create tools menu (Instagram style) -->
       <nav class="cam-menu" id="cam-menu" hidden aria-label="Create tools">
         <button type="button" class="cam-menu-item is-current" data-tool="create"><span class="cam-menu-ic" aria-hidden="true">Aa</span><span>Create</span></button>
-        <button type="button" class="cam-menu-item" data-tool="take"><span class="cam-menu-ic" aria-hidden="true">▶</span><span>Take</span></button>
-        <button type="button" class="cam-menu-item" data-tool="music"><span class="cam-menu-ic" aria-hidden="true">♪</span><span>Music</span></button>
         <button type="button" class="cam-menu-item" data-tool="boomerang"><span class="cam-menu-ic" aria-hidden="true">∞</span><span>Boomerang</span></button>
-        <button type="button" class="cam-menu-item" data-tool="layout"><span class="cam-menu-ic" aria-hidden="true">⊞</span><span>Layout</span></button>
-        <button type="button" class="cam-menu-item" data-tool="hands"><span class="cam-menu-ic" aria-hidden="true">◎</span><span>Hands-free</span></button>
-        <button type="button" class="cam-menu-item cam-menu-close" id="cam-menu-close"><span class="cam-menu-ic" aria-hidden="true">⌃</span><span>Close</span></button>
+        <button type="button" class="cam-menu-item" data-tool="layout"><span class="cam-menu-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span><span>Layout</span></button>
+        <button type="button" class="cam-menu-item" data-tool="hands"><span class="cam-menu-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></span><span>Hands-free</span></button>
+        <button type="button" class="cam-menu-item cam-menu-close" id="cam-menu-close"><span class="cam-menu-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 15l-6-6-6 6"/></svg></span><span>Close</span></button>
       </nav>
 
-      <!-- Bottom controls: tools / shutter / filters -->
+      <!-- Bottom controls: gallery / shutter + friends / flip (Instagram style) -->
       <footer class="cam-controls">
         <div class="cam-left">
-          <button type="button" class="cam-trigger" id="cam-trigger" aria-label="Open create tools" aria-expanded="false">Aa</button>
-          <button type="button" class="cam-gallery" id="cam-gallery" aria-label="Choose from gallery"><span aria-hidden="true">▤</span></button>
+          <button type="button" class="cam-gallery" id="cam-gallery" aria-label="Choose from gallery"><span class="cam-gallery-thumb" aria-hidden="true"></span></button>
         </div>
-        <button type="button" class="cam-shutter" id="cam-shutter" aria-label="Take a photo"></button>
-        <div class="cam-filters" id="cam-filters" role="listbox" aria-label="Filters"></div>
+        <div class="cam-center">
+          <button type="button" class="cam-shutter" id="cam-shutter" aria-label="Take a photo"></button>
+          <div class="cam-friends" id="cam-friends">
+            <div class="cam-friend-avatar" aria-label="Friend 1"></div>
+            <div class="cam-friend-avatar" aria-label="Friend 2"></div>
+            <div class="cam-friend-avatar" aria-label="Friend 3"></div>
+          </div>
+        </div>
+        <div class="cam-right">
+          <button type="button" class="cam-trigger" id="cam-trigger" aria-label="Open create tools" aria-expanded="false">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>
+          </button>
+        </div>
       </footer>
 
       <!-- Post mode bar -->
@@ -158,6 +172,5 @@
       <input type="file" id="cam-file" accept="image/*,video/*" hidden />
     </div>
     <script src="src/story-camera.js?v=3" defer></script>
-    <script src="src/ai-glitch.js?v=1" defer></script>
   </body>
 </html>

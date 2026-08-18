@@ -57,8 +57,30 @@ button { font: inherit; cursor: pointer; color: inherit; background: transparent
 .cam-menu-close { color: rgba(255, 255, 255, .7); }
 
 /* Bottom controls */
-.cam-controls { position: absolute; left: 0; right: 0; bottom: calc(64px + env(safe-area-inset-bottom)); z-index: 6; display: grid; grid-template-columns: 74px 1fr 84px; align-items: end; gap: 10px; padding: 0 20px; }
-.cam-left { display: grid; justify-items: center; gap: 12px; }
+.cam-controls { position: absolute; left: 0; right: 0; bottom: calc(64px + env(safe-area-inset-bottom)); z-index: 6; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; gap: 10px; }
+
+/* Instagram-style camera controls */
+.cam-left { display: flex; align-items: center; gap: 0; }
+.cam-center { display: flex; align-items: center; gap: 12px; flex: 1; justify-content: center; }
+.cam-right { display: flex; align-items: center; }
+
+/* Gallery thumbnail */
+.cam-gallery { width: 44px; height: 56px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, .85); overflow: hidden; background: #1a1a2e; }
+.cam-gallery-thumb { display: block; width: 100%; height: 100%; background: linear-gradient(135deg, #26233a, #0e0d1a); }
+
+/* Friend avatars next to shutter */
+.cam-friends { display: flex; align-items: center; gap: -4px; }
+.cam-friend-avatar { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #000; background: linear-gradient(135deg, #c13584, #833ab4); flex-shrink: 0; }
+.cam-friend-avatar:nth-child(2) { margin-left: -8px; background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+.cam-friend-avatar:nth-child(3) { margin-left: -8px; background: linear-gradient(135deg, #405de6, #5851db, #833ab4); }
+
+/* Trigger button (camera flip in bottom right) */
+.cam-trigger { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 255, 255, .15); transition: transform .15s ease, background .15s ease; }
+.cam-trigger:hover { background: rgba(255, 255, 255, .25); transform: scale(1.05); }
+.cam-trigger.is-open { background: rgba(255, 255, 255, .95); }
+.cam-trigger.is-open svg { stroke: #111; }
+
+.cam-left { display: flex; align-items: center; gap: 0; }
 .cam-trigger { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: rgba(20, 20, 30, .5); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-weight: 900; font-size: 15px; transition: transform .15s ease, background .15s ease; }
 .cam-trigger:hover { background: rgba(20, 20, 30, .8); transform: scale(1.05); }
 .cam-trigger.is-open { background: rgba(255, 255, 255, .95); color: #111; }
