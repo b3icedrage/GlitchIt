@@ -6,6 +6,12 @@
    Dark-mode duplicates keep the home shell black even when the app theme
    is dark (this file loads after styles.css / bottombar.css, so ties go
    to these rules). */
+/* ---- Force dark theme on the home page always ---- */
+.home-shell,
+.home-shell * {
+  color-scheme: dark;
+}
+
 
 /* ---- Phone-app column: centered on desktop, full-bleed on phones ---- */
 #app.home-shell {
@@ -296,13 +302,21 @@
   fill: #fff;
   transform: none;
 }
-.home-shell .bottom-bar a .profile-nav-avatar {
+.home-shell .bottom-bar a .profile-nav-avatar,
+.home-shell .bottom-bar a img.profile-nav-avatar {
   width: 26px;
   height: 26px;
-  border: 0;
+  border: 2px solid rgba(255, 255, 255, .25);
   border-radius: 50%;
   object-fit: cover;
 }
+.home-shell .bottom-bar a.active .profile-nav-avatar,
+.home-shell .bottom-bar a.active img.profile-nav-avatar {
+  border-color: #fff;
+}
+/* Hide the default person SVG when avatar img replaces it */
+.home-shell .bottom-bar a:last-child svg { display: none; }
+.home-shell .bottom-bar a:last-child img.profile-nav-avatar { display: block; }
 
 /* ---- Dark-theme overrides: keep the home shell identical on black ---- */
 :root[data-theme="dark"] .home-shell { background: #000; }
