@@ -241,67 +241,86 @@
 }
 :root[data-theme="dark"] .home-shell .ad-feed-card { border-color: transparent; background: #111; }
 
-/* ---- Bottom bar: black, 5 tabs, icon-only ---- */
+/* ---- Bottom bar: flat black Instagram bar (overrides bottombar.css pill) ---- */
 .home-shell .bottom-bar {
-  position: fixed;
-  left: 50%;
-  right: auto;
-  bottom: 0;
-  z-index: 40;
-  transform: translateX(-50%);
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0;
-  width: min(520px, 100%);
-  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
-  border: 0;
-  border-top: 1px solid rgba(255, 255, 255, .08);
-  border-radius: 0;
-  background: #000;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  top: auto !important;
+  z-index: 40 !important;
+  transform: none !important;
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom)) !important;
+  border: none !important;
+  border-top: 1px solid rgba(255, 255, 255, .08) !important;
+  border-radius: 0 !important;
+  background: #000 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: none !important;
+}
+.home-shell .bottom-bar.bottom-bar-hidden {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: none !important;
 }
 .home-shell .bottom-bar a {
-  display: grid;
-  place-items: center;
-  gap: 0;
-  min-width: 0;
-  padding: 6px 0;
-  border-radius: 0;
-  color: #8e8e8e;
-  font-size: 10px;
-  -webkit-tap-highlight-color: transparent;
+  display: grid !important;
+  place-items: center !important;
+  gap: 0 !important;
+  min-width: 0 !important;
+  padding: 6px 0 !important;
+  border-radius: 0 !important;
+  color: #8e8e8e !important;
+  font-size: 10px !important;
+  -webkit-tap-highlight-color: transparent !important;
+  transition: none !important;
 }
-.home-shell .bottom-bar a span:not(.nav-icon) { display: none; }
+.home-shell .bottom-bar a span:not(.nav-icon) { display: none !important; }
 .home-shell .bottom-bar .nav-icon {
-  display: grid;
-  place-items: center;
-  width: auto;
-  height: auto;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  display: grid !important;
+  place-items: center !important;
+  width: auto !important;
+  height: auto !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: none !important;
 }
 .home-shell .bottom-bar a svg { width: 26px; height: 26px; }
-.home-shell .bottom-bar a:hover { color: #fff; background: transparent; }
-.home-shell .bottom-bar a:hover .nav-icon { background: transparent; }
-.home-shell .bottom-bar a:hover .nav-icon svg { transform: none; }
-.home-shell .bottom-bar a:active .nav-icon svg { transform: scale(.9); }
+.home-shell .bottom-bar a:hover { color: #8e8e8e !important; background: transparent !important; }
+.home-shell .bottom-bar a:hover .nav-icon { background: transparent !important; }
+.home-shell .bottom-bar a:hover .nav-icon svg { transform: none !important; }
+.home-shell .bottom-bar a:active .nav-icon svg { transform: scale(.88); }
 .home-shell .bottom-bar a.active {
-  color: #fff;
-  font-weight: 700;
-  background: transparent;
+  color: #fff !important;
+  font-weight: 700 !important;
+  background: transparent !important;
 }
 .home-shell .bottom-bar a.active .nav-icon {
-  background: transparent;
-  box-shadow: none;
+  background: transparent !important;
+  box-shadow: none !important;
 }
+/* Active home tab: filled white house */
+.home-shell .bottom-bar a.active[data-tab="home"] svg {
+  fill: #fff !important;
+  stroke: #fff !important;
+  transform: none !important;
+}
+/* Active reels/messages/search: stroke white */
 .home-shell .bottom-bar a.active .nav-icon svg {
-  stroke: #fff;
-  fill: #fff;
-  transform: none;
+  stroke: #fff !important;
+  fill: none !important;
+  transform: none !important;
 }
+/* Profile avatar circle */
 .home-shell .bottom-bar a .profile-nav-avatar,
 .home-shell .bottom-bar a img.profile-nav-avatar {
   width: 26px;
@@ -314,7 +333,7 @@
 .home-shell .bottom-bar a.active img.profile-nav-avatar {
   border-color: #fff;
 }
-/* Hide the default person SVG when avatar img replaces it */
+/* Hide person SVG when avatar img replaces it */
 .home-shell .bottom-bar a:last-child svg { display: none; }
 .home-shell .bottom-bar a:last-child img.profile-nav-avatar { display: block; }
 
