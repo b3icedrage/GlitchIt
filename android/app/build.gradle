@@ -1,3 +1,17 @@
+signingConfigs {
+    release {
+        def ksBase64 = System.getenv('ANDROID_KEYSTORE_BASE64')
+        if (ksBase64 && ksBase64.trim()) {
+            def ksFile = file('release.keystore')
+            ksFile.bytes = Base64.decoder.decode(ksBase64.trim())
+            storeFile ksFile
+            storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: ''
+            keyAlias System.getenv('ANDROID_KEY_ALIAS') ?: ''
+            keyPassword System.getenv('ANDROID_KEY_PASSWORD') ?: ''
+        }
+    }
+}
+
 apply plugin: 'com.android.application'
 
 android {
@@ -7,8 +21,12 @@ android {
         applicationId "com.glitchit.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Version is injected per build so every APK is uniquely identifiable
+        // and sideloading always updates cleanly. Passed from the CI workflow
+        // as -PglitchVersionCode / -PglitchVersionName; local builds default
+        // to 1 / "1.0" when the properties are absent.
+        versionCode project.findProperty('glitchVersionCode') ? Integer.parseInt(project.property('glitchVersionCode').toString()) : 1
+        versionName project.findProperty('glitchVersionName') ?: '1.0'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -20,6 +38,10 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
         }
     }
 }

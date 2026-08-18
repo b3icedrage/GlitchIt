@@ -2,9 +2,20 @@
 # uploads it as a downloadable artifact.
 #
 #   - Runs on every push to main and manually via the "Run workflow" button
-#     (Actions tab -> Build Android APK -> Run workflow).
-#   - The APK loads the live site (see capacitor.config.json -> server.url).
-#     Point that at your production domain before building for real users.
+#     (Actions tab -> Build Android APK -> Run workflow). Every push rebuilds
+#     the APK from the exact code in that commit, so the downloadable artifact
+#     is always in sync with the latest changes — no manual sync needed.
+#   - Each build gets its own version (versionCode = run number, versionName =
+#     short git SHA) so installing a fresh APK over an old one updates cleanly.
+#   - The APK ships the app's static assets inside the package
+#     (capacitor.config.json -> webDir: dist, no server.url) and launches
+#     standalone — it does not load a website, so it works even when the
+#     production domain is down. The /api proxies (chat, music, NVIDIA video,
+#     LiveKit, accounts) need a real backend: point GLITCHIT_API_BASE (or the
+#     glitchit.apiBase localStorage override) at one before shipping to users.
+#   - Signing: when the four ANDROID_KEYSTORE_* secrets are set, both debug
+#     and release builds use the same keystore — so every APK installs
+#     cleanly over a previous one without signature collisions.
 #   - The artifact `glitchit-apk` contains app-debug.apk, which installs
 #     directly (sideload) — no Play Store needed.
 name: Build Android APK
@@ -33,6 +44,12 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      - name: Decode signing keystore
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
       - name: Install dependencies
         run: npm ci
 
@@ -44,7 +61,12 @@ jobs:
 
       - name: Build debug APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug -PglitchVersionCode=$GITHUB_RUN_NUMBER -PglitchVersionName="${GITHUB_SHA::7}"
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

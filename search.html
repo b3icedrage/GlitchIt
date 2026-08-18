@@ -60,6 +60,7 @@
               <button type="button" class="sr-tab" data-sr-tab="accounts" role="tab" aria-selected="false">Accounts</button>
               <button type="button" class="sr-tab" data-sr-tab="tags" role="tab" aria-selected="false">Tags</button>
               <button type="button" class="sr-tab" data-sr-tab="reels" role="tab" aria-selected="false">Reels</button>
+              <button type="button" class="sr-tab" data-sr-tab="music" role="tab" aria-selected="false">Music</button>
             </div>
 
             <!-- Top: real posts (filled from the database; empty state until then) -->
@@ -85,6 +86,24 @@
             <div class="sr-panel" data-sr-panel="reels" hidden>
               <div class="sr-grid" id="sr-reels-grid">
                 <div class="feed-empty"><span class="feed-empty-mark">▣</span><h3>Loading glitches…</h3><p>Videos shared by creators will show up here.</p></div>
+              </div>
+            </div>
+
+            <!-- Music: search for songs via Deezer + Apple Music -->
+            <div class="sr-panel" data-sr-panel="music" hidden>
+              <div class="sr-music">
+                <div class="sr-music-search">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                  <input id="sr-music-input" type="search" placeholder="Search songs, artists…" aria-label="Search music" autocomplete="off" />
+                </div>
+                <div class="sr-music-tabs" role="tablist" aria-label="Music sections">
+                  <button type="button" class="sr-music-tab active" data-music-tab="trending">Trending</button>
+                  <button type="button" class="sr-music-tab" data-music-tab="search">Results</button>
+                  <button type="button" class="sr-music-tab" data-music-tab="saved">Saved</button>
+                </div>
+                <div class="sr-music-list" id="sr-music-list">
+                  <p class="music-empty">Loading trending songs…</p>
+                </div>
               </div>
             </div>
           </div>
@@ -152,6 +171,129 @@
             srTimer = setTimeout(renderActive, 120);
           });
         }
+
+      // Music tab: direct Deezer + iTunes search (no server proxy needed)
+      (function () {
+        var musicInput = document.getElementById('sr-music-input');
+        var musicList = document.getElementById('sr-music-list');
+        if (!musicInput || !musicList) return;
+        var currentAudio = null;
+        var currentRow = null;
+        var trendingCache = null;
+
+        function fmtDur(s) {
+          if (!s || s <= 0) return '';
+          var m = Math.floor(s / 60);
+          var sec = Math.floor(s % 60);
+          return m + ':' + (sec < 10 ? '0' : '') + sec;
+        }
+
+        function renderMusicRows(tracks, emptyMsg) {
+          if (!tracks || !tracks.length) {
+            musicList.innerHTML = '<p class="music-empty-sr">' + (emptyMsg || 'No tracks found.') + '</p>';
+            return;
+          }
+          musicList.innerHTML = tracks.map(function (t) {
+            return '<div class="music-row-sr" data-url="' + (t.url || '') + '">' +
+              '<div class="music-thumb-sr">' + (t.art ? '<img src="' + t.art + '" alt="" loading="lazy">' : '♪') + '</div>' +
+              '<div class="music-info-sr"><b>' + (t.title || 'Unknown') + '</b><em>' + (t.artist || '') + (t.duration ? ' · ' + fmtDur(t.duration) : '') + '</em></div>' +
+              '<button type="button" class="music-play-sr" data-url="' + (t.url || '') + '">▶</button>' +
+            '</div>';
+          }).join('');
+          musicList.querySelectorAll('.music-row-sr').forEach(function (row) {
+            row.querySelector('.music-play-sr').addEventListener('click', function (e) {
+              e.stopPropagation();
+              var url = this.getAttribute('data-url');
+              if (!url) return;
+              if (currentAudio && currentRow === row) { currentAudio.pause(); currentAudio = null; currentRow = null; this.textContent = '▶'; return; }
+              if (currentAudio) { currentAudio.pause(); if (currentRow) { currentRow.querySelector('.music-play-sr').textContent = '▶'; currentRow.classList.remove('playing'); } }
+              currentAudio = new Audio(url);
+              currentRow = row;
+              this.textContent = '⏸';
+              row.classList.add('playing');
+              currentAudio.play().catch(function () {});
+              currentAudio.onended = function () { if (currentRow) { currentRow.querySelector('.music-play-sr').textContent = '▶'; currentRow.classList.remove('playing'); } currentAudio = null; currentRow = null; };
+            });
+          });
+        }
+
+        // Merge results from Deezer + iTunes
+        function mergeTracks(dz, it) {
+          var tracks = [];
+          var seen = {};
+          (dz || []).forEach(function (t) {
+            var key = (t.title + '|' + t.artist).toLowerCase();
+            if (seen[key]) return;
+            seen[key] = true;
+            tracks.push(t);
+          });
+          (it || []).forEach(function (t) {
+            var key = (t.title + '|' + t.artist).toLowerCase();
+            if (seen[key]) return;
+            seen[key] = true;
+            tracks.push(t);
+          });
+          return tracks;
+        }
+
+        function fetchDeezer(q) {
+          var url = q
+            ? 'https://api.deezer.com/search?q=' + encodeURIComponent(q) + '&limit=25'
+            : 'https://api.deezer.com/chart/0/tracks?limit=20';
+          return fetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              return (d.data || []).filter(function (t) { return t.preview; }).map(function (t) {
+                return { title: t.title || 'Unknown', artist: (t.artist && t.artist.name) || '', url: t.preview, art: t.album && (t.album.cover_medium || t.album.cover_small), duration: t.duration || 0 };
+              });
+            })
+            .catch(function () { return []; });
+        }
+
+        function fetchiTunes(q) {
+          if (!q) return Promise.resolve([]);
+          return fetch('https://itunes.apple.com/search?media=music&limit=25&term=' + encodeURIComponent(q))
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              return (d.results || []).filter(function (r) { return r.previewUrl; }).map(function (r) {
+                return { title: r.trackName || 'Unknown', artist: r.artistName || '', url: r.previewUrl, art: r.artworkUrl100 || '', duration: typeof r.trackTimeMillis === 'number' ? Math.round(r.trackTimeMillis / 1000) : 0 };
+              });
+            })
+            .catch(function () { return []; });
+        }
+
+        function loadTrending() {
+          musicList.innerHTML = '<p class="music-empty-sr">Loading trending songs…</p>';
+          if (trendingCache) { renderMusicRows(trendingCache, 'No trending tracks.'); return; }
+          fetchDeezer(null).then(function (tracks) {
+            trendingCache = tracks;
+            renderMusicRows(tracks, 'No trending tracks right now.');
+          });
+        }
+
+        function searchMusic(q) {
+          if (!q) { loadTrending(); return; }
+          musicList.innerHTML = '<p class="music-empty-sr">Searching…</p>';
+          Promise.all([fetchDeezer(q), fetchiTunes(q)]).then(function (results) {
+            var tracks = mergeTracks(results[0], results[1]);
+            renderMusicRows(tracks, 'No results for "' + q + '".');
+          });
+        }
+
+        document.querySelectorAll('.sr-music-tab').forEach(function (tab) {
+          tab.addEventListener('click', function () {
+            document.querySelectorAll('.sr-music-tab').forEach(function (t) { t.classList.remove('active'); });
+            tab.classList.add('active');
+            if (tab.getAttribute('data-music-tab') === 'trending') loadTrending();
+          });
+        });
+        var musicTimer = null;
+        musicInput.addEventListener('input', function () {
+          clearTimeout(musicTimer);
+          var q = musicInput.value.trim();
+          musicTimer = setTimeout(function () { searchMusic(q); }, 350);
+        });
+        loadTrending();
       })();
     </script>
   </body>

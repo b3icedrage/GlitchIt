@@ -1,0 +1,329 @@
+/* ============ Home page — Instagram-style app screen ============
+   Loaded last in index.html ONLY, scoped to .home-shell so every other
+   page keeps its own look. The home screen becomes a device-fitting phone
+   column at any width: black header (＋ GlitchIt ♡), stories tray, a
+   full-bleed feed, and a black 5-tab bottom bar — like the reference app.
+   Dark-mode duplicates keep the home shell black even when the app theme
+   is dark (this file loads after styles.css / bottombar.css, so ties go
+   to these rules). */
+
+/* ---- Phone-app column: centered on desktop, full-bleed on phones ---- */
+#app.home-shell {
+  display: grid;
+  grid-template-columns: 1fr;
+  max-width: 520px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: #000;
+}
+.home-shell .sidebar,
+.home-shell .right-rail { display: none; }
+.home-shell main {
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  padding: 0 0 76px;
+  background: #000;
+  scrollbar-width: none;
+}
+.home-shell main::-webkit-scrollbar { display: none; }
+.home-shell .page { background: #000; }
+
+/* ---- Header: ＋ GlitchIt ♡ on black ---- */
+.home-shell .mobile-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  gap: 0;
+  padding: 16px 12px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  background: #000;
+}
+.home-shell .mobile-top .brand {
+  justify-self: center;
+  font-size: 25px;
+  color: #fff;
+  letter-spacing: -1px;
+}
+.home-header-btn {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: #fff;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity .15s ease, transform .15s ease;
+}
+.home-header-btn:active { transform: scale(.86); opacity: .8; }
+.home-activity { position: relative; }
+.home-heart-dot {
+  position: absolute;
+  top: 6px;
+  right: 5px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #000;
+  border-radius: 50%;
+  background: #ff3040;
+}
+
+/* ---- Pull-to-refresh indicator ---- */
+.pull-refresh-indicator {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  color: rgba(255, 255, 255, .75);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  transition: transform .25s cubic-bezier(.22, .61, .36, 1), opacity .2s ease;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  opacity: 0;
+}
+.pull-refresh-indicator.active {
+  pointer-events: auto;
+}
+.pull-refresh-spinner {
+  display: grid;
+  place-items: center;
+  transition: transform .2s ease;
+}
+.pull-refresh-spinner.spinning svg {
+  animation: pullSpin .8s linear infinite;
+}
+@keyframes pullSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Stories tray: gradient rings, white labels ---- */
+.home-shell .stories {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  margin: 0;
+  padding: 12px 10px 14px;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+  scrollbar-width: none;
+}
+.home-shell .stories::-webkit-scrollbar { display: none; }
+.home-shell .story { min-width: 68px; gap: 7px; color: #fff; font-size: 12px; }
+.home-shell .story-ring {
+  width: 68px;
+  height: 68px;
+  background: #262626;
+}
+.home-shell .story img {
+  width: 62px;
+  height: 62px;
+  border: 2.5px solid #000;
+}
+.home-shell .story-ring.live {
+  background: conic-gradient(#feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5, #feda75);
+}
+/* "Your story": light ring + white badge with a dark plus, like the reference */
+.home-shell .story-self .story-ring.story-idle { background: rgba(255, 255, 255, .9); }
+.home-shell .story-self-badge {
+  right: -1px;
+  bottom: -1px;
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid #000;
+  color: #000;
+  background: #fff;
+}
+.home-shell .story-count {
+  border-color: #000;
+  color: #000;
+  background: #fff;
+}
+
+/* ---- Feed: full-bleed posts on black ---- */
+.home-shell .post {
+  margin: 0 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+  color: #fff;
+  box-shadow: none;
+}
+.home-shell .post:hover,
+.home-shell .post:active { transform: none; box-shadow: none; }
+.home-shell .post header { padding: 12px 14px; }
+.home-shell .post header .profile strong { color: #fff; font-size: 14px; }
+.home-shell .post header .profile span { color: #8e8e8e; font-size: 12px; }
+.home-shell .post .more { color: #fff; font-size: 16px; }
+.home-shell .post-image { width: 100%; aspect-ratio: 4 / 5; }
+.home-shell .post .actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 4px;
+}
+.home-shell .post-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.home-shell .post-like,
+.home-shell .post-comment,
+.home-shell .post-share,
+.home-shell .post-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-shell .post-like b,
+.home-shell .post-comment b { font-size: 13px; }
+.home-shell .post .actions .icon { margin-right: 0; }
+.home-shell .post-like:active,
+.home-shell .post-comment:active,
+.home-shell .post-share:active,
+.home-shell .post-save:active { transform: scale(.88); }
+.home-shell .post-like.liked { color: #ff3040; }
+.home-shell .post > strong { display: none; }
+.home-shell .post > p {
+  margin: 4px 14px 14px;
+  color: #fff;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.home-shell .post > p b { color: #fff; }
+.home-shell .shop-badge { background: rgba(0, 0, 0, .68); }
+
+/* Empty feed state on black */
+.home-shell .feed-empty {
+  margin: 24px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+}
+.home-shell .feed-empty h3 { color: #fff; }
+.home-shell .feed-empty p { color: #8e8e8e; }
+.home-shell .feed-empty-mark { color: #fff; }
+
+/* Sponsored in-feed cards (see src/ads.js) rendered on the black feed */
+.home-shell .ad-feed-card {
+  margin: 0 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: #111;
+}
+.home-shell .ad-feed-card .ad-label {
+  border-color: rgba(255, 255, 255, .14);
+  background: rgba(255, 255, 255, .08);
+  color: #9b9b9b;
+}
+:root[data-theme="dark"] .home-shell .ad-feed-card { border-color: transparent; background: #111; }
+
+/* ---- Bottom bar: black, 5 tabs, icon-only ---- */
+.home-shell .bottom-bar {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  bottom: 0;
+  z-index: 40;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  width: min(520px, 100%);
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 0;
+  background: #000;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.home-shell .bottom-bar a {
+  display: grid;
+  place-items: center;
+  gap: 0;
+  min-width: 0;
+  padding: 6px 0;
+  border-radius: 0;
+  color: #8e8e8e;
+  font-size: 10px;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-shell .bottom-bar a span:not(.nav-icon) { display: none; }
+.home-shell .bottom-bar .nav-icon {
+  display: grid;
+  place-items: center;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.home-shell .bottom-bar a svg { width: 26px; height: 26px; }
+.home-shell .bottom-bar a:hover { color: #fff; background: transparent; }
+.home-shell .bottom-bar a:hover .nav-icon { background: transparent; }
+.home-shell .bottom-bar a:hover .nav-icon svg { transform: none; }
+.home-shell .bottom-bar a:active .nav-icon svg { transform: scale(.9); }
+.home-shell .bottom-bar a.active {
+  color: #fff;
+  font-weight: 700;
+  background: transparent;
+}
+.home-shell .bottom-bar a.active .nav-icon {
+  background: transparent;
+  box-shadow: none;
+}
+.home-shell .bottom-bar a.active .nav-icon svg {
+  stroke: #fff;
+  fill: #fff;
+  transform: none;
+}
+.home-shell .bottom-bar a .profile-nav-avatar {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* ---- Dark-theme overrides: keep the home shell identical on black ---- */
+:root[data-theme="dark"] .home-shell { background: #000; }
+:root[data-theme="dark"] .home-shell main,
+:root[data-theme="dark"] .home-shell .page { background: #000; }
+:root[data-theme="dark"] .home-shell .mobile-top {
+  border-color: rgba(255, 255, 255, .08);
+  background: #000;
+}
+:root[data-theme="dark"] .home-shell .stories,
+:root[data-theme="dark"] .home-shell .post { border-color: transparent; background: #000; }
+:root[data-theme="dark"] .home-shell .post header .profile strong,
+:root[data-theme="dark"] .home-shell .post > p,
+:root[data-theme="dark"] .home-shell .post > p b { color: #fff; }
+:root[data-theme="dark"] .home-shell .bottom-bar {
+  border-color: rgba(255, 255, 255, .08);
+  background: #000;
+  box-shadow: none;
+}
+:root[data-theme="dark"] .home-shell .bottom-bar a { color: #8e8e8e; }
+:root[data-theme="dark"] .home-shell .bottom-bar a:hover { color: #fff; }
+:root[data-theme="dark"] .home-shell .bottom-bar a.active { color: #fff; }
+:root[data-theme="dark"] .home-shell .bottom-bar a svg { stroke: #8e8e8e; }
+:root[data-theme="dark"] .home-shell .bottom-bar a.active svg { stroke: #fff; fill: #fff; }

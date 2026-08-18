@@ -2813,31 +2813,36 @@ function attachLive() {
 
 }
 
+// Exposed globally so the pull-to-refresh gesture can re-render the
+// home feed + stories without a full page reload.
+function hydrateHomeFeed() {
+  const feedTarget = document.getElementById('upload-feed');
+  if (!feedTarget) return;
+  feedTarget.innerHTML = renderUploads('feed');
+  const feedEmpty = () => {
+    if (!feedTarget.children.length) {
+      feedTarget.innerHTML = '<div class="feed-empty"><span class="feed-empty-mark">ϟ</span><h3>No posts yet</h3><p>Be the first to share a moment.</p></div>';
+    }
+  };
+  if (DB) {
+    DB.loadMedia('image').then((rows) => {
+      if (!rows.length) { feedEmpty(); return; }
+      const cards = rows.map((r) => uploadCard({ preview: r.url, title: r.title, caption: r.caption, type: 'image', user: displayUser(r.user), avatar: r.avatar, verified: r.verified, owner: r.user }, 'feed')).join('');
+      feedTarget.innerHTML = renderUploads('feed');
+      feedTarget.insertAdjacentHTML('afterbegin', cards);
+    });
+  } else {
+    feedEmpty();
+  }
+  hydrateStoryShelf();
+}
+try { window.hydrateHomeFeed = hydrateHomeFeed; } catch (e) { /* ignore */ }
+
 function runPage() {
   attachThemeToggle();
   attachEndOfPageDetection();
 
-  if (page === 'home') {
-    const feedTarget = document.getElementById('upload-feed');
-    if (feedTarget) feedTarget.innerHTML = renderUploads('feed');
-    const feedEmpty = () => {
-      if (feedTarget && !feedTarget.children.length) {
-        feedTarget.innerHTML = '<div class="feed-empty"><span class="feed-empty-mark">ϟ</span><h3>No posts yet</h3><p>Be the first to share a moment.</p></div>';
-      }
-    };
-    if (DB) {
-      DB.loadMedia('image').then((rows) => {
-        if (!rows.length) { feedEmpty(); return; }
-        if (!feedTarget) return;
-        const cards = rows.map((r) => uploadCard({ preview: r.url, title: r.title, caption: r.caption, type: 'image', user: displayUser(r.user), avatar: r.avatar, verified: r.verified, owner: r.user }, 'feed')).join('');
-        feedTarget.insertAdjacentHTML('afterbegin', cards);
-      });
-    } else {
-      feedEmpty();
-    }
-    hydrateStoryShelf();
-    attachNotes('home-notes');
-  }
+  if (page === 'home') hydrateHomeFeed();
   if (page === 'glitches') {
     const videoTarget = document.getElementById('video-feed');
     if (videoTarget) videoTarget.innerHTML = renderUploads('videos');
