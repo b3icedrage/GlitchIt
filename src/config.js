@@ -44,11 +44,17 @@ export const FLUTTERWAVE_ENV = 'test'; // set 'live' when you swap in live keys
 //     for the classic scripts (ai-chat, music-ui, calls, …) that can't import
 //     ES modules.
 export const API_BASE = (() => {
+  // In the native APK there is no local server — all API endpoints live on
+  // the production origin.  Capacitor sets window.Capacitor (or
+  // window.nativebridgetest on older builds) when running inside the bridge;
+  // detect that and default to the production URL.
+  const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform);
+  const nativeDefault = isNative ? 'https://glitchit.app' : '';
   try {
     const override = localStorage.getItem('glitchit.apiBase');
     if (override) return override.replace(/\/+$/, '');
   } catch (err) { /* storage unavailable */ }
-  return '';
+  return nativeDefault;
 })();
 try { window.GLITCHIT_API_BASE = API_BASE; } catch (err) { /* ignore */ }
 
