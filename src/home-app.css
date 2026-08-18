@@ -241,7 +241,17 @@
 }
 :root[data-theme="dark"] .home-shell .ad-feed-card { border-color: transparent; background: #111; }
 
-/* ---- Bottom bar: flat black Instagram bar (overrides bottombar.css pill) ---- */
+
+/* ============ Bottom bar: EXACT Instagram flat black bar ============ */
+/* Kill bottombar.css floating pill completely on the home page */
+.home-shell .bottom-bar,
+.home-shell .bottom-bar *,
+.home-shell .bottom-bar *::before,
+.home-shell .bottom-bar *::after {
+  all: unset !important;
+  box-sizing: border-box !important;
+}
+
 .home-shell .bottom-bar {
   position: fixed !important;
   left: 0 !important;
@@ -249,95 +259,96 @@
   bottom: 0 !important;
   top: auto !important;
   z-index: 40 !important;
-  transform: none !important;
   display: grid !important;
   grid-template-columns: repeat(5, 1fr) !important;
-  gap: 0 !important;
   width: 100% !important;
-  max-width: none !important;
-  padding: 8px 0 calc(8px + env(safe-area-inset-bottom)) !important;
-  border: none !important;
-  border-top: 1px solid rgba(255, 255, 255, .08) !important;
+  max-width: 100% !important;
+  padding: 6px 0 calc(6px + env(safe-area-inset-bottom)) !important;
+  border-top: 1px solid #262626 !important;
   border-radius: 0 !important;
   background: #000 !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   transition: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: none !important;
 }
+
 .home-shell .bottom-bar.bottom-bar-hidden {
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: auto !important;
   transform: none !important;
 }
+
 .home-shell .bottom-bar a {
-  display: grid !important;
-  place-items: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
   gap: 0 !important;
-  min-width: 0 !important;
-  padding: 6px 0 !important;
-  border-radius: 0 !important;
+  padding: 4px 0 !important;
   color: #8e8e8e !important;
-  font-size: 10px !important;
+  text-decoration: none !important;
   -webkit-tap-highlight-color: transparent !important;
-  transition: none !important;
 }
-.home-shell .bottom-bar a span:not(.nav-icon) { display: none !important; }
+
+.home-shell .bottom-bar a span:not(.nav-icon) {
+  display: none !important;
+}
+
 .home-shell .bottom-bar .nav-icon {
-  display: grid !important;
-  place-items: center !important;
-  width: auto !important;
-  height: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
   border-radius: 0 !important;
   background: transparent !important;
-  box-shadow: none !important;
-  transition: none !important;
 }
-.home-shell .bottom-bar a svg { width: 26px; height: 26px; }
-.home-shell .bottom-bar a:hover { color: #8e8e8e !important; background: transparent !important; }
-.home-shell .bottom-bar a:hover .nav-icon { background: transparent !important; }
-.home-shell .bottom-bar a:hover .nav-icon svg { transform: none !important; }
-.home-shell .bottom-bar a:active .nav-icon svg { transform: scale(.88); }
+
+.home-shell .bottom-bar .nav-icon svg {
+  width: 24px !important;
+  height: 24px !important;
+}
+
 .home-shell .bottom-bar a.active {
   color: #fff !important;
-  font-weight: 700 !important;
-  background: transparent !important;
 }
-.home-shell .bottom-bar a.active .nav-icon {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-/* Active home tab: filled white house */
-.home-shell .bottom-bar a.active[data-tab="home"] svg {
-  fill: #fff !important;
-  stroke: #fff !important;
-  transform: none !important;
-}
-/* Active reels/messages/search: stroke white */
+
 .home-shell .bottom-bar a.active .nav-icon svg {
   stroke: #fff !important;
-  fill: none !important;
-  transform: none !important;
 }
-/* Profile avatar circle */
-.home-shell .bottom-bar a .profile-nav-avatar,
-.home-shell .bottom-bar a img.profile-nav-avatar {
-  width: 26px;
-  height: 26px;
-  border: 2px solid rgba(255, 255, 255, .25);
-  border-radius: 50%;
-  object-fit: cover;
-}
-.home-shell .bottom-bar a.active .profile-nav-avatar,
-.home-shell .bottom-bar a.active img.profile-nav-avatar {
-  border-color: #fff;
-}
-/* Hide person SVG when avatar img replaces it */
-.home-shell .bottom-bar a:last-child svg { display: none; }
-.home-shell .bottom-bar a:last-child img.profile-nav-avatar { display: block; }
 
-/* ---- Dark-theme overrides: keep the home shell identical on black ---- */
+/* Home tab: solid filled white when active (Instagram style) */
+.home-shell .bottom-bar a.active[data-tab="home"] .nav-icon svg {
+  stroke: #fff !important;
+  fill: #fff !important;
+}
+
+/* Profile avatar: circle with border */
+.home-shell .bottom-bar .nav-icon .profile-nav-avatar,
+.home-shell .bottom-bar .nav-icon img.profile-nav-avatar {
+  width: 24px !important;
+  height: 24px !important;
+  border: 2px solid #8e8e8e !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+}
+
+.home-shell .bottom-bar a.active .nav-icon .profile-nav-avatar,
+.home-shell .bottom-bar a.active .nav-icon img.profile-nav-avatar {
+  border-color: #fff !important;
+}
+
+/* Hide person SVG when avatar img replaces it */
+.home-shell .bottom-bar a:last-child .nav-icon svg { display: none !important; }
+.home-shell .bottom-bar a:last-child .nav-icon img.profile-nav-avatar { display: block !important; }
+
+/* ============ Dark-theme overrides ============ */
 :root[data-theme="dark"] .home-shell { background: #000; }
 :root[data-theme="dark"] .home-shell main,
 :root[data-theme="dark"] .home-shell .page { background: #000; }
@@ -351,7 +362,7 @@
 :root[data-theme="dark"] .home-shell .post > p,
 :root[data-theme="dark"] .home-shell .post > p b { color: #fff; }
 :root[data-theme="dark"] .home-shell .bottom-bar {
-  border-color: rgba(255, 255, 255, .08);
+  border-color: #262626;
   background: #000;
   box-shadow: none;
 }
