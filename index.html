@@ -10,13 +10,59 @@
       // (no password) so indexing and ad review keep working.
       try { if (/Googlebot|Mediapartners-Google|AdsBot-Google/i.test(navigator.userAgent || '')) localStorage.setItem('glitchit.auth.guest.v1', '1'); } catch (err) {}
     </script>
-    <title>GlitchIt</title>
+    <meta name="description" content="GlitchIt is the social marketplace for short-form video — share glitch-style videos, stories and drops, follow creators, go live, and shop creator storefronts." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://glitchit.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GlitchIt" />
+    <meta property="og:title" content="GlitchIt — Share Short Videos, Stories &amp; Drops" />
+    <meta property="og:description" content="GlitchIt is the social marketplace for short-form video — share glitch-style videos, stories and drops, follow creators, go live, and shop creator storefronts." />
+    <meta property="og:url" content="https://glitchit.app/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GlitchIt — Share Short Videos, Stories &amp; Drops" />
+    <meta name="twitter:description" content="GlitchIt is the social marketplace for short-form video — share glitch-style videos, stories and drops, follow creators, go live, and shop creator storefronts." />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": "GlitchIt",
+          "url": "https://glitchit.app/",
+          "description": "Social marketplace for short-form video.",
+          "contactPoint": { "@type": "ContactPoint", "email": "support@glitchit.app", "contactType": "customer support" }
+        },
+        {
+          "@type": "WebSite",
+          "name": "GlitchIt",
+          "url": "https://glitchit.app/",
+          "description": "Social marketplace for short-form video — share glitches, stories and drops, follow creators, go live and shop creator storefronts.",
+          "inLanguage": "en",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://glitchit.app/search.html?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "WebApplication",
+          "name": "GlitchIt",
+          "url": "https://glitchit.app/",
+          "applicationCategory": "SocialNetworkingApplication",
+          "operatingSystem": "Any",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+        }
+      ]
+    }
+    </script>
+    <title>GlitchIt — Share Short Videos, Stories &amp; Drops</title>
     <link rel="stylesheet" href="src/styles.css?v=9" />
     <link rel="stylesheet" href="src/story-extras.css?v=2" />
     <link rel="stylesheet" href="src/bottombar.css?v=2" />
     <link rel="stylesheet" href="src/music-ui.css?v=2" />
     <link rel="stylesheet" href="src/social.css?v=2" />
     <link rel="stylesheet" href="src/glitchit.css?v=1" />
+    <link rel="stylesheet" href="src/seo.css?v=1" />
   </head>
   <body data-page="home">
     <div id="app">
@@ -51,6 +97,82 @@
           <section class="stories" aria-label="Stories"></section>
 
           <div id="upload-feed"></div>
+        </section>
+
+        <section class="seo-about" id="about" aria-labelledby="about-title">
+          <div class="seo-about-inner">
+            <h2 id="about-title">What is GlitchIt?</h2>
+            <p class="seo-lede">GlitchIt is a social marketplace where creators share short glitch-style videos, photos, stories and “drops” — and followers can shop their storefronts, go live together, and turn everyday little moments into content worth sharing.</p>
+
+            <div class="seo-grid">
+              <article class="seo-card">
+                <span class="seo-ic" aria-hidden="true">ϟ</span>
+                <h3>Glitch videos</h3>
+                <p>Post short, punchy video clips with music, effects and captions — or generate an AI glitch clip from a text prompt in the in-app studio.</p>
+              </article>
+              <article class="seo-card">
+                <span class="seo-ic" aria-hidden="true">⌁</span>
+                <h3>Stories that expire</h3>
+                <p>Share moments that disappear after 24 hours, complete with music previews, location notes and swipe navigation.</p>
+              </article>
+              <article class="seo-card">
+                <span class="seo-ic" aria-hidden="true">◒</span>
+                <h3>Drops &amp; the Shop</h3>
+                <p>Creators list drops — merch, digital goods and finds — and followers buy directly through the marketplace checkout.</p>
+              </article>
+              <article class="seo-card">
+                <span class="seo-ic" aria-hidden="true">◉</span>
+                <h3>Live &amp; calls</h3>
+                <p>Go live, host group audio/video calls, and chat with your community in real time from any device.</p>
+              </article>
+              <article class="seo-card">
+                <span class="seo-ic" aria-hidden="true">✦</span>
+                <h3>AI glitch studio</h3>
+                <p>Type a prompt and let AI generate a cinematic clip with models like Veo, Kling and LTX-Video — then post it like any other video.</p>
+              </article>
+              <article class="seo-card">
+                <span class="seo-ic" aria-hidden="true">♛</span>
+                <h3>GlitchIt Premium</h3>
+                <p>Unlock advanced creator tools, faster AI generation, extra analytics and exclusive perks with a Premium membership.</p>
+              </article>
+            </div>
+
+            <div class="seo-how">
+              <h3>How it works</h3>
+              <ol class="seo-steps">
+                <li><strong>Create.</strong> Record a glitch video, story or drop with the in-app camera and pick your music.</li>
+                <li><strong>Share.</strong> Post to your feed, go live, or send a story — your followers see it instantly.</li>
+                <li><strong>Earn.</strong> Sell drops from your storefront and grow into a professional account with creator earnings.</li>
+              </ol>
+            </div>
+
+            <div class="seo-faq">
+              <h3>Frequently asked questions</h3>
+              <details>
+                <summary>Is GlitchIt free to use?</summary>
+                <p>Yes. Posting, following, messaging, going live and shopping are free. GlitchIt Premium adds optional perks for creators who want more.</p>
+              </details>
+              <details>
+                <summary>What is a “drop”?</summary>
+                <p>A drop is a limited item a creator lists on their storefront — merch, art, digital goods or finds. Followers can browse and buy drops directly in the Shop.</p>
+              </details>
+              <details>
+                <summary>How do AI glitch videos work?</summary>
+                <p>Describe the clip you want in the camera page’s AI Glitch studio, pick a model, and the clip renders for you to preview, download or share.</p>
+              </details>
+              <details>
+                <summary>How can creators earn?</summary>
+                <p>Creators sell drops through their storefront, and professional accounts unlock the creator earnings dashboard once they hit the eligibility milestones.</p>
+              </details>
+            </div>
+
+            <footer class="seo-links">
+              <a href="about.html">About GlitchIt</a>
+              <a href="premium.html">Premium</a>
+              <a href="privacy.html">Privacy Policy</a>
+              <a href="mailto:support@glitchit.app">Contact</a>
+            </footer>
+          </div>
         </section>
       </main>
 
