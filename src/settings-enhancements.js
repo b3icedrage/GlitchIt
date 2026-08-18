@@ -84,29 +84,31 @@
     document.body.classList.remove('account-sheet-open');
   });
 
-  // ---- Scroll-driven icon crossfade ----
-  // Row icons fade out as they scroll out of the settings drawer and fade
-  // back in when they re-enter. The observer only activates when supported
-  // and the user hasn't asked for reduced motion; otherwise icons stay put.
+  // ---- Scroll-driven button crossfade ----
+  // Settings rows/buttons fade out as they scroll out of the drawer and fade
+  // back in as they re-enter, so new buttons appear while old ones dissolve.
+  // The observer only activates when supported and the user hasn't asked for
+  // reduced motion; otherwise every button stays fully visible.
   const scrollEl = document.querySelector('.settings-scroll');
   if (scrollEl && 'IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const icons = scrollEl.querySelectorAll('.setting-icon');
-    if (icons.length) {
-      scrollEl.classList.add('icons-crossfade');
+    const ROW_SELECTOR = '.settings-row, .settings-view-all, .settings-add-account, #auth-logout';
+    const rows = [...scrollEl.querySelectorAll(ROW_SELECTOR)];
+    if (rows.length) {
+      scrollEl.classList.add('rows-crossfade');
       const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
-          entry.target.classList.toggle('icon-in-view', entry.isIntersecting);
+          entry.target.classList.toggle('row-in-view', entry.isIntersecting);
         });
       }, {
         root: scrollEl,
-        rootMargin: '0px 0px -12% 0px',
-        threshold: 0.1,
+        rootMargin: '0px 0px -14% 0px',
+        threshold: 0.15,
       });
       const recheck = () => {
         observer.disconnect();
-        icons.forEach((icon) => observer.observe(icon));
+        rows.forEach((row) => observer.observe(row));
       };
-      icons.forEach((icon) => observer.observe(icon));
+      rows.forEach((row) => observer.observe(row));
       // The drawer slides in/out with a transform; re-observing on open/close
       // makes fresh callbacks mark exactly what is currently on screen.
       new MutationObserver(recheck).observe(document.body, { attributes: true, attributeFilter: ['class'] });
