@@ -242,194 +242,83 @@
 :root[data-theme="dark"] .home-shell .ad-feed-card { border-color: transparent; background: #111; }
 
 
-/* ============ Bottom bar: EXACT Instagram flat black bar ============ */
-/*
- * Override bottombar.css completely for the home page.
- * bottombar.css uses @media (max-width: 760px) with a floating
- * glass pill (border-radius: 28px, 6-column grid, gradient chips).
- * We need higher specificity inside the same media query to win.
- */
+/* ============ Instagram Bottom Bar — completely independent ============ */
+/* Uses .ig-bottom-bar / .ig-tab / .ig-tab-icon classes
+   so bottombar.css (.bottom-bar) has ZERO effect. */
 
-/* Base: always visible, flat, full-width */
-.home-shell .bottom-bar {
-  position: fixed !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  top: auto !important;
-  z-index: 40 !important;
-  display: grid !important;
-  grid-template-columns: repeat(5, 1fr) !important;
-  align-items: center !important;
-  gap: 0 !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  padding: 8px 0 calc(8px + env(safe-area-inset-bottom)) !important;
-  border: none !important;
-  border-top: 1px solid #262626 !important;
-  border-radius: 0 !important;
-  background: #000 !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  transition: none !important;
+.ig-bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+  max-width: 100%;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid #262626;
+  background: #000;
 }
 
-/* Override bottombar.css @media (max-width: 760px) — same specificity but later */
-@media (max-width: 760px) {
-  .home-shell .bottom-bar {
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    top: auto !important;
-    transform: none !important;
-    display: grid !important;
-    grid-template-columns: repeat(5, 1fr) !important;
-    gap: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 8px 0 calc(8px + env(safe-area-inset-bottom)) !important;
-    border: none !important;
-    border-top: 1px solid #262626 !important;
-    border-radius: 0 !important;
-    background: #000 !important;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    transition: none !important;
-  }
+/* Kill the old bottom-bar on the home page */
+.home-shell .bottom-bar { display: none !important; }
+
+.ig-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 4px 0;
+  color: #8e8e8e;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: none;
 }
 
-/* Never hide the home bottom bar */
-.home-shell .bottom-bar.bottom-bar-hidden {
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-  transform: none !important;
+.ig-tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Links: icon-only, gray inactive, white active */
-.home-shell .bottom-bar a {
-  display: grid !important;
-  place-items: center !important;
-  gap: 0 !important;
-  min-width: 0 !important;
-  padding: 4px 0 !important;
-  border-radius: 0 !important;
-  font-size: 10px !important;
-  line-height: 1 !important;
-  color: #8e8e8e !important;
-  background: transparent !important;
-  -webkit-tap-highlight-color: transparent !important;
-  transition: none !important;
+.ig-tab-icon svg {
+  display: block;
+  width: 24px;
+  height: 24px;
 }
 
-@media (max-width: 760px) {
-  .home-shell .bottom-bar a {
-    display: grid !important;
-    place-items: center !important;
-    gap: 0 !important;
-    min-width: 0 !important;
-    padding: 4px 0 !important;
-    border-radius: 0 !important;
-    font-size: 10px !important;
-    line-height: 1 !important;
-    color: #8e8e8e !important;
-    background: transparent !important;
-    transition: none !important;
-  }
+.ig-tab.active {
+  color: #fff;
 }
 
-.home-shell .bottom-bar a span:not(.nav-icon) { display: none !important; }
-
-/* Nav icon container: no background, no gradient chip */
-.home-shell .bottom-bar .nav-icon {
-  display: grid !important;
-  place-items: center !important;
-  width: auto !important;
-  height: auto !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  transition: none !important;
+/* Home active: filled white */
+.ig-tab.active[data-tab="home"] .ig-tab-icon svg {
+  fill: #fff;
+  stroke: #fff;
 }
 
-@media (max-width: 760px) {
-  .home-shell .bottom-bar .nav-icon {
-    display: grid !important;
-    place-items: center !important;
-    width: auto !important;
-    height: auto !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    transition: none !important;
-  }
+/* Other active tabs: white stroke */
+.ig-tab.active .ig-tab-icon svg {
+  stroke: #fff;
 }
 
-.home-shell .bottom-bar .nav-icon svg {
-  display: block !important;
-  width: 24px !important;
-  height: 24px !important;
+/* Profile avatar */
+.ig-tab .ig-tab-icon img.profile-nav-avatar {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #8e8e8e;
+  border-radius: 50%;
+  object-fit: cover;
 }
+.ig-tab.active .ig-tab-icon img.profile-nav-avatar {
+  border-color: #fff;
+}
+.ig-tab[data-tab="profile"] .ig-tab-icon svg { display: none; }
+.ig-tab[data-tab="profile"] .ig-tab-icon img.profile-nav-avatar { display: block; }
 
-/* Hover: no background, no scale */
-.home-shell .bottom-bar a:hover {
-  color: #8e8e8e !important;
-  background: transparent !important;
-  transform: none !important;
-}
-.home-shell .bottom-bar a:hover .nav-icon {
-  background: transparent !important;
-}
-.home-shell .bottom-bar a:hover .nav-icon svg {
-  transform: none !important;
-}
-.home-shell .bottom-bar a:active {
-  transform: none !important;
-}
-
-/* Active tab: white text, no gradient chip */
-.home-shell .bottom-bar a.active {
-  color: #fff !important;
-  font-weight: 700 !important;
-  background: transparent !important;
-}
-.home-shell .bottom-bar a.active .nav-icon {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-.home-shell .bottom-bar a.active .nav-icon svg {
-  stroke: #fff !important;
-  fill: none !important;
-  transform: none !important;
-}
-
-/* Home tab active: filled white house (Instagram style) */
-.home-shell .bottom-bar a.active[data-tab="home"] .nav-icon svg {
-  fill: #fff !important;
-  stroke: #fff !important;
-}
-
-/* Profile avatar circle */
-.home-shell .bottom-bar .nav-icon .profile-nav-avatar,
-.home-shell .bottom-bar .nav-icon img.profile-nav-avatar {
-  width: 24px !important;
-  height: 24px !important;
-  border: 2px solid #8e8e8e !important;
-  border-radius: 50% !important;
-  object-fit: cover !important;
-}
-.home-shell .bottom-bar a.active .nav-icon .profile-nav-avatar,
-.home-shell .bottom-bar a.active .nav-icon img.profile-nav-avatar {
-  border-color: #fff !important;
-}
-.home-shell .bottom-bar a:last-child .nav-icon svg { display: none !important; }
-.home-shell .bottom-bar a:last-child .nav-icon img.profile-nav-avatar { display: block !important; }
-
-/* ============ Dark-theme overrides ============ *//* ============ Dark-theme overrides ============ */
+/* ============ Dark-theme overrides ============ *//* ============ Dark-theme overrides ============ *//* ============ Dark-theme overrides ============ */
 :root[data-theme="dark"] .home-shell { background: #000; }
 :root[data-theme="dark"] .home-shell main,
 :root[data-theme="dark"] .home-shell .page { background: #000; }

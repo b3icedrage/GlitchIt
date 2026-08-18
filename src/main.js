@@ -276,7 +276,7 @@ function applyProfileAvatarUi() {
   document.querySelectorAll('.handle-text').forEach((el) => { el.textContent = handle; });
 
   document.querySelectorAll('a[href="profile.html"]').forEach((link) => {
-    if (!link.closest('.bottom-bar, .sidebar nav')) return;
+    if (!link.closest('.bottom-bar, .ig-bottom-bar, .sidebar nav')) return;
     const oldIcon = link.querySelector('.icon, svg');
     if (!oldIcon) return;
     const image = document.createElement('img');
@@ -958,7 +958,7 @@ const page = document.body.dataset.page || 'home';
 // it back in the moment they scroll back up. Runs on every page: the
 // capture-phase listener catches window AND inner-container scrolling.
 (function attachBottomBarDismiss() {
-  const bar = document.querySelector('.bottom-bar');
+  const bar = document.querySelector('.ig-bottom-bar') || document.querySelector('.bottom-bar');
   if (!bar) return;
   // Conversation screens keep the bottom bar visible: reaching the bottom of a
   // message list is the normal reading state there (the chat even pins itself
