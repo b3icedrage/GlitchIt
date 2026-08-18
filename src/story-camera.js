@@ -130,7 +130,7 @@
       // so the camera still works (takes/reels then record without audio).
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: facing, width: { ideal: 720 }, height: { ideal: 1280 } },
+          video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 1920 } },
           audio: false,
         });
       } catch (err2) {
