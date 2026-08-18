@@ -21,7 +21,6 @@ const { join, normalize, extname, resolve, sep, basename } = require('node:path'
 
 // Account registry (lists every registered user via the Supabase Admin API).
 const accountsHandler = require('./api/accounts.js');
-const glitchitVideoHandler = require('./api/glitchit-video.js');
 // LiveKit Cloud access-token minting (real WebRTC calls on chat.html).
 const livekitTokenHandler = require('./api/livekit-token.js');
 // NVIDIA video generation proxy (ai-glitch tool on the camera page).
@@ -494,10 +493,6 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === 'GET' && new URL(req.url, 'http://glitchit.local').pathname === '/api/livekit-token') {
     await livekitTokenHandler(req, res);
-    return;
-  }
-  if (req.method === 'GET' && new URL(req.url, 'http://glitchit.local').pathname === '/api/glitchit-video') {
-    await glitchitVideoHandler(req, res);
     return;
   }
   if (new URL(req.url, 'http://glitchit.local').pathname === '/api/nvidia-video') {
