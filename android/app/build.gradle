@@ -6,14 +6,23 @@ android {
 
     signingConfigs {
         release {
+            // Always use the committed keystore — every build signs with the
+            // same key so APK updates install cleanly over previous versions.
+            // When ANDROID_KEYSTORE_BASE64 is set (CI secrets), decode it and
+            // use that instead (allows key rotation without a repo push).
             def ksBase64 = System.getenv('ANDROID_KEYSTORE_BASE64')
             if (ksBase64 && ksBase64.trim()) {
                 def ksFile = file('release.keystore')
                 ksFile.bytes = Base64.decoder.decode(ksBase64.trim())
                 storeFile ksFile
-                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: ''
-                keyAlias System.getenv('ANDROID_KEY_ALIAS') ?: ''
-                keyPassword System.getenv('ANDROID_KEY_PASSWORD') ?: ''
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: 'glitchit2024'
+                keyAlias System.getenv('ANDROID_KEY_ALIAS') ?: 'glitchit'
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD') ?: 'glitchit2024'
+            } else {
+                storeFile file('release.keystore')
+                storePassword 'glitchit2024'
+                keyAlias 'glitchit'
+                keyPassword 'glitchit2024'
             }
         }
     }
