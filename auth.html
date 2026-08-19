@@ -1,9 +1,13 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>document.documentElement.setAttribute("data-theme","dark");</script>
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google-adsense-account" content="ca-pub-6010592277770538" />
+    <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin />
+    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6010592277770538" crossorigin="anonymous"></script>
     <script>
       // Login wall for humans; Googlebot / AdSense crawlers browse read-only
@@ -69,7 +73,7 @@
             </div>
 
             <div class="auth-avatar">
-              <img id="auth-avatar-preview" class="auth-avatar-img" src="" alt="Profile picture preview" hidden />
+              <img id="auth-avatar-preview" class="auth-avatar-img" src="" alt="Profile picture preview" hidden / loading="lazy" />
               <button type="button" id="auth-avatar-btn" class="auth-avatar-btn">Add a profile photo</button>
               <input type="file" id="auth-avatar-input" accept="image/*" hidden />
             </div>

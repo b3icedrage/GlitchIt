@@ -70,6 +70,24 @@ const MIME = {
 // Text-ish extensions worth gzip-compressing.
 const COMPRESSIBLE_EXT = new Set(['.html', '.css', '.js', '.mjs', '.json', '.svg', '.txt']);
 
+// Security headers applied to every response.
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+  'X-XSS-Protection': '1; mode=block',
+};
+
+// Apply security headers to every response.
+function applySecurityHeaders(headers) {
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
+    headers[k] = v;
+  }
+}
+
+
+
 // Gzip cache: key = `${mtimeMs}:${path}` so any edit invalidates automatically.
 const gzipCache = new Map();
 const GZIP_CACHE_MAX = 64;
@@ -461,6 +479,18 @@ async function handleMusicRequest(req, res) {
 }
 
 const server = http.createServer(async (req, res) => {
+
+// Hook: apply security headers to every response.
+const origWriteHead = res.writeHead;
+res.writeHead = function (status, headers) {
+  if (headers && typeof headers === 'object' && !Array.isArray(headers)) {
+    for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
+      if (!(k in headers)) headers[k] = v;
+    }
+  }
+  return origWriteHead.call(this, status, headers);
+};
+
   // Rate limit before doing any work — abusive traffic gets a fast 429.
   const verdict = rateLimit(clientIp(req));
   if (verdict.limited) {

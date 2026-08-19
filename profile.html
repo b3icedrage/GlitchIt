@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="google-adsense-account" content="ca-pub-6010592277770538" />
+    <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin />
+    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6010592277770538" crossorigin="anonymous"></script>
     <script>
       // Login wall for humans; Googlebot / AdSense crawlers browse read-only
@@ -64,7 +66,7 @@
             <div class="profile-header">
               <div class="profile-photo-wrap">
                 <button type="button" class="share-song" id="share-song"><span>Share a song ♪</span></button>
-                <img src="" alt="Your profile picture">
+                <img src="" alt="Your profile picture" loading="lazy" />
                 <button type="button" class="photo-change-btn" id="photo-change-btn" aria-label="Change profile picture">📷</button>
               </div>
               <input type="file" id="photo-file" accept="image/*" hidden />
@@ -232,7 +234,7 @@
             <section class="account-sheet" id="account-sheet" role="dialog" aria-modal="true" aria-label="Switch account">
               <span class="account-sheet-handle" aria-hidden="true"></span>
               <button type="button" class="account-row" id="account-current">
-                <span class="account-avatar"><img class="account-sheet-avatar" id="account-current-avatar" src="" alt=""></span>
+                <span class="account-avatar"><img class="account-sheet-avatar" id="account-current-avatar" src="" alt="" loading="lazy" /></span>
                 <span class="account-name" id="account-current-name">you</span>
                 <span class="account-check" aria-hidden="true">✓</span>
               </button>
@@ -258,19 +260,18 @@
       </main>
 
       <aside class="right-rail">
-        <div class="me"><img src="" alt="Your profile"><div><strong>you</strong><span>GlitchIt creator</span></div></div>
+        <div class="me"><img src="" alt="Your profile" loading="lazy" /><div><strong>you</strong><span>GlitchIt creator</span></div></div>
         <div class="stats"><span><b data-stat="followers">0</b> followers</span><span><b data-stat="drops">0</b> drops</span></div>
         <div class="rail-head"><h3>Suggested for you</h3><a href="activity.html">See all</a></div>
         <div class="rail-suggestions"></div>
       </aside>
 
       <nav class="ig-bottom-bar" aria-label="Primary navigation">
-        <a href="index.html" class="ig-tab" data-tab="home"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M9.005 16.545a2.997 2.997 0 0 1 2.997-2.997h0A2.997 2.997 0 0 1 15 16.545V22h7V11.543L12 2 2 11.543V22h7.005z"/></svg></span></a>
-        <a href="camera.html" class="ig-tab" data-tab="create"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg></span></a>
-        <a href="glitches.html" class="ig-tab" data-tab="reels"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M2 8h20"/><path d="M8 2l-1.5 6"/><path d="M16 2l1.5 6"/></svg></span></a>
-        <a href="messages.html" class="ig-tab" data-tab="messages"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3L9.218 10.083M11.698 20.334L22 3.001H2l9.218 7.083m.48 10.25l1.525-5.833L22 3"/></svg></span></a>
-        <a href="search.html" class="ig-tab" data-tab="search"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span></a>
-        <a href="profile.html" class="ig-tab active" data-tab="profile"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span></a>
+        <a href="index.html" class="ig-tab" data-tab="home" aria-label="Home"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M9.005 16.545a2.997 2.997 0 0 1 2.997-2.997h0A2.997 2.997 0 0 1 15 16.545V22h7V11.543L12 2 2 11.543V22h7.005z"/></svg></span></a>
+        <a href="camera.html" class="ig-tab" data-tab="create" aria-label="Create"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg></span></a>
+        <a href="messages.html" class="ig-tab" data-tab="messages" aria-label="Messages"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3L9.218 10.083M11.698 20.334L22 3.001H2l9.218 7.083m.48 10.25l1.525-5.833L22 3"/></svg></span></a>
+        <a href="search.html" class="ig-tab" data-tab="search" aria-label="Search"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span></a>
+        <a href="profile.html" class="ig-tab active" data-tab="profile" aria-label="Profile"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span></a>
       </nav>
     </div>
     <script src="src/main.js?v=36" defer></script>
