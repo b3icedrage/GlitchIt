@@ -542,6 +542,11 @@ res.writeHead = function (status, headers) {
     await livekitTokenHandler(req, res);
     return;
   }
+  // Payment gateway: all /api/payment/* routes
+  if (new URL(req.url, 'http://glitchit.local').pathname.startsWith('/api/payment')) {
+    await paymentHandler(req, res);
+    return;
+  }
 
   const file = await resolvePath(req.url || '/');
   if (!file) {

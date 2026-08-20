@@ -1,5 +1,5 @@
 // GlitchIt Payment Gateway — custom payment system built from scratch
-// Supports real M-Pesa STK push via Safaricom Daraja API.
+// Users pay via M-Pesa (Lipa na M-Pesa) and enter confirmation codes.
 // No third-party SDK dependencies.
 
 const API_BASE = window.GLITCHIT_API_BASE || '';
@@ -67,6 +67,11 @@ async function apiPost(endpoint, data) {
   return res.json();
 }
 
+async function apiGet(endpoint) {
+  const res = await fetch(`${API_BASE}${endpoint}`);
+  return res.json();
+}
+
 // ─── State ──────────────────────────────────────────────────────────
 let overlay = null;
 let currentOptions = null;
@@ -74,6 +79,7 @@ let currentResolve = null;
 let currentReject = null;
 let isProcessing = false;
 let pollTimer = null;
+let currentTxRef = null;
 
 // ─── Create checkout modal ──────────────────────────────────────────
 function ensureOverlay() {
@@ -85,6 +91,7 @@ function ensureOverlay() {
 
   overlay.innerHTML = `
     <div class="pg-sheet">
+      <!-- Step 1: Payment form -->
       <div id="pg-step-checkout">
         <div class="pg-header">
           <h2>GlitchIt Pay</h2>
@@ -103,9 +110,6 @@ function ensureOverlay() {
           <button type="button" class="pg-method-tab active" data-method="momo">
             <span class="pg-mt-icon">📱</span>M-Pesa
           </button>
-          <button type="button" class="pg-method-tab" data-method="card">
-            <span class="pg-mt-icon">💳</span>Card
-          </button>
           <button type="button" class="pg-method-tab" data-method="wallet" id="pg-wallet-tab" style="display:none;">
             <span class="pg-mt-icon">💰</span>Wallet
           </button>
@@ -114,37 +118,11 @@ function ensureOverlay() {
         <!-- M-Pesa form (default) -->
         <div class="pg-form" id="pg-form-momo">
           <div class="pg-field">
-            <label for="pg-momo-number">M-Pesa phone number</label>
+            <label for="pg-momo-number">Your M-Pesa phone number</label>
             <div class="pg-momo-field">
               <input type="text" id="pg-momo-code" class="pg-country-code" value="+254" maxlength="5" />
               <input type="text" id="pg-momo-number" placeholder="712 345 678" inputmode="tel" autocomplete="tel" />
             </div>
-          </div>
-          <div class="pg-info-box">
-            You'll receive an <strong>STK push</strong> on your phone. Enter your <strong>M-Pesa PIN</strong> to complete the payment.
-          </div>
-        </div>
-
-        <!-- Card form -->
-        <div class="pg-form" id="pg-form-card" style="display:none;">
-          <div class="pg-field">
-            <label for="pg-card-number">Card number</label>
-            <input type="text" id="pg-card-number" placeholder="1234 5678 9012 3456" maxlength="19" inputmode="numeric" />
-            <div id="pg-card-brand" style="font-size:11px;color:#8e8e8e;margin-top:2px;"></div>
-          </div>
-          <div class="pg-row">
-            <div class="pg-field">
-              <label for="pg-card-expiry">Expiry</label>
-              <input type="text" id="pg-card-expiry" placeholder="MM/YY" maxlength="5" inputmode="numeric" />
-            </div>
-            <div class="pg-field">
-              <label for="pg-card-cvv">CVV</label>
-              <input type="text" id="pg-card-cvv" placeholder="123" maxlength="4" inputmode="numeric" />
-            </div>
-          </div>
-          <div class="pg-field">
-            <label for="pg-card-name">Cardholder name</label>
-            <input type="text" id="pg-card-name" placeholder="Jane Doe" />
           </div>
         </div>
 
@@ -157,7 +135,7 @@ function ensureOverlay() {
         </div>
 
         <button type="button" class="pg-pay-btn" id="pg-pay-btn">
-          <span class="pg-pay-btn-text">Pay with M-Pesa</span>
+          <span class="pg-pay-btn-text">Continue</span>
           <span class="pg-spinner"></span>
         </button>
 
@@ -167,21 +145,46 @@ function ensureOverlay() {
         </div>
       </div>
 
-      <!-- STK Push waiting state -->
-      <div class="pg-success" id="pg-step-stk" style="display:none;">
+      <!-- Step 2: M-Pesa payment instructions -->
+      <div class="pg-success" id="pg-step-instructions" style="display:none;">
         <div class="pg-success-icon" style="background:linear-gradient(135deg,#00c853,#4caf50);">📱</div>
-        <h3>Check Your Phone</h3>
-        <p id="pg-stk-msg">An M-Pesa prompt has been sent to your phone.</p>
-        <p style="font-size:13px;color:#8e8e8e;margin-top:8px;">Enter your M-Pesa PIN on the STK push to complete the payment.</p>
-        <p class="pg-ref" id="pg-stk-ref"></p>
+        <h3>Pay via M-Pesa</h3>
+        <p style="font-size:13px;color:#8e8e8e;margin-top:4px;">Follow these steps on your phone:</p>
+
+        <div class="pg-info-box" id="pg-instruction-steps" style="text-align:left;margin-top:12px;font-size:14px;line-height:1.8;"></div>
+
         <div style="margin-top:16px;">
-          <div class="pg-spinner" style="display:inline-block;margin:0 auto;"></div>
-          <p style="font-size:12px;color:#8e8e8e;margin-top:8px;" id="pg-stk-status">Waiting for payment confirmation...</p>
+          <p class="pg-ref" id="pg-inst-ref"></p>
         </div>
-        <button type="button" class="pg-done-btn" id="pg-stk-cancel" style="margin-top:16px;background:#ff3b30;">Cancel</button>
+
+        <div class="pg-field" style="margin-top:20px;">
+          <label for="pg-mpesa-code">Enter M-Pesa confirmation code</label>
+          <input type="text" id="pg-mpesa-code" placeholder="e.g. SHJ3K4ABCD" maxlength="14" style="text-transform:uppercase;letter-spacing:1px;font-size:18px;text-align:center;padding:14px;" />
+          <p style="font-size:11px;color:#8e8e8e;margin-top:4px;">You'll receive this code via SMS after paying</p>
+        </div>
+
+        <button type="button" class="pg-pay-btn" id="pg-submit-code-btn">
+          <span class="pg-pay-btn-text">Submit Confirmation Code</span>
+          <span class="pg-spinner"></span>
+        </button>
+
+        <button type="button" class="pg-done-btn" id="pg-inst-cancel" style="margin-top:8px;background:#333;">Cancel</button>
       </div>
 
-      <!-- Success -->
+      <!-- Step 3: Waiting for verification -->
+      <div class="pg-success" id="pg-step-waiting" style="display:none;">
+        <div class="pg-success-icon" style="background:linear-gradient(135deg,#ff9800,#f57c00);">⏳</div>
+        <h3>Verifying Payment</h3>
+        <p id="pg-waiting-msg">Your confirmation code has been submitted. We're verifying your payment.</p>
+        <p class="pg-ref" id="pg-waiting-ref"></p>
+        <div style="margin-top:16px;">
+          <div class="pg-spinner" style="display:inline-block;margin:0 auto;"></div>
+          <p style="font-size:12px;color:#8e8e8e;margin-top:8px;" id="pg-waiting-status">This usually takes a few seconds...</p>
+        </div>
+        <button type="button" class="pg-done-btn" id="pg-waiting-cancel" style="margin-top:16px;background:#ff3b30;">Cancel</button>
+      </div>
+
+      <!-- Step 4: Success -->
       <div class="pg-success" id="pg-step-success" style="display:none;">
         <div class="pg-success-icon">✓</div>
         <h3>Payment Successful!</h3>
@@ -190,7 +193,7 @@ function ensureOverlay() {
         <button type="button" class="pg-done-btn" id="pg-done-btn">Done</button>
       </div>
 
-      <!-- Error -->
+      <!-- Step 5: Error -->
       <div class="pg-error" id="pg-step-error" style="display:none;">
         <div class="pg-error-icon">✕</div>
         <h3>Payment Failed</h3>
@@ -215,32 +218,17 @@ function bindEvents() {
     tab.addEventListener('click', () => selectMethod(tab.dataset.method));
   });
 
-  // Card formatting
-  const cardInput = overlay.querySelector('#pg-card-number');
-  if (cardInput) {
-    cardInput.addEventListener('input', () => {
-      let raw = cardInput.value.replace(/\D/g, '').slice(0, 16);
-      cardInput.value = raw.replace(/(.{4})/g, '$1 ').trim();
-      overlay.querySelector('#pg-card-brand').textContent = detectCardBrand(raw);
-      cardInput.style.borderColor = '';
-    });
-  }
-
-  const expiryInput = overlay.querySelector('#pg-card-expiry');
-  if (expiryInput) {
-    expiryInput.addEventListener('input', () => {
-      let raw = expiryInput.value.replace(/\D/g, '').slice(0, 4);
-      if (raw.length >= 2) raw = raw.slice(0, 2) + '/' + raw.slice(2);
-      expiryInput.value = raw;
-    });
-  }
-
-  overlay.querySelector('#pg-pay-btn').addEventListener('click', handlePay);
+  overlay.querySelector('#pg-pay-btn').addEventListener('click', handleContinue);
+  overlay.querySelector('#pg-submit-code-btn').addEventListener('click', handleSubmitCode);
   overlay.querySelector('#pg-done-btn').addEventListener('click', close);
   overlay.querySelector('#pg-retry-btn').addEventListener('click', showCheckout);
-  overlay.querySelector('#pg-stk-cancel').addEventListener('click', () => {
+  overlay.querySelector('#pg-inst-cancel').addEventListener('click', () => {
     stopPolling();
-    showCheckout();
+    close();
+  });
+  overlay.querySelector('#pg-waiting-cancel').addEventListener('click', () => {
+    stopPolling();
+    close();
   });
 }
 
@@ -248,13 +236,13 @@ function selectMethod(method) {
   overlay.querySelectorAll('.pg-method-tab').forEach((t) => t.classList.remove('active'));
   overlay.querySelector(`[data-method="${method}"]`).classList.add('active');
 
-  ['momo', 'card', 'wallet'].forEach((m) => {
+  ['momo', 'wallet'].forEach((m) => {
     const form = overlay.querySelector(`#pg-form-${m}`);
     if (form) form.style.display = m === method ? '' : 'none';
   });
 
-  const labels = { momo: 'Pay with M-Pesa', card: 'Pay with card', wallet: 'Pay from Wallet' };
-  overlay.querySelector('#pg-pay-btn .pg-pay-btn-text').textContent = labels[method] || 'Pay now';
+  const labels = { momo: 'Continue', wallet: 'Pay from Wallet' };
+  overlay.querySelector('#pg-pay-btn .pg-pay-btn-text').textContent = labels[method] || 'Continue';
 }
 
 function fieldError(id, msg) {
@@ -263,26 +251,17 @@ function fieldError(id, msg) {
   toast('⚠', msg);
 }
 
-// ─── Handle pay button click ────────────────────────────────────────
-async function handlePay() {
+// ─── Handle "Continue" button — initialize payment ──────────────────
+async function handleContinue() {
   if (isProcessing) return;
 
   const method = overlay.querySelector('.pg-method-tab.active')?.dataset.method || 'momo';
   const txRef = currentOptions?.api_ref || generateTxRef();
 
-  // Validate
+  // Validate phone for M-Pesa
   if (method === 'momo') {
     const phone = overlay.querySelector('#pg-momo-number')?.value.replace(/\s/g, '');
     if (!phone || phone.length < 9) return fieldError('pg-momo-number', 'Enter a valid phone number');
-  } else if (method === 'card') {
-    const num = overlay.querySelector('#pg-card-number').value.replace(/\s/g, '');
-    const exp = overlay.querySelector('#pg-card-expiry').value;
-    const cvv = overlay.querySelector('#pg-card-cvv').value;
-    const name = overlay.querySelector('#pg-card-name').value.trim();
-    if (!isValidCard(num)) return fieldError('pg-card-number', 'Enter a valid card number');
-    if (!isValidExpiry(exp)) return fieldError('pg-card-expiry', 'Enter a valid expiry');
-    if (!cvv || cvv.length < 3) return fieldError('pg-card-cvv', 'Enter CVV');
-    if (!name) return fieldError('pg-card-name', 'Enter cardholder name');
   } else if (method === 'wallet') {
     const amount = currentOptions?.amount || 0;
     if (!window.GlitchItWallet || !window.GlitchItWallet.canAfford(amount)) {
@@ -296,26 +275,36 @@ async function handlePay() {
   btn.disabled = true;
 
   try {
-    let result;
-
     if (method === 'wallet') {
-      result = processWalletPayment(txRef);
-    } else {
-      result = await processPayment({ method, txRef });
-    }
-
-    if (result.ok) {
-      if (result.status === 'stk_sent') {
-        // STK push sent — show waiting state and start polling
-        showStkWaiting(result, txRef);
+      const result = processWalletPayment(txRef);
+      if (result.ok) {
+        showSuccess({ ok: true, ref: txRef, status: 'completed' });
       } else {
-        showSuccess(result);
+        showError(result.error || 'Wallet payment failed');
       }
     } else {
-      showError(result.error || 'Payment failed');
+      // Initialize payment with server
+      const user = window.GLITCHIT_USER;
+      const payload = {
+        amount: currentOptions?.amount || 0,
+        currency: currentOptions?.currency || 'KES',
+        email: user?.email || '',
+        tx_ref: txRef,
+        title: currentOptions?.title || 'GlitchIt',
+        description: currentOptions?.description || '',
+      };
+
+      const result = await apiPost('/api/payment', payload);
+
+      if (result.ok) {
+        currentTxRef = result.tx_ref;
+        showPaymentInstructions(result);
+      } else {
+        showError(result.error || 'Could not initialize payment');
+      }
     }
   } catch (err) {
-    showError(err.message || 'Payment failed');
+    showError(err.message || 'Payment failed — check your connection');
   } finally {
     isProcessing = false;
     btn.classList.remove('loading');
@@ -323,39 +312,141 @@ async function handlePay() {
   }
 }
 
-// ─── Process payment via server ─────────────────────────────────────
-async function processPayment({ method, txRef }) {
-  const amount = currentOptions?.amount || 0;
-  const currency = currentOptions?.currency || 'KES';
-  const user = window.GLITCHIT_USER;
-  const email = user?.email || 'guest@glitchit.app';
+// ─── Show M-Pesa payment instructions ───────────────────────────────
+function showPaymentInstructions(result) {
+  showStep('pg-step-instructions');
 
-  const payload = {
-    amount,
-    currency,
-    email,
-    tx_ref: txRef,
-    method: method === 'momo' ? 'mpesa' : method,
-    title: currentOptions?.title || 'GlitchIt',
-    description: currentOptions?.description || '',
-  };
+  const inst = result.instructions;
+  if (inst) {
+    // Show M-Pesa number prominently
+    const stepsHtml = `
+      <div style="background:#1a1a2e;border-radius:8px;padding:12px;margin-bottom:12px;text-align:center;">
+        <div style="font-size:11px;color:#8e8e8e;">Pay to</div>
+        <div style="font-size:22px;font-weight:700;color:#00e676;letter-spacing:1px;">${inst.mpesa_number}</div>
+        <div style="font-size:12px;color:#8e8e8e;">${inst.business_name || 'GlitchIt'}</div>
+      </div>
+      <div style="background:#1a1a2e;border-radius:8px;padding:12px;margin-bottom:12px;text-align:center;">
+        <div style="font-size:11px;color:#8e8e8e;">Amount</div>
+        <div style="font-size:20px;font-weight:700;color:#fff;">${inst.currency} ${Number(inst.amount).toLocaleString()}</div>
+      </div>
+      <div style="background:#1a1a2e;border-radius:8px;padding:12px;margin-bottom:12px;text-align:center;">
+        <div style="font-size:11px;color:#8e8e8e;">Reference</div>
+        <div style="font-size:16px;font-weight:700;color:#ffab00;letter-spacing:2px;">${inst.reference}</div>
+        <button type="button" id="pg-copy-ref" style="margin-top:6px;background:#333;border:none;color:#00e676;padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;">Copy</button>
+      </div>
+      <div style="text-align:left;padding:0 4px;">
+        <ol style="margin:0;padding-left:20px;font-size:13px;line-height:2;color:#ccc;">
+          ${inst.steps.map(s => `<li>${s}</li>`).join('')}
+        </ol>
+      </div>`;
 
-  if (method === 'momo') {
-    const code = overlay.querySelector('#pg-momo-code')?.value || '+254';
-    const phone = overlay.querySelector('#pg-momo-number')?.value.replace(/\s/g, '');
-    payload.phone = code + phone;
-  } else if (method === 'card') {
-    payload.card_number = overlay.querySelector('#pg-card-number').value.replace(/\s/g, '');
-    payload.card_expiry = overlay.querySelector('#pg-card-expiry').value;
-    payload.card_cvv = overlay.querySelector('#pg-card-cvv').value;
-    payload.card_name = overlay.querySelector('#pg-card-name').value.trim();
+    overlay.querySelector('#pg-instruction-steps').innerHTML = stepsHtml;
+    overlay.querySelector('#pg-inst-ref').textContent = `Ref: ${inst.reference}`;
+
+    // Copy reference button
+    setTimeout(() => {
+      const copyBtn = overlay.querySelector('#pg-copy-ref');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          navigator.clipboard.writeText(inst.reference).then(() => {
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+          }).catch(() => {
+            // Fallback
+            const ta = document.createElement('textarea');
+            ta.value = inst.reference;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+          });
+        });
+      }
+    }, 100);
   }
+}
+
+// ─── Handle "Submit Confirmation Code" button ───────────────────────
+async function handleSubmitCode() {
+  if (isProcessing) return;
+
+  const code = overlay.querySelector('#pg-mpesa-code')?.value.trim();
+  if (!code) return fieldError('pg-mpesa-code', 'Enter your M-Pesa confirmation code');
+  if (code.length < 8) return fieldError('pg-mpesa-code', 'Code should be 8-14 characters');
+
+  isProcessing = true;
+  const btn = overlay.querySelector('#pg-submit-code-btn');
+  btn.classList.add('loading');
+  btn.disabled = true;
 
   try {
-    return await apiPost('/api/payment', payload);
+    const result = await apiPost('/api/payment/submit', {
+      tx_ref: currentTxRef,
+      mpesa_code: code.toUpperCase(),
+    });
+
+    if (result.ok) {
+      showWaitingForVerification();
+    } else {
+      showError(result.error || 'Failed to submit code');
+    }
   } catch (err) {
-    return { ok: false, error: 'Could not reach payment server' };
+    showError('Could not reach server — try again');
+  } finally {
+    isProcessing = false;
+    btn.classList.remove('loading');
+    btn.disabled = false;
   }
+}
+
+// ─── Show waiting for verification ──────────────────────────────────
+function showWaitingForVerification() {
+  showStep('pg-step-waiting');
+  overlay.querySelector('#pg-waiting-ref').textContent = `Ref: ${currentTxRef}`;
+  overlay.querySelector('#pg-waiting-status').textContent = 'This usually takes a few seconds...';
+  startPolling(currentTxRef);
+}
+
+// ─── Poll for payment status ────────────────────────────────────────
+let pollCount = 0;
+const MAX_POLLS = 90; // Poll for up to 3 minutes (every 2 seconds)
+
+function startPolling(txRef) {
+  stopPolling();
+  pollCount = 0;
+
+  pollTimer = setInterval(async () => {
+    pollCount++;
+    if (pollCount > MAX_POLLS) {
+      stopPolling();
+      showError('Verification timed out. Your payment may still be processing — check back later.');
+      return;
+    }
+
+    try {
+      const result = await apiGet(`/api/payment/verify?tx_ref=${txRef}`);
+      if (result.ok && result.status === 'verified') {
+        stopPolling();
+        showSuccess({ ok: true, ref: txRef, status: 'verified', amount: result.amount });
+      } else if (result.status === 'rejected') {
+        stopPolling();
+        showError(result.error || 'Payment could not be verified. Please contact support.');
+      }
+      // If pending or submitted, keep polling
+    } catch (err) {
+      // Network error — keep polling
+    }
+  }, 2000);
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  pollCount = 0;
 }
 
 // ─── Process wallet payment ─────────────────────────────────────────
@@ -387,63 +478,9 @@ function processWalletPayment(txRef) {
   }
 }
 
-// ─── STK Push: show waiting state and poll for confirmation ─────────
-function showStkWaiting(result, txRef) {
-  showStep('pg-step-stk');
-  overlay.querySelector('#pg-stk-msg').textContent =
-    result.message || 'An M-Pesa prompt has been sent to your phone.';
-  overlay.querySelector('#pg-stk-ref').textContent = `Ref: ${txRef}`;
-  overlay.querySelector('#pg-stk-status').textContent = 'Waiting for payment confirmation...';
-
-  // Start polling for payment status
-  startPolling(txRef);
-}
-
-let pollCount = 0;
-const MAX_POLLS = 60; // Poll for up to 2 minutes (every 2 seconds)
-
-function startPolling(txRef) {
-  stopPolling();
-  pollCount = 0;
-
-  pollTimer = setInterval(async () => {
-    pollCount++;
-    if (pollCount > MAX_POLLS) {
-      stopPolling();
-      showError('Payment timed out. Please try again.');
-      return;
-    }
-
-    try {
-      const result = await apiPost('/api/payment/verify', { tx_ref: txRef });
-      if (result.ok && result.status === 'successful') {
-        stopPolling();
-        showSuccess({ ok: true, ref: txRef, status: 'successful' });
-      } else if (result.error === 'Payment was cancelled by the user') {
-        stopPolling();
-        showError('Payment was cancelled.');
-      } else if (!result.pending) {
-        stopPolling();
-        showError(result.error || 'Payment failed');
-      }
-      // If pending, keep polling
-    } catch (err) {
-      // Network error — keep polling
-    }
-  }, 2000);
-}
-
-function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-  pollCount = 0;
-}
-
 // ─── Step navigation ────────────────────────────────────────────────
 function showStep(id) {
-  ['pg-step-checkout', 'pg-step-stk', 'pg-step-success', 'pg-step-error'].forEach((stepId) => {
+  ['pg-step-checkout', 'pg-step-instructions', 'pg-step-waiting', 'pg-step-success', 'pg-step-error'].forEach((stepId) => {
     const el = overlay.querySelector(`#${stepId}`);
     if (el) el.style.display = stepId === id ? '' : 'none';
   });
@@ -452,6 +489,9 @@ function showStep(id) {
 function showSuccess(result) {
   showStep('pg-step-success');
   overlay.querySelector('#pg-success-ref').textContent = `Ref: ${result.ref}`;
+  if (result.amount) {
+    overlay.querySelector('#pg-success-msg').textContent = `KES ${Number(result.amount).toLocaleString()} has been received.`;
+  }
   if (currentResolve) {
     currentResolve({ ok: true, ref: result.ref, status: result.status });
     currentResolve = null;
@@ -474,6 +514,7 @@ export function checkout(opts) {
     currentResolve = resolve;
     currentReject = reject;
     isProcessing = false;
+    currentTxRef = null;
     stopPolling();
 
     ensureOverlay();
@@ -537,7 +578,7 @@ function injectStyles() {
   if (document.querySelector('link[href*="payment-checkout.css"]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = `${API_BASE}/src/payment-checkout.css?v=3`;
+  link.href = `${API_BASE}/src/payment-checkout.css?v=4`;
   document.head.appendChild(link);
 }
 
