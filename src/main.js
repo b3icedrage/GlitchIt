@@ -92,11 +92,7 @@
   document.head.appendChild(bundle);
 })();
 
-// Flutterwave payments (pan-African: cards, mobile money, bank transfer, USSD):
-// shop listing form + "Buy now" checkout on draft drops. The module self-wires
-// on the shop page; the public key ships in src/config.js while the secret key
-// stays server-side.
-import('./flutterwave.js?v=1').catch((err) => { console.warn('GlitchIt: payments module unavailable', err); });
+// Payment gateway is loaded on demand by pages that need it.
 
 // Video buffering indicator (event delegation — media events bubble, so this
 // one block covers every .glitch-video and .rv-video the app renders): show a

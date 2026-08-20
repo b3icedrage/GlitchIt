@@ -24,14 +24,6 @@ export const CLOUDINARY_UPLOAD_PRESET = 'glitchit';
 // monitoring. Set to '' to turn monitoring off.
 export const SENTRY_DSN = 'https://939ccfce91ed2bac818479f05a2ff492@o4511871344508928.ingest.us.sentry.io/4511871351980032';
 
-// GlitchIt — Flutterwave payments (pan-African: cards, mobile money, bank
-// transfer, USSD). The public key is client-safe (same rule as the Supabase
-// anon key) and powers the standard checkout popup for shop drops (KES) and
-// GlitchIt Premium (USD). The secret key (FLWSECK_*) stays server-side only
-// (env var FLUTTERWAVE_SECRET_KEY, never shipped to the browser) for future
-// webhook / transaction verification work.
-export const FLUTTERWAVE_PUBLIC_KEY = 'FLWPUBK_TEST-fd61af2bf519d47f573c72aa742f19c7-X';
-export const FLUTTERWAVE_ENV = 'test'; // set 'live' when you swap in live keys
 
 // GlitchIt — API base for the server proxies (/api/chat, /api/music,
 // /api/nvidia-video, /api/livekit-token, /api/accounts).

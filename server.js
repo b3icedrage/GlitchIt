@@ -452,7 +452,7 @@ async function musicChart() {
 
 
 // ---------------- GlitchIt Wallet API ----------------
-// POST /api/wallet — verify a Flutterwave transaction and credit the wallet.
+// POST /api/wallet — verify a transaction and credit the wallet.
 // In v1 the wallet is client-side (localStorage), but this endpoint provides
 // a server-side verification hook for future use.
 async function handleWalletRequest(req, res) {
@@ -462,7 +462,7 @@ async function handleWalletRequest(req, res) {
     res.end(JSON.stringify({ ok: false, error: 'tx_ref is required.' }));
     return;
   }
-  // In production this would verify with Flutterwave's API using FLUTTERWAVE_SECRET_KEY.
+  // In production this would verify with the payment provider's API.
   // For now, acknowledge the transaction.
   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify({ ok: true, verified: true, tx_ref: body.tx_ref }));

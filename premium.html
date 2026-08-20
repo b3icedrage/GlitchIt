@@ -134,9 +134,9 @@
       <div class="prem-toast" id="prem-toast" role="status"></div>
     </main>
     <script type="module">
-      // Real checkout: open the Flutterwave standard checkout popup (same
+      // Open the GlitchIt Payment Gateway checkout
       // module that powers shop drops), charged in USD for Premium.
-      import { glitchitCheckout } from './src/payment-gateway.js?v=1';
+      import { glitchitCheckout } from './src/payment-gateway.js?v=2';
 
       const PLANS = {
         monthly: { amount: 4.99, label: 'GlitchIt Premium — Monthly ($4.99)' },
@@ -154,7 +154,7 @@
         timer = setTimeout(function () { toast.classList.remove('show'); }, 6000);
       }
 
-      // Best-effort prefill from the signed-in Supabase session so Flutterwave
+      // Best-effort prefill from the signed-in Supabase session
       // knows who's paying (the session JSON lives in localStorage).
       function sessionUser() {
         try {

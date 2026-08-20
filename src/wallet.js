@@ -1,9 +1,9 @@
 // GlitchIt Wallet — unique in-app payment system
-// Users can: deposit funds (cards/mobile money/bank/USSD via Flutterwave),
+// Users can: deposit funds (cards/mobile money/bank/USSD via payment gateway),
 // send money to other users, tip creators, and pay for drops/premium from
 // their wallet balance. All balances live in localStorage keyed by user ID
 // (same as the rest of the app — no server-side DB dependency for v1).
-import { glitchitCheckout } from './payment-gateway.js?v=1';
+import { glitchitCheckout } from './payment-gateway.js?v=2';
 
 const WALLET_PREFIX = 'glitchit.wallet.';
 const TRANSACTIONS_PREFIX = 'glitchit.txns.';
@@ -51,7 +51,7 @@ function addTransaction(userId, txn) {
     note: txn.note || '',
     to: txn.to || '',       // recipient username
     from: txn.from || '',   // sender username
-    ref: txn.ref || '',     // Flutterwave tx_ref
+    ref: txn.ref || '',
     status: txn.status || 'completed',  // 'pending', 'completed', 'failed'
     timestamp: Date.now(),
   });
@@ -66,7 +66,7 @@ function username() {
 
 // ─── Public API ────────────────────────────────────────────────────
 
-/** Deposit funds into the wallet via Flutterwave checkout */
+/** Deposit funds into the wallet via payment gateway */
 export function deposit(amount, opts) {
   const user = getUser();
   if (!user) { toast('⚠', 'Sign in to use your wallet.'); return Promise.reject(new Error('not signed in')); }
