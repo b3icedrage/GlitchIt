@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>document.documentElement.setAttribute("data-theme","dark");</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="google-adsense-account" content="ca-pub-6010592277770538" />
+    <link rel="preconnect" href="pagead2.googlesyndication.com" crossorigin />
+    <link rel="preconnect" href="www.googletagmanager.com" crossorigin />
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6010592277770538" crossorigin="anonymous"></script>
+    <script>
+      try { if (/Googlebot|Mediapartners-Google|AdsBot-Google/i.test(navigator.userAgent || '')) localStorage.setItem('glitchit.auth.guest.v1', '1'); } catch (err) {}
+    </script>
+    <meta name="description" content="GlitchIt Wallet — deposit funds, send money, tip creators, and pay for drops all in one place." />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GlitchIt" />
+    <meta property="og:title" content="Wallet · GlitchIt" />
+    <meta property="og:description" content="GlitchIt Wallet — deposit funds, send money, tip creators, and pay for drops." />
+    <title>Wallet · GlitchIt</title>
+    <link rel="stylesheet" href="src/styles.css?v=9" />
+    <link rel="stylesheet" href="src/bottombar.css?v=2" />
+    <link rel="stylesheet" href="src/wallet.css?v=1" />
+  </head>
+  <body data-page="wallet">
+    <div id="app">
+      <main>
+        <!-- Top bar -->
+        <div class="wallet-topbar">
+          <a href="profile.html" style="color:#0095f6;font-weight:700;text-decoration:none;">‹ Back</a>
+          <h1>GlitchIt Wallet</h1>
+          <span></span>
+        </div>
+
+        <!-- Balance card -->
+        <section class="wallet-balance" id="wallet-balance">
+          <div class="wb-label">Wallet Balance</div>
+          <div class="wb-amount" id="wb-amount">KES 0</div>
+          <div class="wb-sub">Funds are for in-app use: tips, drops, premium & more</div>
+        </section>
+
+        <!-- Action buttons -->
+        <div class="wallet-actions">
+          <button type="button" class="wallet-action-btn" id="wa-deposit">
+            <span class="wa-icon deposit">＋</span>
+            <span>Deposit</span>
+          </button>
+          <button type="button" class="wallet-action-btn" id="wa-send">
+            <span class="wa-icon send">↗</span>
+            <span>Send</span>
+          </button>
+          <button type="button" class="wallet-action-btn" id="wa-history">
+            <span class="wa-icon history">☰</span>
+            <span>Activity</span>
+          </button>
+        </div>
+
+        <!-- Deposit section -->
+        <section class="wallet-section" id="deposit-section">
+          <h2>Add funds</h2>
+          <div class="wallet-quick" id="quick-amounts">
+            <button type="button" class="wallet-quick-btn" data-amt="100">KES 100</button>
+            <button type="button" class="wallet-quick-btn" data-amt="200">KES 200</button>
+            <button type="button" class="wallet-quick-btn" data-amt="500">KES 500</button>
+            <button type="button" class="wallet-quick-btn" data-amt="1000">KES 1,000</button>
+            <button type="button" class="wallet-quick-btn" data-amt="2000">KES 2,000</button>
+            <button type="button" class="wallet-quick-btn" data-amt="5000">KES 5,000</button>
+          </div>
+          <div class="wallet-custom">
+            <input type="number" id="custom-amount" placeholder="Custom amount (KES)" min="1" />
+          </div>
+          <button type="button" class="wallet-cta" id="deposit-btn">Deposit now</button>
+          <div class="wallet-methods">
+            <span class="wallet-method">💳 Cards</span>
+            <span class="wallet-method">📱 M-Pesa</span>
+            <span class="wallet-method">🏦 Bank Transfer</span>
+            <span class="wallet-method">📞 USSD</span>
+          </div>
+        </section>
+
+        <!-- Send money section (hidden by default) -->
+        <section class="wallet-section" id="send-section" style="display:none;">
+          <h2>Send money</h2>
+          <div class="wallet-send-form open">
+            <input type="text" id="send-to" placeholder="Recipient username (e.g. @glitchking)" />
+            <input type="number" id="send-amount" placeholder="Amount (KES)" min="1" />
+            <textarea id="send-note" rows="2" placeholder="Add a note (optional)"></textarea>
+            <button type="button" class="wallet-cta" id="send-btn">Send money</button>
+            <button type="button" class="wallet-tip-cancel" id="send-cancel">Cancel</button>
+          </div>
+        </section>
+
+        <!-- Transaction history (hidden by default, toggled by Activity button) -->
+        <section class="wallet-section" id="txns-section" style="display:none;">
+          <h2>Transaction history</h2>
+          <div class="wallet-txns" id="wallet-txns">
+            <div class="wallet-empty">
+              <div class="we-icon">📋</div>
+              <p>No transactions yet</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Footer info -->
+        <div class="wallet-footer">
+          <p>Payments processed securely by <a href="https://flutterwave.com" target="_blank" rel="noopener">Flutterwave</a> — cards, mobile money, bank transfer & USSD supported.</p>
+          <p>Your wallet balance is for in-app use: tipping creators, buying drops, and upgrading to Premium. <a href="premium.html">Learn about Premium</a>.</p>
+          <p>By depositing you agree to our <a href="terms.html">Terms of Service</a> and <a href="privacy.html">Privacy Policy</a>.</p>
+        </div>
+      </main>
+
+      <!-- Bottom bar -->
+      <nav class="ig-bottom-bar" aria-label="Primary navigation">
+        <a href="index.html" class="ig-tab" data-tab="home" aria-label="Home"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M9.005 16.545a2.997 2.997 0 0 1 2.997-2.997h0A2.997 2.997 0 0 1 15 16.545V22h7V11.543L12 2 2 11.543V22h7.005z"/></svg></span></a>
+        <a href="camera.html" class="ig-tab" data-tab="create" aria-label="Create"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg></span></a>
+        <a href="glitches.html" class="ig-tab" data-tab="reels" aria-label="Reels"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/></svg></span></a>
+        <a href="messages.html" class="ig-tab" data-tab="messages" aria-label="Messages"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3L9.218 10.083M11.698 20.334L22 3.001H2l9.218 7.083m.48 10.25l1.525-5.833L22 3"/></svg></span></a>
+        <a href="search.html" class="ig-tab" data-tab="search" aria-label="Search"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span></a>
+        <a href="profile.html" class="ig-tab" data-tab="profile" aria-label="Profile"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span></a>
+      </nav>
+    </div>
+
+    <script type="module">
+      import { deposit, sendMoney, getWalletBalance, formatBalance, getWalletTransactions } from './src/wallet.js?v=1';
+
+      // ── Refresh the displayed balance ────────────────────────
+      function refreshBalance() {
+        const el = document.getElementById('wb-amount');
+        if (el) el.textContent = formatBalance();
+      }
+
+      // ── Render transaction list ──────────────────────────────
+      function renderTxns() {
+        const container = document.getElementById('wallet-txns');
+        if (!container) return;
+        const txns = getWalletTransactions();
+        if (!txns.length) {
+          container.innerHTML = '<div class="wallet-empty"><div class="we-icon">📋</div><p>No transactions yet</p></div>';
+          return;
+        }
+        const icons = {
+          deposit: '💰', send: '↗️', receive: '↙️', tip: '❤️', purchase: '🛍️', withdraw: '💸',
+        };
+        container.innerHTML = txns.map(tx => {
+          const icon = icons[tx.type] || '📋';
+          const positive = tx.amount > 0;
+          const sign = positive ? '+' : '';
+          const amt = `KES ${Math.abs(tx.amount).toLocaleString()}`;
+          const time = new Date(tx.timestamp).toLocaleDateString('en-KE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          return `
+            <div class="wallet-txn">
+              <div class="wallet-txn-icon ${tx.type}">${icon}</div>
+              <div class="wallet-txn-info">
+                <div class="wt-label">${tx.note || tx.type}</div>
+                <div class="wt-sub">${time}</div>
+              </div>
+              <div class="wallet-txn-amount ${positive ? 'positive' : 'negative'}">${sign}${amt}</div>
+            </div>`;
+        }).join('');
+      }
+
+      // ── Quick deposit amounts ────────────────────────────────
+      let selectedAmount = 0;
+      document.querySelectorAll('.wallet-quick-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedAmount = Number(btn.dataset.amt);
+          document.querySelectorAll('.wallet-quick-btn').forEach(b => b.style.borderColor = '');
+          btn.style.borderColor = '#0095f6';
+          const input = document.getElementById('custom-amount');
+          if (input) input.value = '';
+        });
+      });
+
+      // ── Custom amount ────────────────────────────────────────
+      document.getElementById('custom-amount')?.addEventListener('input', (e) => {
+        selectedAmount = 0;
+        document.querySelectorAll('.wallet-quick-btn').forEach(b => b.style.borderColor = '');
+      });
+
+      // ── Deposit button ───────────────────────────────────────
+      document.getElementById('deposit-btn')?.addEventListener('click', async () => {
+        const input = document.getElementById('custom-amount');
+        const amount = selectedAmount || (input ? Number(input.value) : 0);
+        if (!amount || amount <= 0) {
+          const tip = document.createElement('div');
+          tip.className = 'end-toast show';
+          tip.innerHTML = '<span class="end-toast-mark">⚠</span><span class="end-toast-text">Select or enter an amount first</span>';
+          document.body.appendChild(tip);
+          setTimeout(() => tip.remove(), 2200);
+          return;
+        }
+        const result = await deposit(amount);
+        if (result && result.ok) refreshBalance();
+      });
+
+      // ── Send money section toggle ────────────────────────────
+      document.getElementById('wa-send')?.addEventListener('click', () => {
+        document.getElementById('send-section').style.display = '';
+        document.getElementById('deposit-section').style.display = 'none';
+        document.getElementById('txns-section').style.display = 'none';
+        document.getElementById('send-to')?.focus();
+      });
+      document.getElementById('send-cancel')?.addEventListener('click', () => {
+        document.getElementById('send-section').style.display = 'none';
+        document.getElementById('deposit-section').style.display = '';
+      });
+
+      // ── Activity toggle ──────────────────────────────────────
+      document.getElementById('wa-history')?.addEventListener('click', () => {
+        const txnsEl = document.getElementById('txns-section');
+        const depEl = document.getElementById('deposit-section');
+        const sendEl = document.getElementById('send-section');
+        const showing = txnsEl && txnsEl.style.display !== 'none';
+        if (txnsEl) txnsEl.style.display = showing ? 'none' : '';
+        if (depEl) depEl.style.display = showing ? '' : 'none';
+        if (sendEl) sendEl.style.display = 'none';
+        if (!showing) renderTxns();
+      });
+
+      // ── Deposit button (action row) scrolls to section ───────
+      document.getElementById('wa-deposit')?.addEventListener('click', () => {
+        document.getElementById('deposit-section').style.display = '';
+        document.getElementById('send-section').style.display = 'none';
+        document.getElementById('txns-section').style.display = 'none';
+        document.getElementById('deposit-section')?.scrollIntoView({ behavior: 'smooth' });
+      });
+
+      // ── Send money button ────────────────────────────────────
+      document.getElementById('send-btn')?.addEventListener('click', () => {
+        const to = (document.getElementById('send-to')?.value || '').trim();
+        const amt = Number(document.getElementById('send-amount')?.value);
+        const note = (document.getElementById('send-note')?.value || '').trim();
+        if (!to) return;
+        if (!amt || amt <= 0) return;
+        const result = sendMoney(to, amt, note);
+        if (result && result.ok) {
+          refreshBalance();
+          document.getElementById('send-to').value = '';
+          document.getElementById('send-amount').value = '';
+          document.getElementById('send-note').value = '';
+          document.getElementById('send-section').style.display = 'none';
+          document.getElementById('deposit-section').style.display = '';
+        } else if (result && result.error) {
+          const tip = document.createElement('div');
+          tip.className = 'end-toast show';
+          tip.innerHTML = `<span class="end-toast-mark">⚠</span><span class="end-toast-text">${result.error}</span>`;
+          document.body.appendChild(tip);
+          setTimeout(() => tip.remove(), 2200);
+        }
+      });
+
+      // ── Listen for wallet events from other modules ──────────
+      document.addEventListener('wallet-deposit', refreshBalance);
+      document.addEventListener('wallet-send', refreshBalance);
+      document.addEventListener('wallet-tip', refreshBalance);
+      document.addEventListener('wallet-purchase', refreshBalance);
+
+      // ── Initial render ───────────────────────────────────────
+      refreshBalance();
+    </script>
+  </body>
+</html>

@@ -33,6 +33,7 @@ const ENTRIES = [
   'privacy.html',
   'manifest.json',
   'premium.html',
+  'wallet.html',
   'camera.html',
   'src',
   'sw.js',

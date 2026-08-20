@@ -449,6 +449,24 @@ async function musicChart() {
   return (data.data || []).filter((t) => t.preview).map((t) => musicFromDeezer(t, 'Trending'));
 }
 
+
+// ---------------- GlitchIt Wallet API ----------------
+// POST /api/wallet — verify a Flutterwave transaction and credit the wallet.
+// In v1 the wallet is client-side (localStorage), but this endpoint provides
+// a server-side verification hook for future use.
+async function handleWalletRequest(req, res) {
+  const body = await readJsonBody(req, 8 * 1024);
+  if (!body || !body.tx_ref) {
+    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ ok: false, error: 'tx_ref is required.' }));
+    return;
+  }
+  // In production this would verify with Flutterwave's API using FLUTTERWAVE_SECRET_KEY.
+  // For now, acknowledge the transaction.
+  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify({ ok: true, verified: true, tx_ref: body.tx_ref }));
+}
+
 async function handleMusicRequest(req, res) {
   const url = new URL(req.url, 'http://glitchit.local');
   const chart = url.searchParams.get('chart') === '1';

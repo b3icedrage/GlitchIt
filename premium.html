@@ -103,6 +103,7 @@
               <li><i>✓</i>No ads, everywhere</li>
             </ul>
             <button type="button" class="prem-cta" data-plan="monthly">Get Premium</button>
+            <button type="button" class="prem-cta pay-wallet-btn" data-plan="monthly" style="margin-top:8px;background:linear-gradient(135deg,#00c853,#00e676);">Pay with Wallet</button>
           </div>
           <div class="prem-plan popular">
             <span class="pop-tag">Best value</span>
@@ -115,6 +116,7 @@
               <li><i>✓</i>Priority support first</li>
             </ul>
             <button type="button" class="prem-cta" data-plan="yearly">Get Premium</button>
+            <button type="button" class="prem-cta pay-wallet-btn" data-plan="yearly" style="margin-top:8px;background:linear-gradient(135deg,#00c853,#00e676);">Pay with Wallet</button>
           </div>
         </section>
 
@@ -199,6 +201,30 @@
               btn.disabled = false;
               btn.textContent = original;
             });
+        });
+      });
+
+      
+      // Pay with Wallet buttons — use GlitchItWallet module
+      document.querySelectorAll('.pay-wallet-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var plan = btn.dataset.plan;
+          if (!window.GlitchItWallet) {
+            var tip = document.createElement('div');
+            tip.className = 'end-toast show';
+            tip.innerHTML = '<span class="end-toast-mark">⚠</span><span class="end-toast-text">Wallet not loaded yet — please try again.</span>';
+            document.body.appendChild(tip);
+            setTimeout(function() { tip.remove(); }, 2200);
+            return;
+          }
+          var result = window.GlitchItWallet.payPremium(plan);
+          if (result && result.ok) {
+            show("You're Premium! 🎉 Paid from wallet.");
+          } else if (result && result.error === 'Insufficient balance') {
+            show('Insufficient wallet balance — deposit first at wallet.html');
+          } else {
+            show('Could not process payment — please try again.');
+          }
         });
       });
 
