@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>document.documentElement.setAttribute("data-theme","dark");</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Payment Receipt · GlitchIt</title>
+    <link rel="stylesheet" href="src/styles.css?v=9" />
+    <link rel="stylesheet" href="src/payment-checkout.css?v=1" />
+    <style>
+      body { display: grid; place-items: center; min-height: 100dvh; padding: 20px; }
+      .receipt-card { width: min(420px, 100%); border-radius: 24px; background: #fff; box-shadow: 0 24px 60px rgba(0,0,0,.1); padding: 40px 32px; text-align: center; }
+      :root[data-theme="dark"] .receipt-card { background: #1a1a2e; }
+      .receipt-icon { display: grid; place-items: center; width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #00c853, #00e676); margin: 0 auto 20px; font-size: 40px; color: #fff; }
+      .receipt-card h1 { margin: 0 0 8px; font-size: 24px; font-weight: 800; }
+      .receipt-card .subtitle { color: #8e8e8e; font-size: 14px; margin: 0 0 24px; }
+      .receipt-details { text-align: left; margin: 0 0 24px; }
+      .receipt-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+      :root[data-theme="dark"] .receipt-row { border-color: #2a2a3e; }
+      .receipt-row .label { color: #8e8e8e; }
+      .receipt-row .value { font-weight: 700; }
+      .receipt-row.total { border-bottom: 2px solid #1a1a2e; padding-top: 14px; }
+      :root[data-theme="dark"] .receipt-row.total { border-color: #f5f5f5; }
+      .receipt-row.total .value { font-size: 20px; font-weight: 900; }
+      .receipt-btn { display: block; width: 100%; padding: 14px; border: 0; border-radius: 14px; background: linear-gradient(135deg, #00c853, #00e676); color: #fff; font-size: 16px; font-weight: 800; cursor: pointer; text-decoration: none; text-align: center; }
+      .receipt-secondary { display: block; margin-top: 12px; padding: 12px; border: 0; border-radius: 14px; background: transparent; color: #0095f6; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div class="receipt-card">
+      <div class="receipt-icon">✓</div>
+      <h1>Payment Successful</h1>
+      <p class="subtitle">Your transaction has been confirmed</p>
+      <div class="receipt-details">
+        <div class="receipt-row"><span class="label">Status</span><span class="value" style="color:#00c853;">✓ Successful</span></div>
+        <div class="receipt-row"><span class="label">Amount</span><span class="value" id="r-amount">—</span></div>
+        <div class="receipt-row"><span class="label">Reference</span><span class="value" id="r-ref" style="font-family:monospace;font-size:12px;">—</span></div>
+        <div class="receipt-row"><span class="label">Date</span><span class="value" id="r-date">—</span></div>
+        <div class="receipt-row"><span class="label">Payment method</span><span class="value" id="r-method">—</span></div>
+        <div class="receipt-row total"><span class="label">Total paid</span><span class="value" id="r-total">—</span></div>
+      </div>
+      <a class="receipt-btn" href="index.html">Back to GlitchIt</a>
+      <a class="receipt-secondary" href="profile.html">View profile</a>
+    </div>
+    <script>
+      (function() {
+        const params = new URLSearchParams(location.search);
+        const amount = params.get('amount') || '0';
+        const currency = params.get('currency') || 'KES';
+        const ref = params.get('tx_ref') || params.get('reference') || 'N/A';
+        const method = params.get('method') || 'Card';
+        const date = new Date().toLocaleDateString('en-KE', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        document.getElementById('r-amount').textContent = currency + ' ' + Number(amount).toLocaleString();
+        document.getElementById('r-total').textContent = currency + ' ' + Number(amount).toLocaleString();
+        document.getElementById('r-ref').textContent = ref;
+        document.getElementById('r-date').textContent = date;
+        document.getElementById('r-method').textContent = method;
+      })();
+    </script>
+  </body>
+</html>

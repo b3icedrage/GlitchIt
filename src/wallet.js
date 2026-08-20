@@ -3,7 +3,7 @@
 // send money to other users, tip creators, and pay for drops/premium from
 // their wallet balance. All balances live in localStorage keyed by user ID
 // (same as the rest of the app — no server-side DB dependency for v1).
-import { flutterwaveCheckout } from './flutterwave.js?v=1';
+import { glitchitCheckout } from './payment-gateway.js?v=1';
 
 const WALLET_PREFIX = 'glitchit.wallet.';
 const TRANSACTIONS_PREFIX = 'glitchit.txns.';
@@ -76,7 +76,7 @@ export function deposit(amount, opts) {
   const email = user.email || '';
   const name = user.user_metadata?.username || email.split('@')[0] || 'GlitchIt user';
 
-  return flutterwaveCheckout({
+  return glitchitCheckout({
     amount: amt,
     currency: (opts && opts.currency) || 'KES',
     api_ref: `glitchit-wallet-${user.id.slice(0, 8)}-${Date.now()}`,

@@ -34,6 +34,7 @@ const ENTRIES = [
   'manifest.json',
   'premium.html',
   'wallet.html',
+  'receipt.html',
   'camera.html',
   'src',
   'sw.js',

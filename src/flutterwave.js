@@ -11,6 +11,7 @@
 //     sell GlitchIt Premium (USD).
 // The exported flutterwaveCheckout() is the shared entry point for both.
 import { FLUTTERWAVE_PUBLIC_KEY } from './config.js?v=6';
+import { glitchitCheckout } from './payment-gateway.js?v=1';
 
 const SDK_URL = 'https://checkout.flutterwave.com/v3.js';
 const LISTINGS_KEY = 'glitchit.shop.listings.v1';
@@ -139,7 +140,7 @@ function renderShopFeed() {
     btn.addEventListener('click', () => {
       const item = readListings().find((x) => x.id === btn.dataset.buyId);
       if (!item) return;
-      flutterwaveCheckout({
+      glitchitCheckout({
         amount: Number(item.price),
         currency: 'KES',
         api_ref: `glitchit-drop-${item.id}`,

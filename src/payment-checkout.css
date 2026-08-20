@@ -1,0 +1,178 @@
+/* GlitchIt Payment Gateway — custom branded checkout modal styles */
+:root[data-theme="dark"] .pg-overlay { background: rgba(0,0,0,.85); }
+
+.pg-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: none; place-items: center;
+  background: rgba(0,0,0,.7); backdrop-filter: blur(6px);
+  opacity: 0; transition: opacity .25s ease;
+}
+.pg-overlay.open { display: grid; opacity: 1; }
+
+.pg-sheet {
+  width: min(420px, 94vw); max-height: 90vh; overflow-y: auto;
+  border-radius: 24px; background: #fff;
+  box-shadow: 0 32px 80px rgba(0,0,0,.35);
+  animation: pgSlideUp .3s ease;
+}
+@keyframes pgSlideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+:root[data-theme="dark"] .pg-sheet { background: #1a1a2e; }
+
+/* ── Header ──────────────────────────────────────────────────── */
+.pg-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px 0;
+}
+.pg-header h2 { margin: 0; font-size: 18px; font-weight: 800; }
+.pg-close {
+  width: 32px; height: 32px; border: 0; border-radius: 50%;
+  background: #f0f0f0; color: #1a1a2e; font-size: 18px;
+  cursor: pointer; display: grid; place-items: center;
+  transition: background .15s;
+}
+.pg-close:hover { background: #e0e0e0; }
+:root[data-theme="dark"] .pg-close { background: #2a2a3e; color: #e0e0e0; }
+
+/* ── Merchant info ────────────────────────────────────────────── */
+.pg-merchant {
+  padding: 16px 24px; margin: 16px 24px 0;
+  border-radius: 14px; background: #f8f8f8; text-align: center;
+}
+:root[data-theme="dark"] .pg-merchant { background: #0a0a16; }
+.pg-merchant .pg-merchant-name { font-size: 14px; font-weight: 800; color: #1a1a2e; }
+:root[data-theme="dark"] .pg-merchant-name { color: #f5f5f5; }
+.pg-merchant .pg-merchant-desc { font-size: 12px; color: #8e8e8e; margin-top: 2px; }
+
+/* ── Amount display ──────────────────────────────────────────── */
+.pg-amount-display {
+  text-align: center; padding: 20px 24px;
+}
+.pg-amount-display .pg-currency { font-size: 14px; font-weight: 700; color: #8e8e8e; }
+.pg-amount-display .pg-total { font-size: 42px; font-weight: 900; letter-spacing: -.02em; color: #1a1a2e; }
+:root[data-theme="dark"] .pg-total { color: #f5f5f5; }
+
+/* ── Payment method tabs ──────────────────────────────────────── */
+.pg-methods {
+  display: flex; gap: 6px; padding: 0 24px; margin-bottom: 16px;
+}
+.pg-method-tab {
+  flex: 1; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 12px;
+  background: #fff; font-size: 11px; font-weight: 700; color: #626262;
+  cursor: pointer; text-align: center; transition: all .15s;
+}
+.pg-method-tab:hover { border-color: #0095f6; }
+.pg-method-tab.active { border-color: #0095f6; background: rgba(0,149,246,.06); color: #0095f6; }
+:root[data-theme="dark"] .pg-method-tab { background: #0a0a16; border-color: #2a2a3e; color: #a0a0b0; }
+:root[data-theme="dark"] .pg-method-tab.active { border-color: #4fd8ff; color: #4fd8ff; background: rgba(79,216,255,.08); }
+.pg-method-tab .pg-mt-icon { font-size: 20px; display: block; margin-bottom: 2px; }
+
+/* ── Card form ────────────────────────────────────────────────── */
+.pg-form { padding: 0 24px 16px; }
+.pg-field {
+  margin-bottom: 12px;
+}
+.pg-field label {
+  display: block; font-size: 12px; font-weight: 700; color: #626262;
+  margin-bottom: 4px;
+}
+:root[data-theme="dark"] .pg-field label { color: #a0a0b0; }
+.pg-field input {
+  width: 100%; padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 12px;
+  background: #fff; font-size: 15px; font-weight: 600; color: #1a1a2e;
+  outline: none; box-sizing: border-box; font-family: inherit;
+  transition: border-color .15s;
+}
+.pg-field input:focus { border-color: #0095f6; }
+.pg-field input::placeholder { color: #bbb; font-weight: 500; }
+:root[data-theme="dark"] .pg-field input { background: #0a0a16; border-color: #2a2a3e; color: #f5f5f5; }
+
+.pg-row { display: flex; gap: 12px; }
+.pg-row .pg-field { flex: 1; }
+
+/* ── Mobile money form ────────────────────────────────────────── */
+.pg-momo-field { display: flex; gap: 8px; }
+.pg-momo-field .pg-country-code {
+  width: 80px; flex-shrink: 0; padding: 14px 10px; text-align: center;
+}
+.pg-momo-field input { flex: 1; }
+
+/* ── Bank/USSD info ───────────────────────────────────────────── */
+.pg-info-box {
+  padding: 16px; border-radius: 12px; background: #f0f8ff;
+  font-size: 13px; line-height: 1.6; color: #333; margin: 0 24px 16px;
+}
+:root[data-theme="dark"] .pg-info-box { background: #0a1628; color: #cfc9de; }
+.pg-info-box strong { color: #0095f6; }
+
+/* ── Pay button ───────────────────────────────────────────────── */
+.pg-pay-btn {
+  width: calc(100% - 48px); margin: 8px 24px 20px;
+  padding: 16px; border: 0; border-radius: 14px;
+  background: linear-gradient(135deg, #00c853, #00e676);
+  color: #fff; font-size: 16px; font-weight: 800; cursor: pointer;
+  transition: transform .15s, filter .15s; position: relative;
+}
+.pg-pay-btn:hover { filter: brightness(1.06); }
+.pg-pay-btn:active { transform: scale(.98); }
+.pg-pay-btn:disabled { opacity: .5; cursor: not-allowed; }
+.pg-pay-btn .pg-spinner {
+  display: none; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3);
+  border-top-color: #fff; border-radius: 50%;
+  animation: pgSpin .6s linear infinite; margin: 0 auto;
+}
+.pg-pay-btn.loading .pg-pay-btn-text { display: none; }
+.pg-pay-btn.loading .pg-spinner { display: inline-block; }
+@keyframes pgSpin { to { transform: rotate(360deg); } }
+
+/* ── Security badge ──────────────────────────────────────────── */
+.pg-security {
+  text-align: center; padding: 0 24px 20px;
+  font-size: 11px; color: #8e8e8e; display: flex;
+  align-items: center; justify-content: center; gap: 4px;
+}
+.pg-security svg { width: 14px; height: 14px; }
+
+/* ── Success state ────────────────────────────────────────────── */
+.pg-success {
+  display: none; text-align: center; padding: 40px 24px;
+}
+.pg-success.show { display: block; }
+.pg-success-icon {
+  display: grid; place-items: center; width: 72px; height: 72px;
+  border-radius: 50%; background: linear-gradient(135deg, #00c853, #00e676);
+  margin: 0 auto 16px; font-size: 36px; color: #fff;
+  animation: pgPop .4s ease;
+}
+@keyframes pgPop { 0% { transform: scale(0); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+.pg-success h3 { margin: 0 0 6px; font-size: 20px; font-weight: 800; }
+.pg-success p { margin: 0 0 4px; font-size: 13px; color: #8e8e8e; }
+.pg-success .pg-ref { font-size: 12px; color: #aaa; font-family: monospace; }
+.pg-success .pg-done-btn {
+  margin-top: 20px; padding: 12px 32px; border: 0; border-radius: 999px;
+  background: #1a1a2e; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer;
+}
+:root[data-theme="dark"] .pg-success .pg-done-btn { background: #f5f5f5; color: #1a1a2e; }
+
+/* ── Error state ──────────────────────────────────────────────── */
+.pg-error {
+  display: none; text-align: center; padding: 40px 24px;
+}
+.pg-error.show { display: block; }
+.pg-error-icon {
+  display: grid; place-items: center; width: 72px; height: 72px;
+  border-radius: 50%; background: #fff0f0; margin: 0 auto 16px; font-size: 36px;
+}
+:root[data-theme="dark"] .pg-error-icon { background: #2a1020; }
+.pg-error h3 { margin: 0 0 6px; font-size: 18px; font-weight: 800; color: #ff3b30; }
+.pg-error p { margin: 0; font-size: 13px; color: #8e8e8e; }
+.pg-error .pg-retry-btn {
+  margin-top: 16px; padding: 12px 32px; border: 0; border-radius: 999px;
+  background: #0095f6; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer;
+}
+
+/* ── Mobile responsiveness ────────────────────────────────────── */
+@media (max-width: 480px) {
+  .pg-sheet { border-radius: 20px 20px 0 0; max-height: 95vh; }
+  .pg-amount-display .pg-total { font-size: 36px; }
+}

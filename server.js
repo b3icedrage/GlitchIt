@@ -23,6 +23,7 @@ const { join, normalize, extname, resolve, sep, basename } = require('node:path'
 const accountsHandler = require('./api/accounts.js');
 // LiveKit Cloud access-token minting (real WebRTC calls on chat.html).
 const livekitTokenHandler = require('./api/livekit-token.js');
+const paymentHandler = require('./api/payment.js');
 
 const ROOT = resolve(__dirname);
 const PORT = Number(process.env.PORT || 4173);

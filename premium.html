@@ -72,6 +72,7 @@
         .prem-plan { padding: 22px 18px; }
       }
     </style>
+      <link rel="stylesheet" href="src/payment-checkout.css?v=1" />
   </head>
   <body data-page="premium">
     <main class="prem-page">
@@ -135,7 +136,7 @@
     <script type="module">
       // Real checkout: open the Flutterwave standard checkout popup (same
       // module that powers shop drops), charged in USD for Premium.
-      import { flutterwaveCheckout } from './src/flutterwave.js?v=1';
+      import { glitchitCheckout } from './src/payment-gateway.js?v=1';
 
       const PLANS = {
         monthly: { amount: 4.99, label: 'GlitchIt Premium — Monthly ($4.99)' },
@@ -179,7 +180,7 @@
           btn.disabled = true;
           var original = btn.textContent;
           btn.textContent = 'Opening secure checkout…';
-          flutterwaveCheckout({
+          glitchitCheckout({
             amount: planDef.amount,
             currency: 'USD',
             api_ref: 'glitchit-premium-' + plan + '-' + Date.now(),
@@ -235,5 +236,5 @@
         show('Checkout canceled — no charge was made.');
       }
     </script>
-  </body>
+    </body>
 </html>
