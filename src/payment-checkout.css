@@ -57,6 +57,10 @@
 .pg-amount-display .pg-total { font-size: 42px; font-weight: 900; letter-spacing: -.02em; color: #1a1a2e; }
 :root[data-theme="dark"] .pg-total { color: #f5f5f5; }
 
+/* ── Buyer details form ──────────────────────────────────────── */
+.pg-buyer-details { padding: 0; }
+.pg-buyer-details .pg-field:last-of-type { margin-bottom: 8px; }
+
 /* ── PesaPal iframe area ──────────────────────────────────────── */
 .pg-pesapal-area {
   flex: 1; min-height: 200px; display: flex; flex-direction: column;

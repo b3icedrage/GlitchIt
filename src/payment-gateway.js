@@ -45,7 +45,32 @@ function ensureOverlay() {
         <div class="pg-total" id="pg-total-amount">0</div>
       </div>
 
-      <!-- Wallet payment option (if user has enough balance) -->
+      <!-- Step 1: Buyer details -->
+      <div class="pg-buyer-details" id="pg-buyer-details">
+        <div class="pg-form">
+          <div class="pg-field">
+            <label for="pg-full-name">Full name</label>
+            <input type="text" id="pg-full-name" placeholder="John Doe" autocomplete="name" />
+          </div>
+          <div class="pg-field">
+            <label for="pg-email">Email address</label>
+            <input type="email" id="pg-email" placeholder="john@example.com" autocomplete="email" inputmode="email" />
+          </div>
+          <div class="pg-field">
+            <label for="pg-momo-number">Phone number</label>
+            <div class="pg-momo-field">
+              <input type="text" id="pg-momo-code" class="pg-country-code" value="+254" maxlength="5" />
+              <input type="text" id="pg-momo-number" placeholder="712 345 678" inputmode="tel" />
+            </div>
+          </div>
+        </div>
+        <button type="button" class="pg-pay-btn" id="pg-continue-btn">
+          <span class="pg-pay-btn-text">Continue to Payment</span>
+          <span class="pg-spinner"></span>
+        </button>
+      </div>
+
+      <!-- Step 2: Payment method selection (hidden until details confirmed) -->
       <div class="pg-form" id="pg-form-wallet" style="display:none;">
         <div class="pg-methods">
           <button type="button" class="pg-method-tab active" data-method="wallet">
@@ -65,7 +90,7 @@ function ensureOverlay() {
       </div>
 
       <!-- PesaPal embed area -->
-      <div class="pg-pesapal-area" id="pg-pesapal-area">
+      <div class="pg-pesapal-area" id="pg-pesapal-area" style="display:none;">
         <div class="pg-pesapal-loading">
           <div class="pg-spinner" style="display:inline-block;"></div>
           <p style="font-size:13px;color:#8e8e8e;margin-top:8px;">Loading PesaPal payment…</p>
@@ -133,6 +158,10 @@ function bindEvents() {
     });
   });
 
+  // Continue to payment button
+  const continueBtn = overlay.querySelector('#pg-continue-btn');
+  if (continueBtn) continueBtn.addEventListener('click', handleContinue);
+
   // Wallet pay button
   const payBtn = overlay.querySelector('#pg-pay-btn');
   if (payBtn) payBtn.addEventListener('click', handleWalletPay);
@@ -142,6 +171,48 @@ function bindEvents() {
   if (doneBtn) doneBtn.addEventListener('click', close);
   const retryBtn = overlay.querySelector('#pg-retry-btn');
   if (retryBtn) retryBtn.addEventListener('click', showCheckout);
+}
+
+// ─── Validate buyer details → show payment methods ──────────────────
+function handleContinue() {
+  const fullName = overlay.querySelector('#pg-full-name')?.value.trim();
+  const email = overlay.querySelector('#pg-email')?.value.trim();
+  const phone = overlay.querySelector('#pg-momo-number')?.value.replace(/\s/g, '');
+  if (!fullName || fullName.length < 2) return fieldError('pg-full-name', 'Enter your full name');
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fieldError('pg-email', 'Enter a valid email address');
+  if (!phone || phone.length < 9) return fieldError('pg-momo-number', 'Enter a valid phone number');
+
+  // Store buyer details for the payment
+  currentOptions._buyerName = fullName;
+  currentOptions._buyerEmail = email;
+  currentOptions._buyerPhone = (overlay.querySelector('#pg-momo-code')?.value || '+254') + phone;
+
+  showPaymentMethods();
+}
+
+function fieldError(id, msg) {
+  const el = overlay.querySelector(`#${id}`);
+  if (el) { el.style.borderColor = '#ff3b30'; el.focus(); }
+  toast('⚠', msg);
+}
+
+function showPaymentMethods() {
+  const details = overlay.querySelector('#pg-buyer-details');
+  const walletForm = overlay.querySelector('#pg-form-wallet');
+  const pesapalArea = overlay.querySelector('#pg-pesapal-area');
+  if (details) details.style.display = 'none';
+
+  // Check wallet balance
+  const amount = Number(currentOptions?.amount) || 0;
+  const walletBal = window.GlitchItWallet ? window.GlitchItWallet.getBalance() : 0;
+  if (walletBal >= amount && walletForm) {
+    walletForm.style.display = '';
+    pesapalArea.style.display = 'none';
+  } else {
+    if (walletForm) walletForm.style.display = 'none';
+    pesapalArea.style.display = '';
+    loadPesaPalFrame();
+  }
 }
 
 function loadPesaPalFrame() {
@@ -195,15 +266,19 @@ function hideAllSteps() {
     const el = overlay.querySelector(`#${s}`);
     if (el) el.style.display = 'none';
   });
+  const details = overlay.querySelector('#pg-buyer-details');
+  if (details) details.style.display = 'none';
 }
 
 function showStep(id) {
   hideAllSteps();
   const walletForm = overlay.querySelector('#pg-form-wallet');
   const pesapalArea = overlay.querySelector('#pg-pesapal-area');
+  const details = overlay.querySelector('#pg-buyer-details');
   if (id === 'pg-step-success' || id === 'pg-step-error') {
     if (walletForm) walletForm.style.display = 'none';
     if (pesapalArea) pesapalArea.style.display = 'none';
+    if (details) details.style.display = 'none';
   }
   const el = overlay.querySelector(`#${id}`);
   if (el) el.style.display = '';
@@ -223,11 +298,21 @@ function showError(msg) {
 
 function showCheckout() {
   hideAllSteps();
+  const details = overlay.querySelector('#pg-buyer-details');
   const walletForm = overlay.querySelector('#pg-form-wallet');
   const pesapalArea = overlay.querySelector('#pg-pesapal-area');
-  if (walletForm) walletForm.style.display = '';
-  if (pesapalArea) pesapalArea.style.display = '';
-  loadPesaPalFrame();
+  if (details) details.style.display = '';
+  if (walletForm) walletForm.style.display = 'none';
+  if (pesapalArea) pesapalArea.style.display = 'none';
+  // Pre-fill from user data if available
+  const user = window.GLITCHIT_USER;
+  if (user && !user.guest) {
+    const nameEl = overlay.querySelector('#pg-full-name');
+    const emailEl = overlay.querySelector('#pg-email');
+    if (nameEl && !nameEl.value) nameEl.value = user.user_metadata?.full_name || user.user_metadata?.username || '';
+    if (emailEl && !emailEl.value) emailEl.value = user.email || '';
+  }
+  setTimeout(() => overlay.querySelector('#pg-full-name')?.focus(), 300);
 }
 
 // ─── Open/close ─────────────────────────────────────────────────────
@@ -256,21 +341,15 @@ export function checkout(opts) {
     if (walletForm) walletForm.style.display = '';
     if (walletBalEl) walletBalEl.textContent = formatAmount(walletBal, 'KES');
 
-    // If user can't afford from wallet, go straight to PesaPal
-    if (walletBal >= amount && walletForm) {
-      // Show both tabs, default to wallet
-      walletForm.style.display = '';
-      pesapalArea.style.display = 'none';
-      if (walletBalEl) walletBalEl.textContent = formatAmount(walletBal, 'KES');
-    } else {
-      // Only PesaPal available
-      walletForm.style.display = 'none';
-      pesapalArea.style.display = '';
-      loadPesaPalFrame();
-    }
+    // Always start with buyer details form
+    const details = overlay.querySelector('#pg-buyer-details');
+    if (details) details.style.display = '';
+    walletForm.style.display = 'none';
+    pesapalArea.style.display = 'none';
 
     overlay.classList.add('open');
     document.body.style.overflow = 'hidden';
+    setTimeout(() => overlay.querySelector('#pg-full-name')?.focus(), 300);
   });
 }
 
