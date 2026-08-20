@@ -1,4 +1,4 @@
-/* GlitchIt Payment Gateway — custom branded checkout modal styles */
+/* GlitchIt Payment Gateway — PesaPal-powered checkout modal styles */
 :root[data-theme="dark"] .pg-overlay { background: rgba(0,0,0,.85); }
 
 .pg-overlay {
@@ -14,6 +14,10 @@
   border-radius: 24px; background: #fff;
   box-shadow: 0 32px 80px rgba(0,0,0,.35);
   animation: pgSlideUp .3s ease;
+}
+.pg-sheet-pesapal {
+  width: min(500px, 96vw); max-height: 85vh;
+  display: flex; flex-direction: column;
 }
 @keyframes pgSlideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
@@ -52,6 +56,18 @@
 .pg-amount-display .pg-currency { font-size: 14px; font-weight: 700; color: #8e8e8e; }
 .pg-amount-display .pg-total { font-size: 42px; font-weight: 900; letter-spacing: -.02em; color: #1a1a2e; }
 :root[data-theme="dark"] .pg-total { color: #f5f5f5; }
+
+/* ── PesaPal iframe area ──────────────────────────────────────── */
+.pg-pesapal-area {
+  flex: 1; min-height: 200px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.pg-pesapal-iframe {
+  width: 100%; min-height: 400px; border: 0; border-radius: 12px;
+}
+.pg-pesapal-loading {
+  text-align: center; padding: 40px 24px;
+}
 
 /* ── Payment method tabs ──────────────────────────────────────── */
 .pg-methods {
@@ -126,15 +142,6 @@
 .pg-pay-btn.loading .pg-spinner { display: inline-block; }
 @keyframes pgSpin { to { transform: rotate(360deg); } }
 
-/* ── STK push pulse animation ────────────────────────────────── */
-.stk-pulse {
-  animation: stkPulse 2s ease-in-out infinite;
-}
-@keyframes stkPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0,200,83,.4); }
-  50% { box-shadow: 0 0 0 16px rgba(0,200,83,0); }
-}
-
 /* ── Security badge ──────────────────────────────────────────── */
 .pg-security {
   text-align: center; padding: 0 24px 20px;
@@ -144,10 +151,6 @@
 .pg-security svg { width: 14px; height: 14px; }
 
 /* ── Success state ────────────────────────────────────────────── */
-.pg-success {
-  display: none; text-align: center; padding: 40px 24px;
-}
-.pg-success.show { display: block; }
 .pg-success-icon {
   display: grid; place-items: center; width: 72px; height: 72px;
   border-radius: 50%; background: linear-gradient(135deg, #00c853, #00e676);
@@ -155,28 +158,24 @@
   animation: pgPop .4s ease;
 }
 @keyframes pgPop { 0% { transform: scale(0); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
-.pg-success h3 { margin: 0 0 6px; font-size: 20px; font-weight: 800; }
-.pg-success p { margin: 0 0 4px; font-size: 13px; color: #8e8e8e; }
-.pg-success .pg-ref { font-size: 12px; color: #aaa; font-family: monospace; }
-.pg-success .pg-done-btn {
+#pg-step-success h3 { margin: 0 0 6px; font-size: 20px; font-weight: 800; }
+#pg-step-success p { margin: 0 0 4px; font-size: 13px; color: #8e8e8e; }
+#pg-step-success .pg-ref { font-size: 12px; color: #aaa; font-family: monospace; }
+.pg-done-btn {
   margin-top: 20px; padding: 12px 32px; border: 0; border-radius: 999px;
   background: #1a1a2e; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer;
 }
-:root[data-theme="dark"] .pg-success .pg-done-btn { background: #f5f5f5; color: #1a1a2e; }
+:root[data-theme="dark"] .pg-done-btn { background: #f5f5f5; color: #1a1a2e; }
 
 /* ── Error state ──────────────────────────────────────────────── */
-.pg-error {
-  display: none; text-align: center; padding: 40px 24px;
-}
-.pg-error.show { display: block; }
 .pg-error-icon {
   display: grid; place-items: center; width: 72px; height: 72px;
   border-radius: 50%; background: #fff0f0; margin: 0 auto 16px; font-size: 36px;
 }
 :root[data-theme="dark"] .pg-error-icon { background: #2a1020; }
-.pg-error h3 { margin: 0 0 6px; font-size: 18px; font-weight: 800; color: #ff3b30; }
-.pg-error p { margin: 0; font-size: 13px; color: #8e8e8e; }
-.pg-error .pg-retry-btn {
+#pg-step-error h3 { margin: 0 0 6px; font-size: 18px; font-weight: 800; color: #ff3b30; }
+#pg-step-error p { margin: 0; font-size: 13px; color: #8e8e8e; }
+.pg-retry-btn {
   margin-top: 16px; padding: 12px 32px; border: 0; border-radius: 999px;
   background: #0095f6; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer;
 }
@@ -184,5 +183,7 @@
 /* ── Mobile responsiveness ────────────────────────────────────── */
 @media (max-width: 480px) {
   .pg-sheet { border-radius: 20px 20px 0 0; max-height: 95vh; }
+  .pg-sheet-pesapal { border-radius: 20px 20px 0 0; max-height: 95vh; }
   .pg-amount-display .pg-total { font-size: 36px; }
+  .pg-pesapal-iframe { min-height: 350px; }
 }

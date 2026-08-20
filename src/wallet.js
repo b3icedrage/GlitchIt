@@ -3,7 +3,7 @@
 // send money to other users, tip creators, and pay for drops/premium from
 // their wallet balance. All balances live in localStorage keyed by user ID
 // (same as the rest of the app — no server-side DB dependency for v1).
-import { glitchitCheckout } from './payment-gateway.js?v=2';
+import { glitchitCheckout } from './payment-gateway.js?v=3';
 
 const WALLET_PREFIX = 'glitchit.wallet.';
 const TRANSACTIONS_PREFIX = 'glitchit.txns.';
