@@ -24,6 +24,7 @@ const accountsHandler = require('./api/accounts.js');
 // LiveKit Cloud access-token minting (real WebRTC calls on chat.html).
 const livekitTokenHandler = require('./api/livekit-token.js');
 const paymentHandler = require('./api/payment.js');
+const gatewayHandler = require('./api/gateway.js');
 
 const ROOT = resolve(__dirname);
 const PORT = Number(process.env.PORT || 4173);
@@ -545,6 +546,11 @@ res.writeHead = function (status, headers) {
   // Payment gateway: all /api/payment/* routes
   if (new URL(req.url, 'http://glitchit.local').pathname.startsWith('/api/payment')) {
     await paymentHandler(req, res);
+    return;
+  }
+  // White-label M-Pesa Express Gateway: all /v1/* routes
+  if (new URL(req.url, 'http://glitchit.local').pathname.startsWith('/v1/')) {
+    await gatewayHandler(req, res);
     return;
   }
 

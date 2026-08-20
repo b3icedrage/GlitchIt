@@ -1,0 +1,78 @@
+// ═══════════════════════════════════════════════════════════════════════
+// M-Pesa Express Gateway — Database Schema (Prisma)
+// ═══════════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Merchants ──────────────────────────────────────────────────────
+model Merchant {
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String
+  email             String   @unique
+  phone_number      String
+  paybill_number    String
+  till_number       String?
+  consumer_key      String
+  consumer_secret   String
+  passkey           String
+  shortcode         String
+  api_key_public    String   @unique @map("api_key_public")
+  api_key_secret_hash String @unique @map("api_key_secret_hash")
+  webhook_secret    String
+  callback_url      String
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now()) @map("created_at")
+  updated_at        DateTime @updatedAt @map("updated_at")
+
+  transactions Transaction[]
+
+  @@map("merchants")
+}
+
+// ─── Transactions ───────────────────────────────────────────────────
+model Transaction {
+  id                        String   @id @default(uuid()) @db.Uuid
+  merchant_id               String   @map("merchant_id") @db.Uuid
+  checkout_request_id       String   @unique @map("checkout_request_id")
+  merchant_request_id       String?  @map("merchant_request_id")
+  amount                    Decimal  @db.Decimal(12, 2)
+  phone_number              String   @map("phone_number")
+  account_reference         String   @default("") @map("account_reference")
+  status                    String   @default("PENDING")
+  mpesa_receipt_number      String?  @map("mpesa_receipt_number")
+  result_code               Int?     @map("result_code")
+  result_description        String?  @map("result_description")
+  stk_response_code         String?  @map("stk_response_code")
+  stk_response_description  String?  @map("stk_response_description")
+  webhook_delivered         Boolean  @default(false) @map("webhook_delivered")
+  webhook_attempts          Int      @default(0) @map("webhook_attempts")
+  created_at                DateTime @default(now()) @map("created_at")
+  updated_at                DateTime @updatedAt @map("updated_at")
+
+  merchant Merchant @relation(fields: [merchant_id], references: [id], onDelete: Cascade)
+
+  @@index([merchant_id])
+  @@index([status])
+  @@index([created_at])
+  @@map("transactions")
+}
+
+// ─── API Key Audit Log ─────────────────────────────────────────────
+model ApiKeyLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  merchant_id String   @map("merchant_id") @db.Uuid
+  action      String   // 'created', 'rotated', 'revoked'
+  ip_address  String?  @map("ip_address")
+  user_agent  String?  @map("user_agent")
+  created_at  DateTime @default(now()) @map("created_at")
+
+  @@index([merchant_id])
+  @@map("api_key_logs")
+}
