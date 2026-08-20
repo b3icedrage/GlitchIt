@@ -1,10 +1,8 @@
-// GlitchIt Pay — GlitchIt's own unique payment system
-// Customers pay via M-Pesa, enter confirmation code, done.
-// No third-party. No STK push. No Daraja. 100% GlitchIt.
+// GlitchIt Pay — sends real STK push to user's phone
+// If STK push fails, falls back to manual payment instructions.
 
 const API_BASE = window.GLITCHIT_API_BASE || '';
 
-// ─── Helpers ────────────────────────────────────────────────────────
 function formatAmount(amount, currency = 'KES') {
   return `${currency} ${Number(amount).toLocaleString()}`;
 }
@@ -74,7 +72,7 @@ function ensureOverlay() {
         </div>
         <div class="pg-form" id="pg-form-mpesa">
           <div class="pg-field">
-            <label for="pg-momo-number">Your phone number</label>
+            <label for="pg-momo-number">Your M-Pesa phone number</label>
             <div class="pg-momo-field">
               <input type="text" id="pg-momo-code" class="pg-country-code" value="+254" maxlength="5" />
               <input type="text" id="pg-momo-number" placeholder="712 345 678" inputmode="tel" />
@@ -97,9 +95,23 @@ function ensureOverlay() {
         </div>
       </div>
 
-      <!-- STEP 2: Payment instructions — pay to this number -->
+      <!-- STEP 2a: STK Push sent — check your phone -->
+      <div id="pg-step-stk" style="display:none;text-align:center;padding:40px 24px;">
+        <div style="font-size:56px;margin-bottom:12px;animation:stkPulse 2s ease-in-out infinite;">📱</div>
+        <h3 style="margin:0 0 8px;">Check Your Phone</h3>
+        <p id="pg-stk-msg" style="font-size:14px;color:#ccc;margin:0 0 8px;">An M-Pesa prompt has been sent to your phone.</p>
+        <p style="font-size:13px;color:#8e8e8e;margin:0 0 16px;">Enter your <strong>M-Pesa PIN</strong> on the prompt to pay.</p>
+        <p class="pg-ref" id="pg-stk-ref" style="font-size:12px;color:#aaa;font-family:monospace;"></p>
+        <div style="margin-top:16px;">
+          <div class="pg-spinner" style="display:inline-block;margin:0 auto;"></div>
+          <p style="font-size:12px;color:#8e8e8e;margin-top:8px;" id="pg-stk-status">Waiting for payment confirmation...</p>
+        </div>
+        <button type="button" class="pg-done-btn" id="pg-stk-cancel" style="margin-top:20px;background:#333;width:calc(100% - 48px);">Cancel</button>
+      </div>
+
+      <!-- STEP 2b: Manual payment instructions -->
       <div id="pg-step-instructions" style="display:none;text-align:center;padding:24px;">
-        <div style="font-size:40px;margin-bottom:8px;">✅</div>
+        <div style="font-size:40px;margin-bottom:8px;">📱</div>
         <h3 style="margin:0 0 4px;">Pay via M-Pesa</h3>
         <p style="font-size:13px;color:#8e8e8e;margin:0 0 16px;">Follow these steps on your phone:</p>
         <div id="pg-inst-box" style="background:#1a1a2e;border-radius:12px;padding:16px;margin-bottom:16px;"></div>
@@ -119,8 +131,8 @@ function ensureOverlay() {
       <!-- STEP 3: Success -->
       <div id="pg-step-success" style="display:none;text-align:center;padding:40px 24px;">
         <div class="pg-success-icon">✓</div>
-        <h3>Payment Submitted!</h3>
-        <p id="pg-success-msg">Your confirmation code has been received.</p>
+        <h3>Payment Successful!</h3>
+        <p id="pg-success-msg">Your payment has been confirmed.</p>
         <p class="pg-ref" id="pg-success-ref"></p>
         <button type="button" class="pg-done-btn" id="pg-done-btn">Done</button>
       </div>
@@ -142,9 +154,7 @@ function ensureOverlay() {
 function bindEvents() {
   overlay.querySelector('#pg-close-btn').addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && overlay.classList.contains('open')) close();
-  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('open')) close(); });
   overlay.querySelectorAll('.pg-method-tab').forEach((tab) => {
     tab.addEventListener('click', () => selectMethod(tab.dataset.method));
   });
@@ -152,6 +162,7 @@ function bindEvents() {
   overlay.querySelector('#pg-submit-btn').addEventListener('click', handleSubmitCode);
   overlay.querySelector('#pg-done-btn').addEventListener('click', close);
   overlay.querySelector('#pg-retry-btn').addEventListener('click', showCheckout);
+  overlay.querySelector('#pg-stk-cancel').addEventListener('click', close);
   overlay.querySelector('#pg-inst-cancel').addEventListener('click', close);
 }
 
@@ -174,7 +185,6 @@ function fieldError(id, msg) {
 // ─── Handle "Pay Now" ───────────────────────────────────────────────
 async function handlePay() {
   if (isProcessing) return;
-
   const method = overlay.querySelector('.pg-method-tab.active')?.dataset.method || 'mpesa';
 
   if (method === 'wallet') {
@@ -182,7 +192,7 @@ async function handlePay() {
     if (window.GlitchItWallet && window.GlitchItWallet.canAfford(amount)) {
       const txRef = currentOptions?.api_ref || generateTxRef();
       processWalletPayment(txRef);
-      showSuccess({ ref: txRef, status: 'completed' });
+      showSuccess({ ref: txRef, msg: 'Paid from wallet.' });
     } else {
       toast('⚠', 'Insufficient wallet balance');
     }
@@ -199,20 +209,24 @@ async function handlePay() {
 
   try {
     const code = overlay.querySelector('#pg-momo-code')?.value || '+254';
-    const fullPhone = code + phone;
-
     const result = await apiPost('/api/payment', {
       amount: currentOptions?.amount || 0,
-      phone: fullPhone,
+      phone: code + phone,
       title: currentOptions?.title || 'GlitchIt',
-      description: currentOptions?.description || '',
     });
 
     if (result.ok) {
       currentTxRef = result.tx_ref;
-      showInstructions(result);
+
+      if (result.status === 'stk_sent') {
+        // STK push sent — show waiting state, poll for confirmation
+        showStkWaiting(result);
+      } else {
+        // Manual instructions — show payment instructions + confirmation code input
+        showInstructions(result);
+      }
     } else {
-      showError(result.error || 'Could not start payment');
+      showError(result.error || 'Payment failed');
     }
   } catch (err) {
     showError('Check your connection and try again');
@@ -223,7 +237,16 @@ async function handlePay() {
   }
 }
 
-// ─── Show payment instructions ──────────────────────────────────────
+// ─── STK Push sent — show waiting state ─────────────────────────────
+function showStkWaiting(result) {
+  showStep('pg-step-stk');
+  overlay.querySelector('#pg-stk-msg').textContent = result.message || 'An M-Pesa prompt has been sent to your phone.';
+  overlay.querySelector('#pg-stk-ref').textContent = `Ref: ${currentTxRef}`;
+  overlay.querySelector('#pg-stk-status').textContent = 'Waiting for payment confirmation...';
+  startPolling(currentTxRef);
+}
+
+// ─── Manual instructions ────────────────────────────────────────────
 function showInstructions(result) {
   showStep('pg-step-instructions');
   const inst = result.instructions;
@@ -251,24 +274,20 @@ function showInstructions(result) {
       </ol>
     </div>`;
 
-  // Copy button
   setTimeout(() => {
     const copyBtn = overlay.querySelector('#pg-copy-ref');
-    if (copyBtn) {
-      copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(inst.reference).then(() => {
-          copyBtn.textContent = 'Copied!';
-          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
-        }).catch(() => {});
-      });
-    }
+    if (copyBtn) copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(inst.reference).then(() => {
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+      }).catch(() => {});
+    });
   }, 100);
 }
 
 // ─── Handle confirmation code submission ────────────────────────────
 async function handleSubmitCode() {
   if (isProcessing) return;
-
   const code = overlay.querySelector('#pg-mpesa-code')?.value.trim();
   if (!code) return fieldError('pg-mpesa-code', 'Enter your M-Pesa confirmation code');
   if (code.length < 8) return fieldError('pg-mpesa-code', 'Code should be 8-14 characters');
@@ -279,11 +298,7 @@ async function handleSubmitCode() {
   btn.disabled = true;
 
   try {
-    const result = await apiPost('/api/payment/submit', {
-      tx_ref: currentTxRef,
-      mpesa_code: code.toUpperCase(),
-    });
-
+    const result = await apiPost('/api/payment/submit', { tx_ref: currentTxRef, mpesa_code: code.toUpperCase() });
     if (result.ok) {
       showSuccess({ ref: currentTxRef, msg: 'Your confirmation code has been received and is being verified.' });
     } else {
@@ -298,7 +313,42 @@ async function handleSubmitCode() {
   }
 }
 
-// ─── Process wallet payment ─────────────────────────────────────────
+// ─── Poll for payment status (after STK push) ──────────────────────
+let pollCount = 0;
+const MAX_POLLS = 90;
+
+function startPolling(txRef) {
+  stopPolling();
+  pollCount = 0;
+  pollTimer = setInterval(async () => {
+    pollCount++;
+    if (pollCount > MAX_POLLS) {
+      stopPolling();
+      showError('Payment timed out. If you completed the payment, it may still be processing.');
+      return;
+    }
+    try {
+      const result = await apiGet(`/api/payment/verify?tx_ref=${txRef}`);
+      if (result.ok && result.status === 'verified') {
+        stopPolling();
+        showSuccess({ ref: txRef, msg: `KES ${Number(result.amount).toLocaleString()} received! Receipt: ${result.receipt || 'N/A'}` });
+      } else if (result.status === 'cancelled') {
+        stopPolling();
+        showError('Payment was cancelled.');
+      } else if (result.status === 'failed') {
+        stopPolling();
+        showError(result.error || 'Payment failed');
+      }
+    } catch(e) {}
+  }, 2000);
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  pollCount = 0;
+}
+
+// ─── Wallet payment ─────────────────────────────────────────────────
 function processWalletPayment(txRef) {
   const amount = currentOptions?.amount || 0;
   const user = window.GLITCHIT_USER;
@@ -308,27 +358,23 @@ function processWalletPayment(txRef) {
   const bal = Number(localStorage.getItem(balKey)) || 0;
   localStorage.setItem(balKey, String(Math.round((bal - amount) * 100) / 100));
   const txns = JSON.parse(localStorage.getItem(txnKey) || '[]');
-  txns.unshift({
-    id: `txn-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
-    type: 'purchase', amount: -amount, note: `Payment: ${currentOptions?.title||'GlitchIt'}`,
-    ref: txRef, status: 'completed', timestamp: Date.now(),
-  });
+  txns.unshift({ id: `txn-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, type: 'purchase', amount: -amount, note: `Payment: ${currentOptions?.title||'GlitchIt'}`, ref: txRef, status: 'completed', timestamp: Date.now() });
   localStorage.setItem(txnKey, JSON.stringify(txns.slice(0, 100)));
   document.dispatchEvent(new CustomEvent('wallet-purchase', { detail: { amount } }));
 }
 
 // ─── Step navigation ────────────────────────────────────────────────
 function showStep(id) {
-  ['pg-step-checkout','pg-step-instructions','pg-step-success','pg-step-error'].forEach((stepId) => {
-    const el = overlay.querySelector(`#${stepId}`);
-    if (el) el.style.display = stepId === id ? '' : 'none';
+  ['pg-step-checkout','pg-step-stk','pg-step-instructions','pg-step-success','pg-step-error'].forEach((s) => {
+    const el = overlay.querySelector(`#${s}`);
+    if (el) el.style.display = s === id ? '' : 'none';
   });
 }
 
 function showSuccess(result) {
   showStep('pg-step-success');
   overlay.querySelector('#pg-success-ref').textContent = `Ref: ${result.ref}`;
-  overlay.querySelector('#pg-success-msg').textContent = result.msg || 'Payment submitted successfully.';
+  overlay.querySelector('#pg-success-msg').textContent = result.msg || 'Payment confirmed!';
   if (currentResolve) { currentResolve({ ok: true, ref: result.ref }); currentResolve = null; }
 }
 
@@ -347,19 +393,17 @@ export function checkout(opts) {
     currentReject = reject;
     isProcessing = false;
     currentTxRef = null;
+    stopPolling();
 
     ensureOverlay();
     showCheckout();
 
     const amount = Number(opts.amount) || 0;
-    const currency = opts.currency || 'KES';
-
     overlay.querySelector('#pg-merchant-name').textContent = opts.title || 'GlitchIt';
     overlay.querySelector('#pg-merchant-desc').textContent = opts.description || '';
-    overlay.querySelector('#pg-currency-label').textContent = currency;
-    overlay.querySelector('#pg-total-amount').textContent = formatAmount(amount, currency);
+    overlay.querySelector('#pg-currency-label').textContent = opts.currency || 'KES';
+    overlay.querySelector('#pg-total-amount').textContent = formatAmount(amount, opts.currency || 'KES');
 
-    // Wallet balance
     const walletBal = window.GlitchItWallet ? window.GlitchItWallet.getBalance() : 0;
     const walletTab = overlay.querySelector('#pg-wallet-tab');
     const walletBalEl = overlay.querySelector('#pg-wallet-bal');
@@ -375,13 +419,10 @@ export function checkout(opts) {
 
 function close() {
   if (!overlay) return;
+  stopPolling();
   overlay.classList.remove('open');
   document.body.style.overflow = '';
-  if (currentReject && !isProcessing) {
-    currentReject(new Error('payment closed'));
-    currentReject = null;
-    currentResolve = null;
-  }
+  if (currentReject && !isProcessing) { currentReject(new Error('payment closed')); currentReject = null; currentResolve = null; }
   setTimeout(() => {
     if (overlay) overlay.querySelectorAll('.pg-field input').forEach((el) => { el.value = ''; el.style.borderColor = ''; });
   }, 300);
@@ -399,18 +440,16 @@ function injectStyles() {
   if (document.querySelector('link[href*="payment-checkout.css"]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = `${API_BASE}/src/payment-checkout.css?v=6`;
+  link.href = `${API_BASE}/src/payment-checkout.css?v=7`;
   document.head.appendChild(link);
 }
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', injectStyles, { once: true });
-} else {
-  injectStyles();
-}
+} else { injectStyles(); }
 
 export { checkout as glitchitCheckout, formatAmount, generateTxRef };
 
 try {
   window.GlitchItPaymentGateway = { checkout, glitchitCheckout: checkout, formatAmount, generateTxRef };
-} catch (e) { /* ignore */ }
+} catch(e) {}
