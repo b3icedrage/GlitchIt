@@ -1,6 +1,7 @@
-// GlitchIt Payment Gateway — custom payment system built from scratch
-// Users pay via M-Pesa (Lipa na M-Pesa) and enter confirmation codes.
-// No third-party SDK dependencies.
+// GlitchIt Payment Gateway — real STK push via Safaricom Daraja API
+// Built from scratch. No third-party payment SDK.
+//
+// Flow: User enters phone → STK push sent to phone → User enters PIN → Payment confirmed
 
 const API_BASE = window.GLITCHIT_API_BASE || '';
 
@@ -24,37 +25,6 @@ function formatAmount(amount, currency = 'KES') {
     minimumFractionDigits: config.decimals,
     maximumFractionDigits: config.decimals,
   })}`;
-}
-
-// ─── Validate card number (Luhn) ────────────────────────────────────
-function isValidCard(number) {
-  const digits = number.replace(/\s/g, '');
-  if (!/^\d{13,19}$/.test(digits)) return false;
-  let sum = 0, alt = false;
-  for (let i = digits.length - 1; i >= 0; i--) {
-    let n = parseInt(digits[i], 10);
-    if (alt) { n *= 2; if (n > 9) n -= 9; }
-    sum += n;
-    alt = !alt;
-  }
-  return sum % 10 === 0;
-}
-
-function detectCardBrand(number) {
-  const d = number.replace(/\s/g, '');
-  if (/^4/.test(d)) return 'Visa';
-  if (/^5[1-5]/.test(d) || /^2[2-7]/.test(d)) return 'Mastercard';
-  if (/^3[47]/.test(d)) return 'Amex';
-  return '';
-}
-
-function isValidExpiry(expiry) {
-  const m = expiry.match(/^(\d{2})\/(\d{2})$/);
-  if (!m) return false;
-  const month = parseInt(m[1], 10);
-  const year = parseInt('20' + m[2], 10);
-  if (month < 1 || month > 12) return false;
-  return new Date(year, month) > new Date();
 }
 
 // ─── API helpers ────────────────────────────────────────────────────
@@ -91,10 +61,13 @@ function ensureOverlay() {
 
   overlay.innerHTML = `
     <div class="pg-sheet">
-      <!-- Step 1: Payment form -->
+      <!-- Step 1: Enter phone number -->
       <div id="pg-step-checkout">
         <div class="pg-header">
-          <h2>GlitchIt Pay</h2>
+          <div class="pg-header-brand">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#00e676" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            <h2>GlitchIt Pay</h2>
+          </div>
           <button type="button" class="pg-close" id="pg-close-btn" aria-label="Close">✕</button>
         </div>
         <div class="pg-merchant">
@@ -115,14 +88,17 @@ function ensureOverlay() {
           </button>
         </div>
 
-        <!-- M-Pesa form (default) -->
+        <!-- M-Pesa form -->
         <div class="pg-form" id="pg-form-momo">
           <div class="pg-field">
-            <label for="pg-momo-number">Your M-Pesa phone number</label>
+            <label for="pg-momo-number">M-Pesa phone number</label>
             <div class="pg-momo-field">
               <input type="text" id="pg-momo-code" class="pg-country-code" value="+254" maxlength="5" />
               <input type="text" id="pg-momo-number" placeholder="712 345 678" inputmode="tel" autocomplete="tel" />
             </div>
+          </div>
+          <div class="pg-info-box" id="pg-mode-info" style="display:none;">
+            <span style="color:#ffab00;">⚡</span> <span id="pg-mode-text"></span>
           </div>
         </div>
 
@@ -135,7 +111,7 @@ function ensureOverlay() {
         </div>
 
         <button type="button" class="pg-pay-btn" id="pg-pay-btn">
-          <span class="pg-pay-btn-text">Continue</span>
+          <span class="pg-pay-btn-text">Pay Now</span>
           <span class="pg-spinner"></span>
         </button>
 
@@ -145,43 +121,34 @@ function ensureOverlay() {
         </div>
       </div>
 
-      <!-- Step 2: M-Pesa payment instructions -->
-      <div class="pg-success" id="pg-step-instructions" style="display:none;">
-        <div class="pg-success-icon" style="background:linear-gradient(135deg,#00c853,#4caf50);">📱</div>
-        <h3>Pay via M-Pesa</h3>
-        <p style="font-size:13px;color:#8e8e8e;margin-top:4px;">Follow these steps on your phone:</p>
-
-        <div class="pg-info-box" id="pg-instruction-steps" style="text-align:left;margin-top:12px;font-size:14px;line-height:1.8;"></div>
-
-        <div style="margin-top:16px;">
-          <p class="pg-ref" id="pg-inst-ref"></p>
-        </div>
-
-        <div class="pg-field" style="margin-top:20px;">
-          <label for="pg-mpesa-code">Enter M-Pesa confirmation code</label>
-          <input type="text" id="pg-mpesa-code" placeholder="e.g. SHJ3K4ABCD" maxlength="14" style="text-transform:uppercase;letter-spacing:1px;font-size:18px;text-align:center;padding:14px;" />
-          <p style="font-size:11px;color:#8e8e8e;margin-top:4px;">You'll receive this code via SMS after paying</p>
-        </div>
-
-        <button type="button" class="pg-pay-btn" id="pg-submit-code-btn">
-          <span class="pg-pay-btn-text">Submit Confirmation Code</span>
-          <span class="pg-spinner"></span>
-        </button>
-
-        <button type="button" class="pg-done-btn" id="pg-inst-cancel" style="margin-top:8px;background:#333;">Cancel</button>
-      </div>
-
-      <!-- Step 3: Waiting for verification -->
-      <div class="pg-success" id="pg-step-waiting" style="display:none;">
-        <div class="pg-success-icon" style="background:linear-gradient(135deg,#ff9800,#f57c00);">⏳</div>
-        <h3>Verifying Payment</h3>
-        <p id="pg-waiting-msg">Your confirmation code has been submitted. We're verifying your payment.</p>
-        <p class="pg-ref" id="pg-waiting-ref"></p>
+      <!-- Step 2: STK Push sent — check your phone -->
+      <div class="pg-success" id="pg-step-stk" style="display:none;">
+        <div class="pg-success-icon stk-pulse" style="background:linear-gradient(135deg,#00c853,#4caf50);">📱</div>
+        <h3>Check Your Phone</h3>
+        <p id="pg-stk-msg">An M-Pesa prompt has been sent to your phone.</p>
+        <p style="font-size:13px;color:#8e8e8e;margin-top:4px;">Enter your <strong>M-Pesa PIN</strong> on the prompt to complete the payment.</p>
+        <p class="pg-ref" id="pg-stk-ref"></p>
         <div style="margin-top:16px;">
           <div class="pg-spinner" style="display:inline-block;margin:0 auto;"></div>
-          <p style="font-size:12px;color:#8e8e8e;margin-top:8px;" id="pg-waiting-status">This usually takes a few seconds...</p>
+          <p style="font-size:12px;color:#8e8e8e;margin-top:8px;" id="pg-stk-status">Waiting for payment confirmation...</p>
         </div>
-        <button type="button" class="pg-done-btn" id="pg-waiting-cancel" style="margin-top:16px;background:#ff3b30;">Cancel</button>
+        <button type="button" class="pg-done-btn" id="pg-stk-cancel" style="margin-top:16px;background:#333;">Cancel</button>
+      </div>
+
+      <!-- Step 3: Demo mode — enter confirmation code -->
+      <div class="pg-success" id="pg-step-demo" style="display:none;">
+        <div class="pg-success-icon" style="background:linear-gradient(135deg,#ff9800,#f57c00);">🧪</div>
+        <h3>Demo Mode</h3>
+        <p style="font-size:13px;color:#8e8e8e;">Daraja credentials not configured yet. Enter a test M-Pesa code to simulate payment.</p>
+        <div class="pg-field" style="margin-top:16px;">
+          <label for="pg-demo-code">M-Pesa confirmation code</label>
+          <input type="text" id="pg-demo-code" placeholder="e.g. SHJ3K4ABCD" maxlength="14" style="text-transform:uppercase;letter-spacing:1px;font-size:18px;text-align:center;padding:14px;" />
+        </div>
+        <button type="button" class="pg-pay-btn" id="pg-demo-submit">
+          <span class="pg-pay-btn-text">Submit Code</span>
+          <span class="pg-spinner"></span>
+        </button>
+        <button type="button" class="pg-done-btn" id="pg-demo-cancel" style="margin-top:8px;background:#333;">Cancel</button>
       </div>
 
       <!-- Step 4: Success -->
@@ -218,15 +185,15 @@ function bindEvents() {
     tab.addEventListener('click', () => selectMethod(tab.dataset.method));
   });
 
-  overlay.querySelector('#pg-pay-btn').addEventListener('click', handleContinue);
-  overlay.querySelector('#pg-submit-code-btn').addEventListener('click', handleSubmitCode);
+  overlay.querySelector('#pg-pay-btn').addEventListener('click', handlePay);
   overlay.querySelector('#pg-done-btn').addEventListener('click', close);
   overlay.querySelector('#pg-retry-btn').addEventListener('click', showCheckout);
-  overlay.querySelector('#pg-inst-cancel').addEventListener('click', () => {
+  overlay.querySelector('#pg-stk-cancel').addEventListener('click', () => {
     stopPolling();
     close();
   });
-  overlay.querySelector('#pg-waiting-cancel').addEventListener('click', () => {
+  overlay.querySelector('#pg-demo-submit').addEventListener('click', handleDemoSubmit);
+  overlay.querySelector('#pg-demo-cancel').addEventListener('click', () => {
     stopPolling();
     close();
   });
@@ -241,8 +208,8 @@ function selectMethod(method) {
     if (form) form.style.display = m === method ? '' : 'none';
   });
 
-  const labels = { momo: 'Continue', wallet: 'Pay from Wallet' };
-  overlay.querySelector('#pg-pay-btn .pg-pay-btn-text').textContent = labels[method] || 'Continue';
+  const labels = { momo: 'Pay Now', wallet: 'Pay from Wallet' };
+  overlay.querySelector('#pg-pay-btn .pg-pay-btn-text').textContent = labels[method] || 'Pay Now';
 }
 
 function fieldError(id, msg) {
@@ -251,14 +218,13 @@ function fieldError(id, msg) {
   toast('⚠', msg);
 }
 
-// ─── Handle "Continue" button — initialize payment ──────────────────
-async function handleContinue() {
+// ─── Handle "Pay Now" — send STK push or start wallet payment ───────
+async function handlePay() {
   if (isProcessing) return;
 
   const method = overlay.querySelector('.pg-method-tab.active')?.dataset.method || 'momo';
   const txRef = currentOptions?.api_ref || generateTxRef();
 
-  // Validate phone for M-Pesa
   if (method === 'momo') {
     const phone = overlay.querySelector('#pg-momo-number')?.value.replace(/\s/g, '');
     if (!phone || phone.length < 9) return fieldError('pg-momo-number', 'Enter a valid phone number');
@@ -283,24 +249,34 @@ async function handleContinue() {
         showError(result.error || 'Wallet payment failed');
       }
     } else {
-      // Initialize payment with server
-      const user = window.GLITCHIT_USER;
-      const payload = {
+      // Get phone number
+      const code = overlay.querySelector('#pg-momo-code')?.value || '+254';
+      const phone = overlay.querySelector('#pg-momo-number')?.value.replace(/\s/g, '');
+      const fullPhone = code + phone;
+
+      // Call server to send STK push
+      const result = await apiPost('/api/payment', {
         amount: currentOptions?.amount || 0,
         currency: currentOptions?.currency || 'KES',
-        email: user?.email || '',
+        phone: fullPhone,
         tx_ref: txRef,
         title: currentOptions?.title || 'GlitchIt',
         description: currentOptions?.description || '',
-      };
-
-      const result = await apiPost('/api/payment', payload);
+        email: window.GLITCHIT_USER?.email || '',
+      });
 
       if (result.ok) {
         currentTxRef = result.tx_ref;
-        showPaymentInstructions(result);
+
+        if (result.mode === 'demo') {
+          // Demo mode — show confirmation code input
+          showDemoMode(result);
+        } else {
+          // Live mode — STK push sent, show waiting state
+          showStkWaiting(result);
+        }
       } else {
-        showError(result.error || 'Could not initialize payment');
+        showError(result.error || 'Could not start payment');
       }
     }
   } catch (err) {
@@ -312,72 +288,29 @@ async function handleContinue() {
   }
 }
 
-// ─── Show M-Pesa payment instructions ───────────────────────────────
-function showPaymentInstructions(result) {
-  showStep('pg-step-instructions');
-
-  const inst = result.instructions;
-  if (inst) {
-    // Show M-Pesa number prominently
-    const stepsHtml = `
-      <div style="background:#1a1a2e;border-radius:8px;padding:12px;margin-bottom:12px;text-align:center;">
-        <div style="font-size:11px;color:#8e8e8e;">Pay to</div>
-        <div style="font-size:22px;font-weight:700;color:#00e676;letter-spacing:1px;">${inst.mpesa_number}</div>
-        <div style="font-size:12px;color:#8e8e8e;">${inst.business_name || 'GlitchIt'}</div>
-      </div>
-      <div style="background:#1a1a2e;border-radius:8px;padding:12px;margin-bottom:12px;text-align:center;">
-        <div style="font-size:11px;color:#8e8e8e;">Amount</div>
-        <div style="font-size:20px;font-weight:700;color:#fff;">${inst.currency} ${Number(inst.amount).toLocaleString()}</div>
-      </div>
-      <div style="background:#1a1a2e;border-radius:8px;padding:12px;margin-bottom:12px;text-align:center;">
-        <div style="font-size:11px;color:#8e8e8e;">Reference</div>
-        <div style="font-size:16px;font-weight:700;color:#ffab00;letter-spacing:2px;">${inst.reference}</div>
-        <button type="button" id="pg-copy-ref" style="margin-top:6px;background:#333;border:none;color:#00e676;padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;">Copy</button>
-      </div>
-      <div style="text-align:left;padding:0 4px;">
-        <ol style="margin:0;padding-left:20px;font-size:13px;line-height:2;color:#ccc;">
-          ${inst.steps.map(s => `<li>${s}</li>`).join('')}
-        </ol>
-      </div>`;
-
-    overlay.querySelector('#pg-instruction-steps').innerHTML = stepsHtml;
-    overlay.querySelector('#pg-inst-ref').textContent = `Ref: ${inst.reference}`;
-
-    // Copy reference button
-    setTimeout(() => {
-      const copyBtn = overlay.querySelector('#pg-copy-ref');
-      if (copyBtn) {
-        copyBtn.addEventListener('click', () => {
-          navigator.clipboard.writeText(inst.reference).then(() => {
-            copyBtn.textContent = 'Copied!';
-            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
-          }).catch(() => {
-            // Fallback
-            const ta = document.createElement('textarea');
-            ta.value = inst.reference;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
-            copyBtn.textContent = 'Copied!';
-            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
-          });
-        });
-      }
-    }, 100);
-  }
+// ─── Show STK Push waiting state (live mode) ───────────────────────
+function showStkWaiting(result) {
+  showStep('pg-step-stk');
+  overlay.querySelector('#pg-stk-msg').textContent =
+    result.message || 'An M-Pesa prompt has been sent to your phone.';
+  overlay.querySelector('#pg-stk-ref').textContent = `Ref: ${result.tx_ref}`;
+  overlay.querySelector('#pg-stk-status').textContent = 'Waiting for payment confirmation...';
+  startPolling(result.tx_ref);
 }
 
-// ─── Handle "Submit Confirmation Code" button ───────────────────────
-async function handleSubmitCode() {
+// ─── Show demo mode (no Daraja credentials) ────────────────────────
+function showDemoMode(result) {
+  showStep('pg-step-demo');
+}
+
+async function handleDemoSubmit() {
   if (isProcessing) return;
 
-  const code = overlay.querySelector('#pg-mpesa-code')?.value.trim();
-  if (!code) return fieldError('pg-mpesa-code', 'Enter your M-Pesa confirmation code');
-  if (code.length < 8) return fieldError('pg-mpesa-code', 'Code should be 8-14 characters');
+  const code = overlay.querySelector('#pg-demo-code')?.value.trim();
+  if (!code || code.length < 8) return fieldError('pg-demo-code', 'Enter a valid code (8-14 characters)');
 
   isProcessing = true;
-  const btn = overlay.querySelector('#pg-submit-code-btn');
+  const btn = overlay.querySelector('#pg-demo-submit');
   btn.classList.add('loading');
   btn.disabled = true;
 
@@ -388,12 +321,16 @@ async function handleSubmitCode() {
     });
 
     if (result.ok) {
-      showWaitingForVerification();
+      showStep('pg-step-stk');
+      overlay.querySelector('#pg-stk-msg').textContent = 'Code submitted. Verifying...';
+      overlay.querySelector('#pg-stk-ref').textContent = `Ref: ${currentTxRef}`;
+      overlay.querySelector('#pg-stk-status').textContent = 'Waiting for verification...';
+      startPolling(currentTxRef);
     } else {
       showError(result.error || 'Failed to submit code');
     }
   } catch (err) {
-    showError('Could not reach server — try again');
+    showError('Could not reach server');
   } finally {
     isProcessing = false;
     btn.classList.remove('loading');
@@ -401,17 +338,9 @@ async function handleSubmitCode() {
   }
 }
 
-// ─── Show waiting for verification ──────────────────────────────────
-function showWaitingForVerification() {
-  showStep('pg-step-waiting');
-  overlay.querySelector('#pg-waiting-ref').textContent = `Ref: ${currentTxRef}`;
-  overlay.querySelector('#pg-waiting-status').textContent = 'This usually takes a few seconds...';
-  startPolling(currentTxRef);
-}
-
 // ─── Poll for payment status ────────────────────────────────────────
 let pollCount = 0;
-const MAX_POLLS = 90; // Poll for up to 3 minutes (every 2 seconds)
+const MAX_POLLS = 90;
 
 function startPolling(txRef) {
   stopPolling();
@@ -421,7 +350,7 @@ function startPolling(txRef) {
     pollCount++;
     if (pollCount > MAX_POLLS) {
       stopPolling();
-      showError('Verification timed out. Your payment may still be processing — check back later.');
+      showError('Payment timed out. If you completed the payment, it may still be processing.');
       return;
     }
 
@@ -430,11 +359,13 @@ function startPolling(txRef) {
       if (result.ok && result.status === 'verified') {
         stopPolling();
         showSuccess({ ok: true, ref: txRef, status: 'verified', amount: result.amount });
-      } else if (result.status === 'rejected') {
+      } else if (result.status === 'cancelled') {
         stopPolling();
-        showError(result.error || 'Payment could not be verified. Please contact support.');
+        showError('Payment was cancelled.');
+      } else if (result.status === 'failed') {
+        stopPolling();
+        showError(result.error || 'Payment failed');
       }
-      // If pending or submitted, keep polling
     } catch (err) {
       // Network error — keep polling
     }
@@ -480,7 +411,7 @@ function processWalletPayment(txRef) {
 
 // ─── Step navigation ────────────────────────────────────────────────
 function showStep(id) {
-  ['pg-step-checkout', 'pg-step-instructions', 'pg-step-waiting', 'pg-step-success', 'pg-step-error'].forEach((stepId) => {
+  ['pg-step-checkout', 'pg-step-stk', 'pg-step-demo', 'pg-step-success', 'pg-step-error'].forEach((stepId) => {
     const el = overlay.querySelector(`#${stepId}`);
     if (el) el.style.display = stepId === id ? '' : 'none';
   });
@@ -535,7 +466,18 @@ export function checkout(opts) {
     if (walletTab) walletTab.style.display = walletBal >= amount ? '' : 'none';
     if (walletBalEl) walletBalEl.textContent = formatAmount(walletBal, 'KES');
 
-    // Default to M-Pesa
+    // Check mode
+    apiGet('/api/payment/config').then((cfg) => {
+      const modeInfo = overlay.querySelector('#pg-mode-info');
+      const modeText = overlay.querySelector('#pg-mode-text');
+      if (cfg.mode === 'demo') {
+        modeInfo.style.display = '';
+        modeText.textContent = 'Demo mode — configure Daraja credentials for real STK push';
+      } else {
+        modeInfo.style.display = 'none';
+      }
+    }).catch(() => {});
+
     selectMethod('momo');
 
     overlay.classList.add('open');
@@ -578,7 +520,7 @@ function injectStyles() {
   if (document.querySelector('link[href*="payment-checkout.css"]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = `${API_BASE}/src/payment-checkout.css?v=4`;
+  link.href = `${API_BASE}/src/payment-checkout.css?v=5`;
   document.head.appendChild(link);
 }
 
@@ -588,11 +530,11 @@ if (document.readyState === 'loading') {
   injectStyles();
 }
 
-export { checkout as glitchitCheckout, formatAmount, generateTxRef, detectCardBrand };
+export { checkout as glitchitCheckout, formatAmount, generateTxRef };
 
 try {
   window.GlitchItPaymentGateway = {
     checkout, glitchitCheckout: checkout,
-    formatAmount, generateTxRef, detectCardBrand,
+    formatAmount, generateTxRef,
   };
 } catch (e) { /* ignore */ }

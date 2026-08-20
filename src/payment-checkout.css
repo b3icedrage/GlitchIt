@@ -24,6 +24,7 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: 20px 24px 0;
 }
+.pg-header-brand { display: flex; align-items: center; gap: 8px; }
 .pg-header h2 { margin: 0; font-size: 18px; font-weight: 800; }
 .pg-close {
   width: 32px; height: 32px; border: 0; border-radius: 50%;
@@ -124,6 +125,15 @@
 .pg-pay-btn.loading .pg-pay-btn-text { display: none; }
 .pg-pay-btn.loading .pg-spinner { display: inline-block; }
 @keyframes pgSpin { to { transform: rotate(360deg); } }
+
+/* ── STK push pulse animation ────────────────────────────────── */
+.stk-pulse {
+  animation: stkPulse 2s ease-in-out infinite;
+}
+@keyframes stkPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,200,83,.4); }
+  50% { box-shadow: 0 0 0 16px rgba(0,200,83,0); }
+}
 
 /* ── Security badge ──────────────────────────────────────────── */
 .pg-security {
