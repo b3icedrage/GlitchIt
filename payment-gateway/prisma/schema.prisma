@@ -68,3 +68,61 @@ model ApiKeyLog {
   @@index([merchant_id])
   @@map("api_key_logs")
 }
+
+// ─── Settlement Ledger ("The Vacuum") ───────────────────────────────
+// Tracks every credit and debit to the master corporate wallet.
+model LedgerEntry {
+  id            String   @id @default(uuid()) @db.Uuid
+  tx_ref        String   @unique @map("tx_ref")           // unique reference for idempotency
+  type          String                                   // CREDIT (payment received) or DEBIT (payout sent)
+  amount        Decimal  @db.Decimal(12, 2)
+  balance_after Decimal  @db.Decimal(12, 2) @map("balance_after")
+  source        String                                   // 'STK_PUSH', 'ADMIN_CREDIT', 'B2C_PAYOUT', 'REFUND'
+  description   String   @default("")
+  meta          String?                                  // JSON string for extra data
+  created_at    DateTime @default(now()) @map("created_at")
+
+  @@index([type])
+  @@index([source])
+  @@index([created_at])
+  @@map("ledger_entries")
+}
+
+// ─── Balance Snapshot ───────────────────────────────────────────────
+// Single-row table tracking current vault balance.
+model VaultBalance {
+  id               String   @id @default(uuid()) @db.Uuid
+  total_credits    Decimal  @db.Decimal(14, 2) @default(0) @map("total_credits")
+  total_debits     Decimal  @db.Decimal(14, 2) @default(0) @map("total_debits")
+  available        Decimal  @db.Decimal(14, 2) @default(0) @map("available")
+  pending_payouts  Decimal  @db.Decimal(14, 2) @default(0) @map("pending_payouts")
+  updated_at       DateTime @updatedAt @map("updated_at")
+
+  @@map("vault_balance")
+}
+
+// ─── Payout Requests (B2C withdrawals) ─────────────────────────────
+model PayoutRequest {
+  id                    String   @id @default(uuid()) @db.Uuid
+  idempotency_key       String   @unique @map("idempotency_key")
+  amount                Decimal  @db.Decimal(12, 2)
+  recipient_phone       String   @map("recipient_phone")
+  status                String   @default("PENDING")  // PENDING, PROCESSING, SUCCESSFUL, FAILED, REVERSED
+  command_id            String   @default("BusinessPayment") @map("command_id")
+  initiator_name        String   @default("glitchitapi") @map("initiator_name")
+  conversation_id       String?  @map("conversation_id")  // Safaricom B2C ConversationID
+  result_code           Int?     @map("result_code")
+  result_description    String?  @map("result_description")
+  mpesa_receipt         String?  @map("mpesa_receipt")
+  security_credential   String?  @map("security_credential")
+  retry_count           Int      @default(0) @map("retry_count")
+  requested_by          String?  @map("requested_by")  // admin user ID
+  processed_at          DateTime? @map("processed_at")
+  created_at            DateTime @default(now()) @map("created_at")
+  updated_at            DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([recipient_phone])
+  @@index([created_at])
+  @@map("payout_requests")
+}

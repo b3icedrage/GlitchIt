@@ -17,17 +17,25 @@ const crypto = require('node:crypto');
 const { Pool } = require('pg');
 const Redis = require('ioredis');
 
-// ─── Configuration ──────────────────────────────────────────────────
-const DATABASE_URL = process.env.DATABASE_URL;
-const REDIS_URL = process.env.REDIS_URL;
+// Vacuum settlement engine (lazy load to avoid circular deps)
+let _creditVault = null;
+function creditVault(db, opts) {
+  if (!_creditVault) _creditVault = require('./settlement.js').creditVault;
+  return _creditVault(db, opts);
+}
+
+// ─── Configuration (lazy — read at request time) ────────────────────
+function cfg(k, fb) { return process.env[k] || fb; }
+function getDatabaseUrl() { return cfg('DATABASE_URL', ''); }
+function getRedisUrl()    { return cfg('REDIS_URL', ''); }
 
 // ─── Database Pool ──────────────────────────────────────────────────
 let dbPool = null;
 
 function getDb() {
-  if (!dbPool && DATABASE_URL) {
+  if (!dbPool && getDatabaseUrl()) {
     dbPool = new Pool({
-      connectionString: DATABASE_URL,
+      connectionString: getDatabaseUrl(),
       ssl: { rejectUnauthorized: false },
       max: 10,
       idleTimeoutMillis: 30000,
@@ -43,8 +51,8 @@ function getDb() {
 let redisClient = null;
 
 function getRedis() {
-  if (!redisClient && REDIS_URL) {
-    redisClient = new Redis(REDIS_URL, {
+  if (!redisClient && getRedisUrl()) {
+    redisClient = new Redis(getRedisUrl(), {
       maxRetriesPerRequest: null,
       enableReadyCheck: true,
       retryStrategy(times) {
@@ -409,6 +417,17 @@ async function handleVerifyPayment(req, res) {
   );
 
   console.log(`[Gateway] ${newStatus === 'VERIFIED' ? '✅' : '❌'} Payment ${newStatus.toLowerCase()}: ${body.tx_ref}`);
+
+  // Auto-credit the Vacuum vault when a payment is approved
+  if (body.action === 'approve') {
+    creditVault(pool, {
+      txRef: `pay-${tx.checkout_request_id}`,
+      amount: Number(tx.amount),
+      source: 'STK_PUSH',
+      description: `Payment from customer via ${merchant.business_name}`,
+      meta: JSON.stringify({ transaction_id: tx.id, merchant_id: merchant.id, merchant_name: merchant.name }),
+    }).catch((e) => console.error(`[Gateway] Vault credit failed: ${e.message}`));
+  }
 
   // Deliver webhook to merchant
   if (tx.callback_url && body.action === 'approve') {

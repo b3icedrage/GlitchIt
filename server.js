@@ -25,6 +25,8 @@ const accountsHandler = require('./api/accounts.js');
 const livekitTokenHandler = require('./api/livekit-token.js');
 const paymentHandler = require('./api/payment.js');
 const gatewayHandler = require('./api/gateway.js');
+const settlementHandler = require('./api/settlement.js');
+const { creditVault } = require('./api/settlement.js');
 
 const ROOT = resolve(__dirname);
 const PORT = Number(process.env.PORT || 4173);
@@ -548,8 +550,14 @@ res.writeHead = function (status, headers) {
     await paymentHandler(req, res);
     return;
   }
+  // Settlement & B2C payout routes (/v1/admin/*, /v1/payout-callback)
+  const v1Path = new URL(req.url, 'http://glitchit.local').pathname;
+  if (v1Path.startsWith('/v1/admin/') || v1Path === '/v1/payout-callback') {
+    await settlementHandler(req, res);
+    return;
+  }
   // White-label M-Pesa Express Gateway: all /v1/* routes
-  if (new URL(req.url, 'http://glitchit.local').pathname.startsWith('/v1/')) {
+  if (v1Path.startsWith('/v1/')) {
     await gatewayHandler(req, res);
     return;
   }
