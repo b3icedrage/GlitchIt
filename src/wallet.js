@@ -8,7 +8,7 @@ import { glitchitCheckout } from './payment-gateway.js?v=3';
 const WALLET_PREFIX = 'glitchit.wallet.';
 const TRANSACTIONS_PREFIX = 'glitchit.txns.';
 
-// Quick deposit amounts (KES)
+// Quick deposit amounts (USD)
 const QUICK_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 
 // ─── Storage helpers ───────────────────────────────────────────────
@@ -78,10 +78,10 @@ export function deposit(amount, opts) {
 
   return glitchitCheckout({
     amount: amt,
-    currency: (opts && opts.currency) || 'KES',
+    currency: (opts && opts.currency) || 'USD',
     api_ref: `glitchit-wallet-${user.id.slice(0, 8)}-${Date.now()}`,
     title: 'Deposit to GlitchIt Wallet',
-    description: `Add KES ${amt.toLocaleString()} to your wallet`,
+    description: `Add $${amt.toLocaleString()} to your wallet`,
     email,
   }).then((data) => {
     // Credit the wallet on success
@@ -90,10 +90,10 @@ export function deposit(amount, opts) {
     addTransaction(user.id, {
       type: 'deposit',
       amount: amt,
-      note: `Deposited KES ${amt.toLocaleString()}`,
+      note: `Deposited $${amt.toLocaleString()}`,
       ref: data && data.tx_ref ? data.tx_ref : '',
     });
-    toast('✓', `KES ${amt.toLocaleString()} added to your wallet!`);
+    toast('✓', `$${amt.toLocaleString()} added to your wallet!`);
     emitEvent('wallet-deposit', { amount: amt });
     return { ok: true, balance: getBalance(user.id) };
   }).catch((err) => {
@@ -128,7 +128,7 @@ export function sendMoney(toUsername, amount, note) {
 
   // Simulate the recipient receiving (for demo, we also credit a "virtual" recipient)
   // In production this would be a server-side transfer
-  toast('✓', `KES ${amt.toLocaleString()} sent to @${to}!`);
+  toast('✓', `$${amt.toLocaleString()} sent to @${to}!`);
   emitEvent('wallet-send', { amount: amt, to });
   return { ok: true, balance: getBalance(user.id) };
 }
@@ -152,7 +152,7 @@ export function tipCreator(toUsername, amount) {
     to,
   });
 
-  toast('✓', `Tipped @${to} KES ${amt.toLocaleString()}! 🎉`);
+  toast('✓', `Tipped @${to} $${amt.toLocaleString()}! 🎉`);
   emitEvent('wallet-tip', { amount: amt, to });
   return { ok: true, balance: getBalance(user.id) };
 }
@@ -212,7 +212,7 @@ export function getWalletBalance() {
 /** Get formatted balance string */
 export function formatBalance() {
   const bal = getWalletBalance();
-  return `KES ${bal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  return `$${bal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 /** Get transaction history */

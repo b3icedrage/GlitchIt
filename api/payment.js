@@ -163,8 +163,8 @@ async function submitOrder({ txRef, amount, phone, email, description }) {
 
   const payload = {
     id: txRef,
-    currency: 'KES',
-    amount: Math.round(amount),
+    currency: 'USD',
+    amount: Math.round(amount * 100) / 100,
     description: description || `Pay ${getBusinessName()}`,
     callback_url: getCallbackUrl(),
     redirect_mode: 'TOP',
@@ -175,7 +175,7 @@ async function submitOrder({ txRef, amount, phone, email, description }) {
     },
   };
 
-  console.log(`[Pay/PesaPal] 📤 SubmitOrder → ${phoneFormatted} KES ${amount} ref=${txRef}`);
+  console.log(`[Pay/PesaPal] 📤 SubmitOrder → ${phoneFormatted} $${amount} ref=${txRef}`);
 
   const res = await fetch(`${getPesapalBase()}/api/Orders/SubmitOrderRequest`, {
     method: 'POST',
@@ -247,13 +247,13 @@ async function handleInitialize(req, res) {
       instructions: {
         mpesa_number: cfg('PAYMENT_MPESA_NUMBER', '0757011200'),
         amount: amount,
-        currency: 'KES',
+        currency: 'USD',
         reference: txRef,
         business_name: getBusinessName(),
         steps: [
           `Open M-Pesa → Lipa na M-Pesa → Pay Bill`,
           `Business Number: ${cfg('PAYMENT_MPESA_NUMBER', '0757011200')}`,
-          `Amount: KES ${amount.toLocaleString()}`,
+          `Amount: $${amount.toLocaleString()}`,
           `Reference: ${txRef}`,
           `Confirm with PIN`,
           `Enter the SMS confirmation code below`,
@@ -317,13 +317,13 @@ async function handleInitialize(req, res) {
         instructions: {
           mpesa_number: cfg('PAYMENT_MPESA_NUMBER', '0757011200'),
           amount: amount,
-          currency: 'KES',
+          currency: 'USD',
           reference: txRef,
           business_name: getBusinessName(),
           steps: [
             `Open M-Pesa → Lipa na M-Pesa → Pay Bill`,
             `Business Number: ${cfg('PAYMENT_MPESA_NUMBER', '0757011200')}`,
-            `Amount: KES ${amount.toLocaleString()}`,
+            `Amount: $${amount.toLocaleString()}`,
             `Reference: ${txRef}`,
             `Confirm with PIN`,
             `Enter the SMS confirmation code below`,
@@ -343,13 +343,13 @@ async function handleInitialize(req, res) {
       instructions: {
         mpesa_number: cfg('PAYMENT_MPESA_NUMBER', '0757011200'),
         amount: amount,
-        currency: 'KES',
+        currency: 'USD',
         reference: txRef,
         business_name: getBusinessName(),
         steps: [
           `Open M-Pesa → Lipa na M-Pesa → Pay Bill`,
           `Business Number: ${cfg('PAYMENT_MPESA_NUMBER', '0757011200')}`,
-          `Amount: KES ${amount.toLocaleString()}`,
+          `Amount: $${amount.toLocaleString()}`,
           `Reference: ${txRef}`,
           `Confirm with PIN`,
           `Enter the SMS confirmation code below`,

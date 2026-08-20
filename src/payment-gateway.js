@@ -4,7 +4,7 @@
 const API_BASE = window.GLITCHIT_API_BASE || '';
 const PESAPAL_MONTHLY_URL = 'https://store.pesapal.com/monthlypayment';
 
-function formatAmount(amount, currency = 'KES') {
+function formatAmount(amount, currency = 'USD') {
   return `${currency} ${Number(amount).toLocaleString()}`;
 }
 
@@ -41,7 +41,7 @@ function ensureOverlay() {
         <div class="pg-merchant-desc" id="pg-merchant-desc"></div>
       </div>
       <div class="pg-amount-display">
-        <div class="pg-currency" id="pg-currency-label">KES</div>
+        <div class="pg-currency" id="pg-currency-label">$</div>
         <div class="pg-total" id="pg-total-amount">0</div>
       </div>
 
@@ -82,7 +82,7 @@ function ensureOverlay() {
         </div>
         <div class="pg-info-box" style="text-align:center;">
           <strong>Pay from GlitchIt Wallet</strong><br>
-          Balance: <strong id="pg-wallet-bal">KES 0</strong>
+          Balance: <strong id="pg-wallet-bal">$0</strong>
         </div>
         <button type="button" class="pg-pay-btn" id="pg-pay-btn">
           <span class="pg-pay-btn-text">Pay from Wallet</span>
@@ -236,7 +236,7 @@ async function handleWalletPay() {
 
     const txRef = currentOptions?.api_ref || generateTxRef();
     processWalletPayment(txRef);
-    showSuccess({ ref: txRef, msg: `KES ${amount.toLocaleString()} paid from wallet.` });
+    showSuccess({ ref: txRef, msg: `$${amount.toLocaleString()} paid from wallet.` });
 
     isProcessing = false;
     if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
@@ -329,8 +329,8 @@ export function checkout(opts) {
     const amount = Number(opts.amount) || 0;
     overlay.querySelector('#pg-merchant-name').textContent = opts.title || 'GlitchIt';
     overlay.querySelector('#pg-merchant-desc').textContent = opts.description || '';
-    overlay.querySelector('#pg-currency-label').textContent = opts.currency || 'KES';
-    overlay.querySelector('#pg-total-amount').textContent = formatAmount(amount, opts.currency || 'KES');
+    overlay.querySelector('#pg-currency-label').textContent = opts.currency === 'KES' ? 'KES' : '$';
+    overlay.querySelector('#pg-total-amount').textContent = formatAmount(amount, opts.currency || 'USD');
 
     // Show wallet tab if user has enough balance
     const walletBal = window.GlitchItWallet ? window.GlitchItWallet.getBalance() : 0;
@@ -339,7 +339,7 @@ export function checkout(opts) {
     const walletBalEl = overlay.querySelector('#pg-wallet-bal');
 
     if (walletForm) walletForm.style.display = '';
-    if (walletBalEl) walletBalEl.textContent = formatAmount(walletBal, 'KES');
+    if (walletBalEl) walletBalEl.textContent = formatAmount(walletBal, 'USD');
 
     // Always start with buyer details form
     const details = overlay.querySelector('#pg-buyer-details');
