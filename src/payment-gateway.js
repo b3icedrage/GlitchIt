@@ -158,7 +158,7 @@ function fieldError(id, msg) {
   toast('⚠', msg);
 }
 
-function showPaymentMethods() {
+async function showPaymentMethods() {
   const details = overlay.querySelector('#pg-buyer-details');
   const walletForm = overlay.querySelector('#pg-form-wallet');
   if (details) details.style.display = 'none';
@@ -169,10 +169,18 @@ function showPaymentMethods() {
   if (walletBal >= amount && walletForm) {
     walletForm.style.display = '';
   } else {
-    // Redirect to external PesaPal store link
-    const url = 'https://store.pesapal.com/monthlyverification';
-    window.open(url, '_blank', 'noopener');
-    close();
+    // Redirect to PesaPal subscription URL directly
+    // Using the user's monthly subscription link
+    const pesapalUrl = 'https://store.pesapal.com/monthlyverification';
+    
+    // Store payment details for status checking
+    const txRef = currentOptions?.api_ref || generateTxRef();
+    localStorage.setItem('pesapal_pending_tx', txRef);
+    localStorage.setItem('pesapal_payment_amount', amount);
+    localStorage.setItem('pesapal_payment_title', currentOptions?.title || 'Premium');
+    
+    // Redirect to PesaPal hosted payment page
+    window.location.href = pesapalUrl;
   }
 }
 
@@ -329,8 +337,101 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', injectStyles, { once: true });
 } else { injectStyles(); }
 
-export { checkout as glitchitCheckout, formatAmount, generateTxRef };
+// ─── Payment Status Checker (runs on page load) ─────────────────────
+// Checks if user returned from PesaPal and handles success/cancellation
+async function checkPaymentStatus() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const paymentStatus = urlParams.get('payment_status');
+  const pendingTx = localStorage.getItem('pesapal_pending_tx');
+
+  if (!paymentStatus || !pendingTx) return;
+
+  // Clean up URL
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  // Check transaction status with backend
+  try {
+    const response = await fetch(`${API_BASE}/api/gateway/v1/pesapal/status/${pendingTx}`);
+    const data = await response.json();
+
+    if (data.success && data.data) {
+      const status = data.data.status || data.data.payment_status;
+
+      if (status === 'COMPLETED' || status === 'VERIFIED') {
+        // Payment successful — give blue badge
+        giveBlueBadge();
+        localStorage.removeItem('pesapal_pending_tx');
+        showToast('✅', 'Payment successful! You now have a verified badge.');
+      } else if (status === 'FAILED' || status === 'CANCELLED' || status === 'REJECTED') {
+        // Payment cancelled or failed — no badge
+        localStorage.removeItem('pesapal_pending_tx');
+        showToast('❌', 'Payment was cancelled or failed.');
+      } else {
+        // Still pending — check again in 2 seconds
+        setTimeout(checkPaymentStatus, 2000);
+        return;
+      }
+    }
+  } catch (err) {
+    console.error('[PesaPal] Status check failed:', err);
+    localStorage.removeItem('pesapal_pending_tx');
+  }
+}
+
+// ─── Blue Badge System ──────────────────────────────────────────────
+function giveBlueBadge() {
+  const user = window.GLITCHIT_USER;
+  if (!user || !user.id) return;
+
+  // Store badge in localStorage
+  const badgeKey = `glitchit.badge.${user.id}`;
+  localStorage.setItem(badgeKey, JSON.stringify({
+    type: 'verified',
+    color: 'blue',
+    granted_at: new Date().toISOString(),
+    reason: 'payment_verified'
+  }));
+
+  // Add badge element to profile if visible
+  const nameEl = document.querySelector('[data-stat="username"], .profile-name, #profile-name');
+  if (nameEl && !nameEl.querySelector('.blue-badge')) {
+    const badge = document.createElement('span');
+    badge.className = 'blue-badge';
+    badge.innerHTML = '✓';
+    badge.title = 'Verified Account';
+    badge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#0095f6;color:#fff;font-size:11px;margin-left:6px;vertical-align:middle;';
+    nameEl.appendChild(badge);
+  }
+
+  // Dispatch event for other modules
+  document.dispatchEvent(new CustomEvent('user-badge-granted', { detail: { type: 'blue' } }));
+}
+
+function hasBlueBadge() {
+  const user = window.GLITCHIT_USER;
+  if (!user || !user.id) return false;
+  const badgeKey = `glitchit.badge.${user.id}`;
+  const badge = localStorage.getItem(badgeKey);
+  return badge !== null;
+}
+
+function showToast(mark, text) {
+  const tip = document.createElement('div');
+  tip.className = 'end-toast show';
+  tip.innerHTML = `<span class="end-toast-mark">${mark}</span><span class="end-toast-text">${text}</span>`;
+  document.body.appendChild(tip);
+  setTimeout(() => tip.remove(), 3000);
+}
+
+// Run on page load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', checkPaymentStatus, { once: true });
+} else {
+  checkPaymentStatus();
+}
+
+export { checkout as glitchitCheckout, formatAmount, generateTxRef, giveBlueBadge, hasBlueBadge };
 
 try {
-  window.GlitchItPaymentGateway = { checkout, glitchitCheckout: checkout, formatAmount, generateTxRef };
+  window.GlitchItPaymentGateway = { checkout, glitchitCheckout: checkout, formatAmount, generateTxRef, giveBlueBadge, hasBlueBadge };
 } catch(e) {}

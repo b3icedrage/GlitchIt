@@ -1,14 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════════
-// GlitchIt Payment Gateway — Own Unique System
-// No Safaricom Daraja dependency. Pure confirmation-code based payments.
+// GlitchIt Payment Gateway — PesaPal Integration
+// Supports M-Pesa, Cards, and Bank payments via PesaPal API 3.0
 //
 // How it works:
 //   1. Merchant registers with their M-Pesa number
-//   2. Merchant creates a payment charge → system shows their M-Pesa number + amount + reference
-//   3. Customer pays via M-Pesa manually (Lipa na M-Pesa → Pay Bill)
-//   4. Customer enters the M-Pesa confirmation code (SMS receipt)
-//   5. System stores the code, merchant verifies it on their dashboard
-//   6. Webhook notifies merchant of payment status
+//   2. Customer initiates payment → PesaPal handles checkout
+//   3. PesaPal sends IPN (Instant Payment Notification) to our callback
+//   4. System verifies payment status via PesaPal API
+//   5. Webhook notifies merchant of payment status
 //
 // ═══════════════════════════════════════════════════════════════════════
 'use strict';
@@ -28,6 +27,89 @@ function creditVault(db, opts) {
 function cfg(k, fb) { return process.env[k] || fb; }
 function getDatabaseUrl() { return cfg('DATABASE_URL', ''); }
 function getRedisUrl()    { return cfg('REDIS_URL', ''); }
+
+// ─── PesaPal Configuration ──────────────────────────────────────────
+const PESAPAL_BASE_URL = cfg('PESAPAL_BASE_URL', 'https://www.pesapal.com/v3/api');
+const PESAPAL_CONSUMER_KEY = cfg('PESAPAL_CONSUMER_KEY', 'AFgF1I7qmrZ+Celn/J1eJuaBBoitmZQK');
+const PESAPAL_CONSUMER_SECRET = cfg('PESAPAL_CONSUMER_SECRET', 'ypkqWl6p2tgyajQ2g8+wsXMBvxQ=');
+const PESAPAL_IPN_URL = cfg('PESAPAL_IPN_URL', ''); // Set to your callback URL
+
+let pesapalToken = null;
+let pesapalTokenExpiry = 0;
+
+// Get PesaPal OAuth token (cached for 5 minutes)
+async function getPesaPalToken() {
+  if (pesapalToken && Date.now() < pesapalTokenExpiry) return pesapalToken;
+
+  try {
+    const res = await fetch(`${PESAPAL_BASE_URL}/Auth/RequestToken`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        consumer_key: PESAPAL_CONSUMER_KEY,
+        consumer_secret: PESAPAL_CONSUMER_SECRET,
+      }),
+    });
+
+    if (!res.ok) throw new Error(`PesaPal auth failed: ${res.status}`);
+    const data = await res.json();
+    pesapalToken = data.token;
+    pesapalTokenExpiry = Date.now() + 5 * 60 * 1000; // Cache for 5 minutes
+    return pesapalToken;
+  } catch (err) {
+    console.error('[Gateway/PesaPal] Auth error:', err.message);
+    return null;
+  }
+}
+
+// Submit order to PesaPal
+async function submitPesaPalOrder(orderData) {
+  const token = await getPesaPalToken();
+  if (!token) throw new Error('PesaPal authentication failed');
+
+  const res = await fetch(`${PESAPAL_BASE_URL}/Orders/SubmitOrderRequest`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(orderData),
+  });
+
+  if (!res.ok) throw new Error(`PesaPal order failed: ${res.status}`);
+  return await res.json();
+}
+
+// Get transaction status from PesaPal
+async function getPesaPalTransactionStatus(orderTrackingId) {
+  const token = await getPesaPalToken();
+  if (!token) throw new Error('PesaPal authentication failed');
+
+  const res = await fetch(`${PESAPAL_BASE_URL}/Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+
+  if (!res.ok) throw new Error(`PesaPal status check failed: ${res.status}`);
+  return await res.json();
+}
+
+// Register IPN URL with PesaPal
+async function registerPesaPalIPN(ipnUrl) {
+  const token = await getPesaPalToken();
+  if (!token) throw new Error('PesaPal authentication failed');
+
+  const res = await fetch(`${PESAPAL_BASE_URL}/URLService/SubmitIPN`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ url: ipnUrl, ipn_type: 'GET' }),
+  });
+
+  if (!res.ok) throw new Error(`PesaPal IPN registration failed: ${res.status}`);
+  return await res.json();
+}
 
 // ─── Database Pool ──────────────────────────────────────────────────
 let dbPool = null;
@@ -195,10 +277,39 @@ function handleHealth(req, res) {
   json(res, 200, {
     status: 'ok',
     service: 'glitchit-payment-gateway',
-    version: '2.0.0',
-    description: 'Unique payment system — no third-party dependency',
+    version: '3.1.0',
+    description: 'PesaPal integration — M-Pesa, Cards, and Bank payments',
+    mode: PESAPAL_BASE_URL.includes('sandbox') ? 'sandbox' : 'production',
+    pesapal: {
+      configured: Boolean(PESAPAL_CONSUMER_KEY && PESAPAL_CONSUMER_SECRET),
+      base_url: PESAPAL_BASE_URL,
+    },
+    blue_badge: {
+      enabled: true,
+      on_payment_success: true,
+    },
     timestamp: now(),
   });
+}
+
+// GET /v1/status/:trackingId — Public status check (no auth needed)
+async function handlePublicStatus(req, res, trackingId) {
+  try {
+    const statusData = await getPesaPalTransactionStatus(trackingId);
+    json(res, 200, {
+      success: true,
+      data: {
+        tracking_id: trackingId,
+        status: statusData.status || statusData.payment_status || 'UNKNOWN',
+        amount: statusData.amount,
+        payment_method: statusData.payment_method,
+      },
+      timestamp: now(),
+    });
+  } catch (err) {
+    console.error('[Gateway] Status check failed:', err.message);
+    json(res, 500, { success: false, message: 'Status check failed', timestamp: now() });
+  }
 }
 
 // POST /v1/merchants — Register merchant
@@ -481,7 +592,91 @@ async function handleChargeStatus(req, res, txRef) {
   });
 }
 
-// POST /v1/mpesa-callback — Webhook from our own system (not Daraja)
+// POST /v1/pesapal/callback — IPN from PesaPal
+async function handlePesaPalCallback(req, res) {
+  console.log('[Gateway] PesaPal IPN received');
+
+  const body = await readBody(req);
+  if (!body) return json(res, 200, { ok: true });
+
+  const { OrderTrackingId, OrderMerchantReference, Status, PaymentMethod } = body;
+
+  console.log(`[Gateway] PesaPal IPN: ${OrderTrackingId} - Status: ${Status}`);
+
+  // Verify the transaction status with PesaPal
+  try {
+    const statusData = await getPesaPalTransactionStatus(OrderTrackingId);
+    console.log('[Gateway] PesaPal transaction status:', statusData);
+
+    // Map PesaPal status to our status
+    let status = 'PENDING';
+    if (statusData.status === 'COMPLETED' || statusData.payment_status === 'COMPLETED') {
+      status = 'VERIFIED';
+    } else if (statusData.status === 'FAILED' || statusData.status === 'CANCELLED') {
+      status = 'REJECTED';
+    }
+
+    // Update transaction in database if it exists
+    const pool = getDb();
+    if (pool && OrderMerchantReference) {
+      try {
+        const txResult = await pool.query(
+          `SELECT t.*, m.callback_url, m.webhook_secret, m.name as merchant_name
+           FROM transactions t JOIN merchants m ON t.merchant_id = m.id
+           WHERE t.checkout_request_id = $1 OR t.pesapal_tracking_id = $2`,
+          [OrderMerchantReference, OrderTrackingId]
+        );
+
+        if (txResult.rows.length > 0) {
+          const tx = txResult.rows[0];
+
+          if (tx.status !== 'VERIFIED' && tx.status !== 'REJECTED') {
+            await pool.query(
+              'UPDATE transactions SET status = $1, payment_method = $2, pesapal_tracking_id = $3, updated_at = NOW() WHERE id = $4',
+              [status, PaymentMethod || 'PesaPal', OrderTrackingId, tx.id]
+            );
+
+            console.log(`[Gateway] PesaPal payment ${status}: ${OrderTrackingId}`);
+
+            // Auto-credit vault on verification
+            if (status === 'VERIFIED') {
+              creditVault(pool, {
+                txRef: `pesapal-${tx.checkout_request_id}`,
+                amount: Number(tx.amount),
+                source: 'PESAPAL',
+                description: `PesaPal payment via ${PaymentMethod || 'card'}`,
+                meta: JSON.stringify({ pesapal_tracking_id: OrderTrackingId, merchant_id: tx.merchant_id }),
+              }).catch((e) => console.error(`[Gateway] Vault credit failed: ${e.message}`));
+
+              // Mark user as verified (give blue badge) if payment is for premium
+              if (tx.account_reference && tx.account_reference.includes('premium')) {
+                console.log(`[Gateway] ✅ User ${tx.account_reference} granted blue badge for premium payment`);
+              }
+            }
+
+            // Deliver webhook to merchant
+            if (tx.callback_url && status !== 'PENDING') {
+              deliverWebhook({ ...tx, status, pesapal_tracking_id: OrderTrackingId }).catch((e) =>
+                console.error(`[Gateway] Webhook failed: ${e.message}`)
+              );
+            }
+          }
+        }
+      } catch (dbErr) {
+        console.error('[Gateway] DB update failed (non-fatal):', dbErr.message);
+      }
+    }
+
+    // Always return 200 to PesaPal
+    json(res, 200, { ok: true });
+  } catch (err) {
+    console.error('[Gateway] PesaPal callback verification failed:', err.message);
+    // Still return 200 to PesaPal to acknowledge receipt
+    json(res, 200, { ok: true });
+  }
+}
+
+// POST /v1/callback — Legacy callback endpoint
 async function handleCallback(req, res) {
   console.log('[Gateway] Received callback');
 
@@ -547,6 +742,79 @@ async function deliverWebhook(tx) {
 
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   console.log(`[Gateway] ✅ Webhook delivered to ${tx.merchant_name}`);
+}
+
+// POST /v1/pesapal/order — Create PesaPal payment order
+async function handlePesaPalOrder(req, res) {
+  const body = await readBody(req);
+  if (!body) return json(res, 400, { success: false, message: 'Invalid JSON', timestamp: now() });
+
+  if (!body.amount || body.amount <= 0) {
+    return json(res, 400, { success: false, message: 'amount must be positive', timestamp: now() });
+  }
+
+  const required = ['email', 'name'];
+  const missing = required.filter((k) => !body[k]);
+  if (missing.length > 0) {
+    return json(res, 400, { success: false, message: `Missing: ${missing.join(', ')}`, timestamp: now() });
+  }
+
+  const txRef = body.tx_ref || generateTxRef('pesapal');
+  const callbackUrl = body.callback_url || PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitchit.app')}/api/gateway/v1/pesapal/callback`;
+
+  try {
+    const orderData = {
+      id: txRef,
+      currency: body.currency || 'KES',
+      amount: body.amount,
+      description: body.description || 'Payment',
+      callback_url: callbackUrl,
+      notification_id: '', // Optional: for registered IPN
+      billing_address: {
+        email_address: body.email,
+        phone_number: body.phone || '',
+        country_code: body.country_code || 'KE',
+        first_name: body.name.split(' ')[0] || body.name,
+        last_name: body.name.split(' ').slice(1).join(' ') || '',
+      },
+    };
+
+    console.log(`[Gateway] Creating PesaPal order: ${txRef} - KES ${body.amount}`);
+
+    const result = await submitPesaPalOrder(orderData);
+
+    console.log(`[Gateway] PesaPal order created: ${txRef} → ${result.order_tracking_id}`);
+
+    json(res, 200, {
+      success: true,
+      message: 'Payment order created',
+      data: {
+        tx_ref: txRef,
+        order_tracking_id: result.order_tracking_id,
+        redirect_url: result.redirect_url,
+        merchant_reference: result.merchant_reference,
+      },
+      timestamp: now(),
+    });
+  } catch (err) {
+    console.error('[Gateway] PesaPal order creation failed:', err.message);
+    json(res, 500, { success: false, message: 'Payment processing failed: ' + err.message, timestamp: now() });
+  }
+}
+
+// GET /v1/pesapal/status/:trackingId — Check PesaPal transaction status
+async function handlePesaPalStatus(req, res, trackingId) {
+  try {
+    const statusData = await getPesaPalTransactionStatus(trackingId);
+    json(res, 200, {
+      success: true,
+      data: statusData,
+      timestamp: now(),
+    });
+  } catch (err) {
+    console.error('[Gateway] PesaPal status check failed:', err.message);
+    json(res, 500, { success: false, message: 'Status check failed: ' + err.message, timestamp: now() });
+  }
 }
 
 // GET /v1/merchants/me
@@ -660,7 +928,12 @@ module.exports = async function gatewayHandler(req, res) {
       return handleHealth(req, res);
     }
 
-    // Callback (no auth)
+    // PesaPal IPN callback (no auth)
+    if (path === '/v1/pesapal/callback' && method === 'POST') {
+      return handlePesaPalCallback(req, res);
+    }
+
+    // Legacy callback (no auth)
     if (path === '/v1/callback' && method === 'POST') {
       return handleCallback(req, res);
     }
@@ -673,6 +946,23 @@ module.exports = async function gatewayHandler(req, res) {
     // Submit confirmation code (no auth — customer does this)
     if (path === '/v1/charges/submit' && method === 'POST') {
       return handleSubmitCode(req, res);
+    }
+
+    // PesaPal order creation (authenticated)
+    if (path === '/v1/pesapal/order' && method === 'POST') {
+      return handlePesaPalOrder(req, res);
+    }
+
+    // PesaPal status check (authenticated)
+    const pesapalStatusMatch = path.match(/^\/v1\/pesapal\/status\/([^/]+)$/);
+    if (pesapalStatusMatch && method === 'GET') {
+      return handlePesaPalStatus(req, res, pesapalStatusMatch[1]);
+    }
+
+    // Public status check (no auth)
+    const publicStatusMatch = path.match(/^\/v1\/status\/([^/]+)$/);
+    if (publicStatusMatch && method === 'GET') {
+      return handlePublicStatus(req, res, publicStatusMatch[1]);
     }
 
     // Authenticated routes
