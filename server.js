@@ -556,8 +556,8 @@ res.writeHead = function (status, headers) {
     await settlementHandler(req, res);
     return;
   }
-  // White-label M-Pesa Express Gateway: all /v1/* routes
-  if (v1Path.startsWith('/v1/')) {
+  // White-label M-Pesa Express Gateway: all /v1/* routes + /api/gateway/v1/* routes
+  if (v1Path.startsWith('/v1/') || v1Path.startsWith('/api/gateway/v1/')) {
     await gatewayHandler(req, res);
     return;
   }

@@ -29,20 +29,44 @@ function getDatabaseUrl() { return cfg('DATABASE_URL', ''); }
 function getRedisUrl()    { return cfg('REDIS_URL', ''); }
 
 // ─── PesaPal Configuration ──────────────────────────────────────────
-const PESAPAL_BASE_URL = cfg('PESAPAL_BASE_URL', 'https://www.pesapal.com/v3/api');
+const PESAPAL_BASE_URL = cfg('PESAPAL_BASE_URL', 'https://pay.pesapal.com/v3');
 const PESAPAL_CONSUMER_KEY = cfg('PESAPAL_CONSUMER_KEY', 'AFgF1I7qmrZ+Celn/J1eJuaBBoitmZQK');
 const PESAPAL_CONSUMER_SECRET = cfg('PESAPAL_CONSUMER_SECRET', 'ypkqWl6p2tgyajQ2g8+wsXMBvxQ=');
 const PESAPAL_IPN_URL = cfg('PESAPAL_IPN_URL', ''); // Set to your callback URL
 
 let pesapalToken = null;
 let pesapalTokenExpiry = 0;
+let pesapalIpnId = null;
+
+// Register IPN URL with PesaPal and cache the notification_id
+async function getIpnNotificationId() {
+  if (pesapalIpnId) return pesapalIpnId;
+  const token = await getPesaPalToken();
+  if (!token) return null;
+  const ipnUrl = PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitchit.app')}/api/gateway/v1/pesapal/callback`;
+  try {  const res = await fetch(`${PESAPAL_BASE_URL}/api/URLSetup/RegisterIPN`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ url: ipnUrl, ipn_notification_type: 'POST' }),
+    });
+    if (!res.ok) throw new Error(`IPN registration failed: ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || 'IPN registration failed');
+    pesapalIpnId = data.ipn_id || data.id || null;
+    console.log(`[Gateway] IPN registered: ${ipnUrl} → ID: ${pesapalIpnId}`);
+    return pesapalIpnId;
+  } catch (err) {
+    console.error('[Gateway] IPN registration error:', err.message);
+    return null;
+  }
+}
 
 // Get PesaPal OAuth token (cached for 5 minutes)
 async function getPesaPalToken() {
   if (pesapalToken && Date.now() < pesapalTokenExpiry) return pesapalToken;
 
   try {
-    const res = await fetch(`${PESAPAL_BASE_URL}/Auth/RequestToken`, {
+    const res = await fetch(`${PESAPAL_BASE_URL}/api/Auth/RequestToken`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -55,6 +79,7 @@ async function getPesaPalToken() {
     const data = await res.json();
     pesapalToken = data.token;
     pesapalTokenExpiry = Date.now() + 5 * 60 * 1000; // Cache for 5 minutes
+    console.log('[Gateway/PesaPal] ✅ Authenticated successfully');
     return pesapalToken;
   } catch (err) {
     console.error('[Gateway/PesaPal] Auth error:', err.message);
@@ -67,7 +92,7 @@ async function submitPesaPalOrder(orderData) {
   const token = await getPesaPalToken();
   if (!token) throw new Error('PesaPal authentication failed');
 
-  const res = await fetch(`${PESAPAL_BASE_URL}/Orders/SubmitOrderRequest`, {
+  const res = await fetch(`${PESAPAL_BASE_URL}/api/Transactions/SubmitOrderRequest`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -77,7 +102,9 @@ async function submitPesaPalOrder(orderData) {
   });
 
   if (!res.ok) throw new Error(`PesaPal order failed: ${res.status}`);
-  return await res.json();
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || data.error.code || 'PesaPal order creation failed');
+  return data;
 }
 
 // Get transaction status from PesaPal
@@ -85,7 +112,7 @@ async function getPesaPalTransactionStatus(orderTrackingId) {
   const token = await getPesaPalToken();
   if (!token) throw new Error('PesaPal authentication failed');
 
-  const res = await fetch(`${PESAPAL_BASE_URL}/Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`, {
+  const res = await fetch(`${PESAPAL_BASE_URL}/api/Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`, {
     headers: { 'Authorization': `Bearer ${token}` },
   });
 
@@ -98,13 +125,13 @@ async function registerPesaPalIPN(ipnUrl) {
   const token = await getPesaPalToken();
   if (!token) throw new Error('PesaPal authentication failed');
 
-  const res = await fetch(`${PESAPAL_BASE_URL}/URLService/SubmitIPN`, {
+  const res = await fetch(`${PESAPAL_BASE_URL}/api/URLSetup/RegisterIPN`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
     },
-    body: JSON.stringify({ url: ipnUrl, ipn_type: 'GET' }),
+    body: JSON.stringify({ url: ipnUrl, ipn_notification_type: 'POST' }),
   });
 
   if (!res.ok) throw new Error(`PesaPal IPN registration failed: ${res.status}`);
@@ -790,13 +817,16 @@ async function handlePay(req, res) {
   const description = body.description || 'GlitchIt Payment';
   const callbackUrl = body.callback_url || PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitchit.app')}/api/gateway/v1/pesapal/callback`;
 
+  // Get IPN notification_id (required by PesaPal)
+  const notificationId = await getIpnNotificationId();
+
   const orderData = {
     id: txRef,
     currency: currency,
     amount: amount,
     description: description,
     callback_url: callbackUrl,
-    notification_id: '',
+    notification_id: notificationId || '',
     billing_address: {
       email_address: body.email,
       phone_number: body.phone || '',
@@ -865,13 +895,16 @@ async function handlePesaPalOrder(req, res) {
   const callbackUrl = body.callback_url || PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitchit.app')}/api/gateway/v1/pesapal/callback`;
 
   try {
-    const orderData = {
+    // Get IPN notification_id (required by PesaPal)
+      const notificationId = await getIpnNotificationId();
+
+      const orderData = {
       id: txRef,
       currency: body.currency || 'KES',
       amount: body.amount,
       description: body.description || 'Payment',
       callback_url: callbackUrl,
-      notification_id: '', // Optional: for registered IPN
+      notification_id: notificationId || '',
       billing_address: {
         email_address: body.email,
         phone_number: body.phone || '',
@@ -1035,7 +1068,7 @@ async function handlePesaPalIPNList(req, res) {
     const token = await getPesaPalToken();
     if (!token) throw new Error('PesaPal authentication failed');
 
-    const response = await fetch(`${PESAPAL_BASE_URL}/URLService/GetIPNList`, {
+    const response = await fetch(`${PESAPAL_BASE_URL}/api/URLSetup/GetIPNList`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
 
@@ -1059,7 +1092,9 @@ async function handlePesaPalIPNList(req, res) {
 
 module.exports = async function gatewayHandler(req, res) {
   const url = new URL(req.url, 'http://glitchit.local');
-  const path = url.pathname;
+  let path = url.pathname;
+  // Strip /api/gateway prefix if present (frontend calls /api/gateway/v1/pay)
+  if (path.startsWith('/api/gateway')) path = path.slice('/api/gateway'.length) || '/';
   const method = req.method;
 
   try {
