@@ -4,6 +4,8 @@
   "cleanUrls": false,
   "trailingSlash": false,
   "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "buildCommand": "node build.js",
   "headers": [
     {
       "source": "/sw.js",
@@ -15,6 +17,9 @@
     }
   ],
   "routes": [
+    { "src": "/api/gateway/(.*)", "dest": "/api/gateway.js" },
+    { "src": "/api/payment/(.*)", "dest": "/api/payment.js" },
+    { "src": "/v1/(.*)", "dest": "/api/gateway.js" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*)", "dest": "/$1" }
   ]
