@@ -2965,6 +2965,7 @@ function runPage() {
 // ---------- Supabase auth bootstrap ----------
 const GUEST_KEY = 'glitchit.auth.guest.v1'; // guest browsing flag
 const ACCOUNT_PAGES = ['messages', 'chat', 'profile', 'shop'];
+const PUBLIC_PAGES = ['auth', 'about', 'terms', 'privacy'];
 
 // Interactions guests cannot perform on browsable pages.
 const GUEST_GATED_SELECTOR = [
@@ -3441,6 +3442,10 @@ async function boot() {
         return;
       }
     }
+  } else if (!isAuthPage && !PUBLIC_PAGES.includes(page)) {
+    // Auth module failed to load (CDN blocked, network, etc.) — force login.
+    location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
+    return;
   }
   // Sync profile.avatar from the signed-in user (localStorage override +
   // account metadata) before any page hydrates, so the story shelf, upload
