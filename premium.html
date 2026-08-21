@@ -95,29 +95,18 @@
         </section>
 
         <section class="prem-plans" aria-label="Pricing">
-          <div class="prem-plan">
-            <h3>Monthly</h3>
+          <div class="prem-plan popular">
+            <span class="pop-tag">Monthly</span>
+            <h3>Premium</h3>
             <div class="price">$4.99<small>/mo</small></div>
             <ul>
+              <li><i>✓</i>Blue verified badge on your profile</li>
               <li><i>✓</i>All Premium benefits</li>
               <li><i>✓</i>Cancel anytime</li>
               <li><i>✓</i>No ads, everywhere</li>
             </ul>
             <button type="button" class="prem-cta" data-plan="monthly">Get Premium</button>
             <button type="button" class="prem-cta pay-wallet-btn" data-plan="monthly" style="margin-top:8px;background:linear-gradient(135deg,#00c853,#00e676);">Pay with Wallet</button>
-          </div>
-          <div class="prem-plan popular">
-            <span class="pop-tag">Best value</span>
-            <h3>Yearly</h3>
-            <div class="price">$39.99<small>/yr</small></div>
-            <span class="save">Save 33%</span>
-            <ul>
-              <li><i>✓</i>All Premium benefits</li>
-              <li><i>✓</i>2 months free vs monthly</li>
-              <li><i>✓</i>Priority support first</li>
-            </ul>
-            <button type="button" class="prem-cta" data-plan="yearly">Get Premium</button>
-            <button type="button" class="prem-cta pay-wallet-btn" data-plan="yearly" style="margin-top:8px;background:linear-gradient(135deg,#00c853,#00e676);">Pay with Wallet</button>
           </div>
         </section>
 
@@ -135,12 +124,6 @@
     </main>
     <script type="module">
       const PESAPAL_MONTHLY_URL = 'https://store.pesapal.com/monthlyverification';
-      const PESAPAL_YEARLY_URL = 'https://store.pesapal.com/yearlypayment';
-
-      const PLANS = {
-        monthly: { amount: 4.99, label: 'GlitchIt Premium — Monthly ($4.99)' },
-        yearly: { amount: 39.99, label: 'GlitchIt Premium — Yearly ($39.99)' },
-      };
 
       const toast = document.getElementById('prem-toast');
       let timer = null;
@@ -153,13 +136,9 @@
         timer = setTimeout(function () { toast.classList.remove('show'); }, 6000);
       }
 
-      // "Get Premium" buttons → open PesaPal store link directly
-      document.querySelectorAll('.prem-cta:not(.pay-wallet-btn)').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var plan = btn.dataset.plan === 'yearly' ? 'yearly' : 'monthly';
-          var url = plan === 'yearly' ? PESAPAL_YEARLY_URL : PESAPAL_MONTHLY_URL;
-          window.open(url, '_blank', 'noopener');
-        });
+      // "Get Premium" button → open PesaPal store link directly
+      document.querySelector('.prem-cta:not(.pay-wallet-btn)').addEventListener('click', function () {
+        window.open(PESAPAL_MONTHLY_URL, '_blank', 'noopener');
       });
 
       
@@ -178,6 +157,8 @@
           var result = window.GlitchItWallet.payPremium(plan);
           if (result && result.ok) {
             show("You're Premium! 🎉 Paid from wallet.");
+            // Redirect to home with verified badge after short delay
+            setTimeout(function() { location.href = 'index.html?verified=1'; }, 1500);
           } else if (result && result.error === 'Insufficient balance') {
             show('Insufficient wallet balance — deposit first at wallet.html');
           } else {

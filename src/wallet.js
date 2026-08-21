@@ -185,7 +185,7 @@ export function payDrop(dropId, dropName, sellerName, amount) {
 export function payPremium(plan) {
   const user = getUser();
   if (!user) { toast('⚠', 'Sign in to upgrade.'); return { ok: false, error: 'not signed in' }; }
-  const amt = plan === 'yearly' ? 39.99 : 4.99;
+  const amt = 4.99; // monthly only
   if (amt > getBalance(user.id)) return { ok: false, error: 'Insufficient balance' };
 
   const bal = getBalance(user.id);
@@ -194,13 +194,40 @@ export function payPremium(plan) {
   addTransaction(user.id, {
     type: 'purchase',
     amount: -amt,
-    note: `GlitchIt Premium (${plan})`,
-    ref: `premium-${plan}`,
+    note: 'GlitchIt Premium (Monthly)',
+    ref: 'premium-monthly-' + Date.now(),
   });
 
-  toast('✓', `You're Premium! 🎉`);
-  emitEvent('wallet-premium', { plan });
+  // Store premium status with 30-day expiry from now
+  const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+  try {
+    const premKey = 'glitchit.premium.' + user.id;
+    localStorage.setItem(premKey, JSON.stringify({ plan: 'monthly', activatedAt: Date.now(), expiresAt }));
+  } catch (e) { /* ignore */ }
+
+  toast('✓', 'You\u2019re Premium! 🎉');
+  emitEvent('wallet-premium', { plan: 'monthly' });
   return { ok: true, balance: getBalance(user.id) };
+}
+
+/** Check if premium is currently active for a user */
+export function isPremiumActive(userId) {
+  try {
+    const raw = localStorage.getItem('glitchit.premium.' + userId);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    return data && data.expiresAt && Date.now() < data.expiresAt;
+  } catch (e) { return false; }
+}
+
+/** Get premium expiry date for a user */
+export function getPremiumExpiry(userId) {
+  try {
+    const raw = localStorage.getItem('glitchit.premium.' + userId);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    return data && data.expiresAt ? new Date(data.expiresAt) : null;
+  } catch (e) { return null; }
 }
 
 /** Get current balance */
@@ -251,6 +278,8 @@ try {
     tipCreator,
     payDrop,
     payPremium,
+    isPremiumActive,
+    getPremiumExpiry,
     getBalance: getWalletBalance,
     formatBalance,
     getTransactions: getWalletTransactions,

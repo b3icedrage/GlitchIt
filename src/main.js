@@ -259,27 +259,69 @@ function syncProfileFromUser(user) {
 function applyProfileAvatarUi() {
   const handle = profile.username || 'your account';
   const avatar = profile.avatar || fallbackAvatar(handle);
+  const user = window.GLITCHIT_USER;
+  const userId = user && !user.guest ? user.id : '';
+  // Check if user has active premium (verified badge)
+  let isVerified = false;
+  if (userId) {
+    try {
+      const raw = localStorage.getItem('glitchit.premium.' + userId);
+      if (raw) {
+        const data = JSON.parse(raw);
+        isVerified = data && data.expiresAt && Date.now() < data.expiresAt;
+      }
+    } catch (e) { /* ignore */ }
+  }
+  const boltHtml = isVerified ? verifiedBolt('verified-bolt-inline') : '';
+
   document.querySelectorAll('.me img, .profile-photo-wrap > img, .account-sheet-avatar').forEach((image) => {
     image.src = avatar;
     image.alt = `${handle} profile picture`;
   });
-  document.querySelectorAll('.right-rail .me strong, .me strong').forEach((el) => { el.textContent = handle; });
+  // Add verified badge next to profile pictures if premium is active
+  document.querySelectorAll('.profile-photo-wrap').forEach((wrap) => {
+    const existing = wrap.querySelector('.verified-bolt');
+    if (isVerified && !existing) {
+      const bolt = document.createElement('span');
+      bolt.className = 'verified-bolt verified-bolt-inline';
+      bolt.setAttribute('aria-label', 'GlitchIt Verified');
+      bolt.title = 'GlitchIt Verified';
+      bolt.textContent = '\u26A1';
+      wrap.appendChild(bolt);
+    } else if (!isVerified && existing) {
+      existing.remove();
+    }
+  });
+  document.querySelectorAll('.right-rail .me strong, .me strong').forEach((el) => {
+    el.textContent = handle;
+    if (isVerified) {
+      el.innerHTML = escapeHtml(handle) + boltHtml;
+    }
+  });
   document.querySelectorAll('.right-rail .me span, .me span').forEach((el) => {
     if (!el.textContent.trim() || el.textContent.trim() === 'Build your vibe') {
       el.textContent = window.GLITCHIT_USER?.email || 'GlitchIt creator';
     }
   });
-  document.querySelectorAll('.handle-text').forEach((el) => { el.textContent = handle; });
+  document.querySelectorAll('.handle-text').forEach((el) => {
+    el.textContent = handle;
+    if (isVerified) el.innerHTML = escapeHtml(handle) + boltHtml;
+  });
+  document.querySelectorAll('.profile-name').forEach((el) => {
+    if (isVerified) el.innerHTML = escapeHtml(handle) + boltHtml + ' <span class="pronouns">' + escapeHtml(user?.email || '') + '</span>';
+  });
 
   document.querySelectorAll('a[href="profile.html"]').forEach((link) => {
-    if (!link.closest('.bottom-bar, .ig-bottom-bar, .sidebar nav')) return;
-    const oldIcon = link.querySelector('.icon, svg');
-    if (!oldIcon) return;
-    const image = document.createElement('img');
-    image.className = 'profile-nav-avatar';
-    image.src = avatar;
-    image.alt = `${handle} profile`;
-    oldIcon.replaceWith(image);
+    if (link.closest('.bottom-bar, .ig-bottom-bar, .sidebar nav')) {
+      const oldIcon = link.querySelector('.icon, svg');
+      if (oldIcon) {
+        const image = document.createElement('img');
+        image.className = 'profile-nav-avatar';
+        image.src = avatar;
+        image.alt = `${handle} profile`;
+        oldIcon.replaceWith(image);
+      }
+    }
   });
 }
 
@@ -454,6 +496,17 @@ async function hydrateSearchAccounts() {
         avatar: a.avatar || '',
         verified: false,
       }));
+      // Check if current user has active premium
+      const cu = window.GLITCHIT_USER;
+      if (cu && !cu.guest && cu.id) {
+        try {
+          const pr = localStorage.getItem('glitchit.premium.' + cu.id);
+          if (pr) { const pd = JSON.parse(pr); if (pd && pd.expiresAt && Date.now() < pd.expiresAt) {
+            const me = creators.find((c) => c.id === cu.id);
+            if (me) me.verified = true;
+          }}
+        } catch (e) { /* ignore */ }
+      }
     }
   } catch (err) { /* registry unavailable — fall through to media-derived */ }
   if (!creators.length) creators = DB ? await DB.loadCreators(30) : [];
@@ -3160,14 +3213,21 @@ function attachProfileAuth() {
 
   if (!user || user.guest) return;
   const handle = user.user_metadata?.username || user.email?.split('@')[0] || '';
+  // Check premium status for verified badge
+  let isVerified = false;
+  try {
+    const raw = localStorage.getItem('glitchit.premium.' + user.id);
+    if (raw) { const d = JSON.parse(raw); isVerified = d && d.expiresAt && Date.now() < d.expiresAt; }
+  } catch (e) { /* ignore */ }
+  const bolt = isVerified ? verifiedBolt('verified-bolt-inline') : '';
   const top = document.querySelector('.profile-topbar strong');
-  if (top && handle) top.textContent = handle;
+  if (top && handle) top.innerHTML = escapeHtml(handle) + bolt;
   const nameEl = document.querySelector('.profile-name');
   if (nameEl && handle) {
-    nameEl.innerHTML = `${escapeHtml(handle)} <span class="pronouns">${escapeHtml(user.email || '')}</span>`;
+    nameEl.innerHTML = `${escapeHtml(handle)}${bolt} <span class="pronouns">${escapeHtml(user.email || '')}</span>`;
   }
   const me = document.querySelector('.me strong');
-  if (me && handle) me.textContent = handle;
+  if (me && handle) me.innerHTML = escapeHtml(handle) + bolt;
 }
 
 // ---------- Professional account dashboard ----------
