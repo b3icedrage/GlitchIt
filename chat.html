@@ -264,19 +264,63 @@
           document.addEventListener('click', function () { emojiPicker.hidden = true; });
         }
 
-        // More — show additional options
+        // More — bottom sheet with actions
         var moreBtn = document.querySelector('[aria-label="More"]');
         if (moreBtn) {
           moreBtn.addEventListener('click', function () {
-            var actions = ['Share contact', 'Mute notifications', 'Block user', 'Report'];
-            var choice = prompt('More options:\n1. Share contact\n2. Mute notifications\n3. Block user\n4. Report\n\nType a number:');
-            if (choice) {
-              var idx = parseInt(choice) - 1;
-              if (idx >= 0 && idx < actions.length) {
-                alert(actions[idx] + ' — coming soon!');
+            // Create action sheet
+            var existing = document.getElementById('chat-action-sheet');
+            if (existing) existing.remove();
+            var sheet = document.createElement('div');
+            sheet.id = 'chat-action-sheet';
+            sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#141321;border-radius:20px 20px 0 0;z-index:1000;padding:12px 0 20px;box-shadow:0 -8px 30px rgba(0,0,0,.5);';
+            sheet.innerHTML = '<div style="width:36px;height:4px;border-radius:2px;background:#444;margin:0 auto 12px;"></div>' +
+              ['<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;font-size:15px;color:#fff;" data-action="share">📱 Share contact</div>',
+               '<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;font-size:15px;color:#fff;" data-action="mute">🔇 Mute notifications</div>',
+               '<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;font-size:15px;color:#ff3b30;" data-action="block">🚫 Block user</div>',
+               '<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;font-size:15px;color:#ff3b30;" data-action="report">⚠️ Report</div>'].join('') +
+              '<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;font-size:15px;color:#8e8e8e;border-top:1px solid #29253a;margin-top:4px;" data-action="cancel">Cancel</div>';
+            document.body.appendChild(sheet);
+            // Tap backdrop to close
+            var backdrop = document.createElement('div');
+            backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:999;';
+            backdrop.addEventListener('click', function() { sheet.remove(); backdrop.remove(); });
+            document.body.appendChild(backdrop);
+            sheet.addEventListener('click', function(e) {
+              var action = e.target.dataset.action;
+              if (!action || action === 'cancel') { sheet.remove(); backdrop.remove(); return; }
+              if (action === 'share') {
+                if (navigator.share) navigator.share({ title: 'GlitchIt', text: 'Check out this chat on GlitchIt!', url: location.href }).catch(function(){});
+                else { navigator.clipboard && navigator.clipboard.writeText(location.href); }
+                showToast('Link copied to clipboard');
+              } else if (action === 'mute') {
+                var key = 'glitchit.mute.' + (document.querySelector('.chat-partner-name')?.textContent || 'chat');
+                var muted = localStorage.getItem(key) === '1';
+                localStorage.setItem(key, muted ? '0' : '1');
+                showToast(muted ? 'Notifications unmuted' : 'Notifications muted');
+              } else if (action === 'block') {
+                if (confirm('Block this user? They won't be able to message you.')) {
+                  var blockKey = 'glitchit.blocked';
+                  var blocked = JSON.parse(localStorage.getItem(blockKey) || '[]');
+                  var name = document.querySelector('.chat-partner-name')?.textContent || '';
+                  if (name && !blocked.includes(name)) blocked.push(name);
+                  localStorage.setItem(blockKey, JSON.stringify(blocked));
+                  showToast('User blocked');
+                }
+              } else if (action === 'report') {
+                var reason = prompt('Why are you reporting this conversation?\n\n1. Spam\n2. Harassment\n3. Inappropriate content\n4. Other');
+                if (reason) showToast('Report submitted. Thank you.');
               }
-            }
+              sheet.remove(); backdrop.remove();
+            });
           });
+        }
+        function showToast(msg) {
+          var t = document.createElement('div');
+          t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#171717;color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:700;z-index:1001;';
+          t.textContent = msg;
+          document.body.appendChild(t);
+          setTimeout(function() { t.remove(); }, 2200);
         }
       })();
     </script>

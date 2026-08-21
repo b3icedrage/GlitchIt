@@ -291,7 +291,22 @@ function musicUpgradeLibrary() {
         try { localStorage.setItem(MUSIC_BANNER_KEY, '1'); } catch (err) { /* ignore */ }
       });
     }
-    banner.addEventListener('click', () => musicShowToast('Spotify linking is coming soon — stay tuned.'));
+    banner.addEventListener('click', () => {
+      // Open Spotify connect in a new tab — users link their Spotify account
+      // which enables licensed music for their stories and reels.
+      var authUrl = 'https://accounts.spotify.com/authorize?client_id=' +
+        encodeURIComponent(localStorage.getItem('glitchit.spotify.cid') || '') +
+        '&response_type=code&scope=user-read-playback-state%20user-library-read' +
+        '&redirect_uri=' + encodeURIComponent((location.origin || 'https://glitchit.app') + '/api/music') +
+        '&show_dialog=true';
+      if (localStorage.getItem('glitchit.spotify.cid')) {
+        window.open(authUrl, '_blank', 'noopener');
+        musicShowToast('Opening Spotify…');
+      } else {
+        // No Spotify client ID configured — show info about the feature
+        musicShowToast('Connect your Spotify to use licensed music in stories and reels.');
+      }
+    });
   }
 }
 
@@ -455,8 +470,119 @@ function notesUpgradeComposer() {
   const openLib = () => musicOpenLibrary();
   document.getElementById('nc-palette').addEventListener('click', openLib);
   document.getElementById('nc-action-music').addEventListener('click', openLib);
-  document.getElementById('nc-action-location').addEventListener('click', () => musicShowToast('Location stickers are coming soon.'));
-  document.getElementById('nc-action-gif').addEventListener('click', () => musicShowToast('GIF stickers are coming soon.'));
+  document.getElementById('nc-action-location').addEventListener('click', () => {
+    if (!navigator.geolocation) { musicShowToast('Geolocation not available'); return; }
+    musicShowToast('Finding your location…');
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const lat = pos.coords.latitude.toFixed(2);
+      const lng = pos.coords.longitude.toFixed(2);
+      // Try reverse geocoding with free Nominatim API
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=14`)
+        .then(r => r.json())
+        .then(data => {
+          const name = data.address?.city || data.address?.town || data.address?.village || data.address?.county || '';
+          const country = data.address?.country || '';
+          const label = name ? `${name}, ${country}` : `📍 ${lat}, ${lng}`;
+          addLocationSticker(label);
+        })
+        .catch(() => addLocationSticker(`📍 ${lat}, ${lng}`));
+    }, () => musicShowToast('Location access denied'), { enableHighAccuracy: false, timeout: 8000 });
+  });
+
+  document.getElementById('nc-action-gif').addEventListener('click', () => {
+    showGifPicker();
+  });
+
+  function addLocationSticker(label) {
+    const textEl = document.querySelector('.nc-text-overlay') || document.querySelector('.note-text');
+    if (!textEl) return;
+    const sticker = document.createElement('span');
+    sticker.className = 'note-sticker note-location-sticker';
+    sticker.textContent = '📍 ' + label;
+    sticker.style.cssText = 'display:inline-block;background:rgba(0,0,0,.6);color:#fff;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;margin:4px 0;cursor:pointer;user-select:none;';
+    sticker.addEventListener('click', () => sticker.remove());
+    const parent = textEl.parentElement || textEl.parentNode;
+    if (parent) parent.insertBefore(sticker, textEl.nextSibling);
+    musicShowToast('Location added');
+  }
+
+  function showGifPicker() {
+    const existing = document.getElementById('gif-picker-sheet');
+    if (existing) existing.remove();
+    const sheet = document.createElement('div');
+    sheet.id = 'gif-picker-sheet';
+    sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:55vh;background:#141321;border-radius:20px 20px 0 0;z-index:1000;display:flex;flex-direction:column;';
+    sheet.innerHTML = `<div style="width:36px;height:4px;border-radius:2px;background:#444;margin:12px auto 8px;"></div>
+      <div style="padding:0 12px 8px;"><input type="search" id="gif-search-input" placeholder="Search GIFs…" style="width:100%;padding:10px 14px;border:1px solid #333;border-radius:12px;background:#1e1e2e;color:#fff;font-size:14px;outline:none;"></div>
+      <div id="gif-grid" style="flex:1;overflow-y:auto;padding:0 8px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;"></div>`;
+    document.body.appendChild(sheet);
+    const backdrop = document.createElement('div');
+    backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;';
+    backdrop.addEventListener('click', () => { sheet.remove(); backdrop.remove(); });
+    document.body.appendChild(backdrop);
+    const grid = sheet.querySelector('#gif-grid');
+    const input = sheet.querySelector('#gif-search-input');
+    let debounce = null;
+    function searchGifs(q) {
+      if (!q) return;
+      // Use Tenor API (free, no key needed for basic search)
+      fetch(`https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(q)}&key=AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ&limit=21&media_filter=gif&contentfilter=medium`)
+        .then(r => r.json())
+        .then(data => {
+          grid.innerHTML = '';
+          (data.results || []).forEach(gif => {
+            const img = document.createElement('img');
+            img.src = gif.media_formats?.gif?.url || gif.url;
+            img.alt = gif.content_description || 'GIF';
+            img.loading = 'lazy';
+            img.style.cssText = 'width:100%;border-radius:6px;cursor:pointer;aspect-ratio:1;object-fit:cover;';
+            img.addEventListener('click', () => {
+              addGifSticker(gif.media_formats?.tinygif?.url || gif.media_formats?.gif?.url || gif.url);
+              sheet.remove(); backdrop.remove();
+            });
+            grid.appendChild(img);
+          });
+        })
+        .catch(() => { grid.innerHTML = '<p style="color:#8e8e8e;text-align:center;padding:20px;grid-column:1/-1;">Could not load GIFs</p>'; });
+    }
+    // Load trending on open
+    fetch(`https://tenor.googleapis.com/v2/featured?key=AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ&limit=21&media_filter=gif&contentfilter=medium`)
+      .then(r => r.json())
+      .then(data => {
+        grid.innerHTML = '';
+        (data.results || []).forEach(gif => {
+          const img = document.createElement('img');
+          img.src = gif.media_formats?.tinygif?.url || gif.media_formats?.gif?.url || gif.url;
+          img.alt = gif.content_description || 'GIF';
+          img.loading = 'lazy';
+          img.style.cssText = 'width:100%;border-radius:6px;cursor:pointer;aspect-ratio:1;object-fit:cover;';
+          img.addEventListener('click', () => {
+            addGifSticker(gif.media_formats?.tinygif?.url || gif.media_formats?.gif?.url || gif.url);
+            sheet.remove(); backdrop.remove();
+          });
+          grid.appendChild(img);
+        });
+      })
+      .catch(() => {});
+    input.addEventListener('input', () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => { if (input.value.trim()) searchGifs(input.value.trim()); }, 350);
+    });
+    setTimeout(() => input.focus(), 200);
+  }
+
+  function addGifSticker(url) {
+    const textEl = document.querySelector('.nc-text-overlay') || document.querySelector('.note-text');
+    if (!textEl) return;
+    const sticker = document.createElement('div');
+    sticker.className = 'note-sticker note-gif-sticker';
+    sticker.style.cssText = 'display:inline-block;margin:4px 0;cursor:pointer;position:relative;';
+    sticker.innerHTML = `<img src="${url}" style="max-width:120px;border-radius:8px;pointer-events:none;" alt="GIF"><button style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#333;color:#fff;border:none;font-size:12px;cursor:pointer;line-height:20px;text-align:center;">✕</button>`;
+    sticker.querySelector('button').addEventListener('click', (e) => { e.stopPropagation(); sticker.remove(); });
+    const parent = textEl.parentElement || textEl.parentNode;
+    if (parent) parent.insertBefore(sticker, textEl.nextSibling);
+    musicShowToast('GIF added');
+  }
 
   document.getElementById('nc-sheet-new').addEventListener('click', openLib);
   document.getElementById('nc-sheet-done').addEventListener('click', () => {

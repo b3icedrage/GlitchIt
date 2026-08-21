@@ -35,7 +35,7 @@
         <!-- Balance card -->
         <section class="wallet-balance" id="wallet-balance">
           <div class="wb-label">Wallet Balance</div>
-          <div class="wb-amount" id="wb-amount">KES 0</div>
+          <div class="wb-amount" id="wb-amount">$0</div>
           <div class="wb-sub">Funds are for in-app use: tips, drops, premium & more</div>
         </section>
 
@@ -59,15 +59,15 @@
         <section class="wallet-section" id="deposit-section">
           <h2>Add funds</h2>
           <div class="wallet-quick" id="quick-amounts">
-            <button type="button" class="wallet-quick-btn" data-amt="100">KES 100</button>
-            <button type="button" class="wallet-quick-btn" data-amt="200">KES 200</button>
-            <button type="button" class="wallet-quick-btn" data-amt="500">KES 500</button>
-            <button type="button" class="wallet-quick-btn" data-amt="1000">KES 1,000</button>
-            <button type="button" class="wallet-quick-btn" data-amt="2000">KES 2,000</button>
-            <button type="button" class="wallet-quick-btn" data-amt="5000">KES 5,000</button>
+            <button type="button" class="wallet-quick-btn" data-amt="100">$100</button>
+            <button type="button" class="wallet-quick-btn" data-amt="200">$200</button>
+            <button type="button" class="wallet-quick-btn" data-amt="500">$500</button>
+            <button type="button" class="wallet-quick-btn" data-amt="1000">$1,000</button>
+            <button type="button" class="wallet-quick-btn" data-amt="2000">$2,000</button>
+            <button type="button" class="wallet-quick-btn" data-amt="5000">$5,000</button>
           </div>
           <div class="wallet-custom">
-            <input type="number" id="custom-amount" placeholder="Custom amount (KES)" min="1" />
+            <input type="number" id="custom-amount" placeholder="Custom amount ($)" min="1" />
           </div>
           <button type="button" class="wallet-cta" id="deposit-btn">Deposit now</button>
           <div class="wallet-methods">
@@ -83,7 +83,7 @@
           <h2>Send money</h2>
           <div class="wallet-send-form open">
             <input type="text" id="send-to" placeholder="Recipient username (e.g. @glitchking)" />
-            <input type="number" id="send-amount" placeholder="Amount (KES)" min="1" />
+            <input type="number" id="send-amount" placeholder="Amount ($)" min="1" />
             <textarea id="send-note" rows="2" placeholder="Add a note (optional)"></textarea>
             <button type="button" class="wallet-cta" id="send-btn">Send money</button>
             <button type="button" class="wallet-tip-cancel" id="send-cancel">Cancel</button>
@@ -146,7 +146,7 @@
           const icon = icons[tx.type] || '📋';
           const positive = tx.amount > 0;
           const sign = positive ? '+' : '';
-          const amt = `KES ${Math.abs(tx.amount).toLocaleString()}`;
+          const amt = `$${Math.abs(tx.amount).toLocaleString()}`;
           const time = new Date(tx.timestamp).toLocaleDateString('en-KE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
           return `
             <div class="wallet-txn">
