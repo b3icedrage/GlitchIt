@@ -274,15 +274,25 @@ async function authenticateMerchant(req) {
 
 // GET /v1/health
 function handleHealth(req, res) {
+  const ipnUrl = PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitchit.app')}/api/gateway/v1/pesapal/callback`;
   json(res, 200, {
     status: 'ok',
     service: 'glitchit-payment-gateway',
-    version: '3.1.0',
+    version: '3.2.0',
     description: 'PesaPal integration — M-Pesa, Cards, and Bank payments',
     mode: PESAPAL_BASE_URL.includes('sandbox') ? 'sandbox' : 'production',
     pesapal: {
       configured: Boolean(PESAPAL_CONSUMER_KEY && PESAPAL_CONSUMER_SECRET),
       base_url: PESAPAL_BASE_URL,
+    },
+    ipn: {
+      url: ipnUrl,
+      status: 'active',
+      endpoints: {
+        register: '/v1/pesapal/setup',
+        list: '/v1/pesapal/ipn',
+        callback: '/v1/pesapal/callback',
+      },
     },
     blue_badge: {
       enabled: true,
@@ -902,6 +912,55 @@ async function handleRotateKeys(req, res) {
   });
 }
 
+// POST /v1/pesapal/setup — Register IPN URL with PesaPal
+async function handlePesaPalSetup(req, res) {
+  const body = await readBody(req);
+  const ipnUrl = body?.url || `${cfg('APP_URL', 'https://glitchit.app')}/api/gateway/v1/pesapal/callback`;
+
+  try {
+    const result = await registerPesaPalIPN(ipnUrl);
+    console.log(`[Gateway] PesaPal IPN registered: ${ipnUrl}`);
+
+    json(res, 200, {
+      success: true,
+      message: 'IPN URL registered successfully',
+      data: {
+        ipn_url: ipnUrl,
+        ipn_type: 'POST',
+        result: result,
+      },
+      timestamp: now(),
+    });
+  } catch (err) {
+    console.error('[Gateway] IPN registration failed:', err.message);
+    json(res, 500, { success: false, message: 'IPN registration failed: ' + err.message, timestamp: now() });
+  }
+}
+
+// GET /v1/pesapal/ipn — List registered IPN URLs
+async function handlePesaPalIPNList(req, res) {
+  try {
+    const token = await getPesaPalToken();
+    if (!token) throw new Error('PesaPal authentication failed');
+
+    const response = await fetch(`${PESAPAL_BASE_URL}/URLService/GetIPNList`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+
+    if (!response.ok) throw new Error(`Failed to get IPN list: ${response.status}`);
+    const data = await response.json();
+
+    json(res, 200, {
+      success: true,
+      data: data,
+      timestamp: now(),
+    });
+  } catch (err) {
+    console.error('[Gateway] Get IPN list failed:', err.message);
+    json(res, 500, { success: false, message: 'Failed to get IPN list: ' + err.message, timestamp: now() });
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Router
 // ═══════════════════════════════════════════════════════════════════════
@@ -931,6 +990,16 @@ module.exports = async function gatewayHandler(req, res) {
     // PesaPal IPN callback (no auth)
     if (path === '/v1/pesapal/callback' && method === 'POST') {
       return handlePesaPalCallback(req, res);
+    }
+
+    // PesaPal setup — register IPN URL (no auth for setup)
+    if (path === '/v1/pesapal/setup' && method === 'POST') {
+      return handlePesaPalSetup(req, res);
+    }
+
+    // PesaPal IPN list (no auth)
+    if (path === '/v1/pesapal/ipn' && method === 'GET') {
+      return handlePesaPalIPNList(req, res);
     }
 
     // Legacy callback (no auth)
