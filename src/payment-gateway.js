@@ -2,7 +2,10 @@
 // If STK push fails or backend is unreachable, shows clean payment instructions.
 // NEVER shows "connection failed" or error screens to the user.
 
-const API_BASE = window.GLITCHIT_API_BASE || '';
+const API_BASE = window.GLITCHIT_API_BASE ||
+  (window.location.protocol === 'capacitor:' || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()))
+    ? 'https://glitchit.app'
+    : '';
 
 // ─── Constants ─────────────────────────────────────────────────────
 const MPESA_NUMBER = '0143476934';
@@ -492,7 +495,8 @@ function injectStyles() {
   if (document.querySelector('link[href*="payment-checkout.css"]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = `${API_BASE}/src/payment-checkout.css?v=7`;
+  // Always load CSS locally — API_BASE may point to a remote backend
+  link.href = `src/payment-checkout.css?v=7`;
   document.head.appendChild(link);
 }
 
