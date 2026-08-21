@@ -2964,6 +2964,7 @@ function runPage() {
 
 // ---------- Supabase auth bootstrap ----------
 const GUEST_KEY = 'glitchit.auth.guest.v1'; // guest browsing flag
+const AUTH_SESSION_KEY = 'glitchit.auth.session.v1'; // login backup for CDN failures
 const ACCOUNT_PAGES = ['messages', 'chat', 'profile', 'shop'];
 const PUBLIC_PAGES = ['auth', 'about', 'terms', 'privacy'];
 
@@ -3063,6 +3064,8 @@ function finishAuth(user, auth) {
   try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
   window.GLITCHIT_USER = user;
   auth.setHandle(auth.userHandle(user));
+  // Save session backup so boot() can find it even if Supabase CDN fails
+  try { sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ id: user.id, email: user.email, user_metadata: user.user_metadata || {} })); } catch (err) { /* ignore */ }
   import('./db.js?v=7').then((db) => db.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) })).catch(() => {});
   location.href = returnToPage() || 'index.html';
 }
@@ -3257,6 +3260,7 @@ function attachProfileAuth() {
       if (auth) await auth.signOut();
       window.GLITCHIT_USER = null;
       try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
+      try { sessionStorage.removeItem(AUTH_SESSION_KEY); } catch (err) { /* ignore */ }
       location.href = 'auth.html';
     });
   }
@@ -3419,6 +3423,20 @@ async function boot() {
         location.replace(returnToPage() || 'index.html');
         return;
       }
+      // CDN fallback: check session backup on auth page too
+      let backupUser = null;
+      try {
+        const raw = sessionStorage.getItem(AUTH_SESSION_KEY);
+        if (raw) { backupUser = JSON.parse(raw); sessionStorage.removeItem(AUTH_SESSION_KEY); }
+      } catch (e) { /* ignore */ }
+      if (backupUser) {
+        window.GLITCHIT_USER = backupUser;
+        if (auth && auth.setHandle) auth.setHandle(auth.userHandle(backupUser));
+        const db = await dbReady();
+        db?.setCurrentUser?.({ id: backupUser.id, username: auth.userHandle(backupUser) });
+        location.replace(returnToPage() || 'index.html');
+        return;
+      }
       attachAuthPage(auth);
     } else {
       const user = await auth.currentUser();
@@ -3438,14 +3456,35 @@ async function boot() {
         const db = await dbReady();
         db?.setCurrentUser?.('');
       } else {
-        location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
-        return;
+        // CDN fallback: check session backup saved by finishAuth()
+        let backupUser = null;
+        try {
+          const raw = sessionStorage.getItem(AUTH_SESSION_KEY);
+          if (raw) { backupUser = JSON.parse(raw); sessionStorage.removeItem(AUTH_SESSION_KEY); }
+        } catch (e) { /* ignore */ }
+        if (backupUser) {
+          window.GLITCHIT_USER = backupUser;
+          if (auth && auth.setHandle) auth.setHandle(auth.userHandle(backupUser));
+        } else {
+          location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
+          return;
+        }
       }
     }
   } else if (!isAuthPage && !PUBLIC_PAGES.includes(page)) {
-    // Auth module failed to load (CDN blocked, network, etc.) — force login.
-    location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
-    return;
+    // Auth module failed to load (CDN blocked, network, etc.)
+    // Check session backup before forcing login
+    let backupUser = null;
+    try {
+      const raw = sessionStorage.getItem(AUTH_SESSION_KEY);
+      if (raw) { backupUser = JSON.parse(raw); sessionStorage.removeItem(AUTH_SESSION_KEY); }
+    } catch (e) { /* ignore */ }
+    if (backupUser) {
+      window.GLITCHIT_USER = backupUser;
+    } else {
+      location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
+      return;
+    }
   }
   // Sync profile.avatar from the signed-in user (localStorage override +
   // account metadata) before any page hydrates, so the story shelf, upload
