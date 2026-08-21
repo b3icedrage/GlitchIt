@@ -1,9 +1,6 @@
-// GlitchIt Pay — PesaPal-powered payment gateway
-// All payments go through PesaPal's hosted payment page.
-
-const API_BASE = window.GLITCHIT_API_BASE || '';
-const PESAPAL_MONTHLY_URL = 'https://store.pesapal.com/monthlyverification';
-const PESAPAL_YEARLY_URL = 'https://store.pesapal.com/yearlypayment';
+// GlitchIt Pay — payment gateway
+// Premium payments go through external PesaPal store links.
+// Shop/wallet payments are handled in-app.
 
 function formatAmount(amount, currency = 'USD') {
   return `${currency} ${Number(amount).toLocaleString()}`;
@@ -71,16 +68,8 @@ function ensureOverlay() {
         </button>
       </div>
 
-      <!-- Step 2: Payment method selection (hidden until details confirmed) -->
+      <!-- Wallet payment -->
       <div class="pg-form" id="pg-form-wallet" style="display:none;">
-        <div class="pg-methods">
-          <button type="button" class="pg-method-tab active" data-method="wallet">
-            <span class="pg-mt-icon">💰</span>Pay from Wallet
-          </button>
-          <button type="button" class="pg-method-tab" data-method="pesapal">
-            <span class="pg-mt-icon">📱</span>M-Pesa / Card
-          </button>
-        </div>
         <div class="pg-info-box" style="text-align:center;">
           <strong>Pay from GlitchIt Wallet</strong><br>
           Balance: <strong id="pg-wallet-bal">$0</strong>
@@ -90,21 +79,12 @@ function ensureOverlay() {
         </button>
       </div>
 
-      <!-- PesaPal embed area -->
-      <div class="pg-pesapal-area" id="pg-pesapal-area" style="display:none;">
-        <div class="pg-pesapal-loading">
-          <div class="pg-spinner" style="display:inline-block;"></div>
-          <p style="font-size:13px;color:#8e8e8e;margin-top:8px;">Loading PesaPal payment…</p>
-        </div>
-        <iframe
-          id="pg-pesapal-frame"
-          class="pg-pesapal-iframe"
-          src=""
-          frameborder="0"
-          allowfullscreen
-          style="display:none;"
-          onload="this.style.display='block'; this.previousElementSibling.style.display='none';"
-        ></iframe>
+      <!-- External payment link area (for non-wallet payments) -->
+      <div class="pg-form" id="pg-external-link" style="display:none;text-align:center;padding:20px;">
+        <p style="font-size:14px;color:#8e8e8e;margin-bottom:16px;">You'll be redirected to complete payment.</p>
+        <button type="button" class="pg-pay-btn" id="pg-open-link-btn" style="background:linear-gradient(135deg,#171717,#333);">
+          <span class="pg-pay-btn-text">Open Payment Page</span>
+        </button>
       </div>
 
       <!-- Success state -->
@@ -139,25 +119,6 @@ function bindEvents() {
   overlay.querySelector('#pg-close-btn').addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('open')) close(); });
-
-  // Wallet tab switching
-  overlay.querySelectorAll('.pg-method-tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      overlay.querySelectorAll('.pg-method-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const method = tab.dataset.method;
-      const walletForm = overlay.querySelector('#pg-form-wallet');
-      const pesapalArea = overlay.querySelector('#pg-pesapal-area');
-      if (method === 'wallet') {
-        walletForm.querySelector('.pg-info-box').style.display = '';
-        pesapalArea.style.display = 'none';
-      } else {
-        walletForm.querySelector('.pg-info-box').style.display = 'none';
-        pesapalArea.style.display = '';
-        loadPesaPalFrame();
-      }
-    });
-  });
 
   // Continue to payment button
   const continueBtn = overlay.querySelector('#pg-continue-btn');
@@ -200,7 +161,6 @@ function fieldError(id, msg) {
 function showPaymentMethods() {
   const details = overlay.querySelector('#pg-buyer-details');
   const walletForm = overlay.querySelector('#pg-form-wallet');
-  const pesapalArea = overlay.querySelector('#pg-pesapal-area');
   if (details) details.style.display = 'none';
 
   // Check wallet balance
@@ -208,23 +168,13 @@ function showPaymentMethods() {
   const walletBal = window.GlitchItWallet ? window.GlitchItWallet.getBalance() : 0;
   if (walletBal >= amount && walletForm) {
     walletForm.style.display = '';
-    pesapalArea.style.display = 'none';
   } else {
-    if (walletForm) walletForm.style.display = 'none';
-    pesapalArea.style.display = '';
-    loadPesaPalFrame();
-  }
-}
-
-function loadPesaPalFrame() {
-  const frame = overlay.querySelector('#pg-pesapal-frame');
-  const loading = overlay.querySelector('.pg-pesapal-loading');
-  if (frame && !frame.src) {
+    // Redirect to external PesaPal store link
     const isYearly = (currentOptions?.api_ref || '').includes('yearly');
-    frame.src = isYearly ? PESAPAL_YEARLY_URL : PESAPAL_MONTHLY_URL;
+    const url = isYearly ? 'https://store.pesapal.com/yearlypayment' : 'https://store.pesapal.com/monthlyverification';
+    window.open(url, '_blank', 'noopener');
+    close();
   }
-  if (frame) frame.style.display = '';
-  if (loading) loading.style.display = 'none';
 }
 
 // ─── Handle wallet payment ──────────────────────────────────────────
@@ -275,12 +225,12 @@ function hideAllSteps() {
 function showStep(id) {
   hideAllSteps();
   const walletForm = overlay.querySelector('#pg-form-wallet');
-  const pesapalArea = overlay.querySelector('#pg-pesapal-area');
   const details = overlay.querySelector('#pg-buyer-details');
+  const extLink = overlay.querySelector('#pg-external-link');
   if (id === 'pg-step-success' || id === 'pg-step-error') {
     if (walletForm) walletForm.style.display = 'none';
-    if (pesapalArea) pesapalArea.style.display = 'none';
     if (details) details.style.display = 'none';
+    if (extLink) extLink.style.display = 'none';
   }
   const el = overlay.querySelector(`#${id}`);
   if (el) el.style.display = '';
@@ -302,10 +252,10 @@ function showCheckout() {
   hideAllSteps();
   const details = overlay.querySelector('#pg-buyer-details');
   const walletForm = overlay.querySelector('#pg-form-wallet');
-  const pesapalArea = overlay.querySelector('#pg-pesapal-area');
+  const extLink = overlay.querySelector('#pg-external-link');
   if (details) details.style.display = '';
   if (walletForm) walletForm.style.display = 'none';
-  if (pesapalArea) pesapalArea.style.display = 'none';
+  if (extLink) extLink.style.display = 'none';
   // Pre-fill from user data if available
   const user = window.GLITCHIT_USER;
   if (user && !user.guest) {
@@ -334,10 +284,9 @@ export function checkout(opts) {
     overlay.querySelector('#pg-currency-label').textContent = opts.currency === 'KES' ? 'KES' : '$';
     overlay.querySelector('#pg-total-amount').textContent = formatAmount(amount, opts.currency || 'USD');
 
-    // Show wallet tab if user has enough balance
+    // Show wallet balance
     const walletBal = window.GlitchItWallet ? window.GlitchItWallet.getBalance() : 0;
     const walletForm = overlay.querySelector('#pg-form-wallet');
-    const pesapalArea = overlay.querySelector('#pg-pesapal-area');
     const walletBalEl = overlay.querySelector('#pg-wallet-bal');
 
     if (walletForm) walletForm.style.display = '';
@@ -347,7 +296,6 @@ export function checkout(opts) {
     const details = overlay.querySelector('#pg-buyer-details');
     if (details) details.style.display = '';
     walletForm.style.display = 'none';
-    pesapalArea.style.display = 'none';
 
     overlay.classList.add('open');
     document.body.style.overflow = 'hidden';

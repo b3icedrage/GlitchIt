@@ -134,9 +134,8 @@
       <div class="prem-toast" id="prem-toast" role="status"></div>
     </main>
     <script type="module">
-      // Open the GlitchIt Payment Gateway checkout
-      // module that powers shop drops), charged in USD for Premium.
-      import { glitchitCheckout } from './src/payment-gateway.js?v=3';
+      const PESAPAL_MONTHLY_URL = 'https://store.pesapal.com/monthlyverification';
+      const PESAPAL_YEARLY_URL = 'https://store.pesapal.com/yearlypayment';
 
       const PLANS = {
         monthly: { amount: 4.99, label: 'GlitchIt Premium — Monthly ($4.99)' },
@@ -154,54 +153,12 @@
         timer = setTimeout(function () { toast.classList.remove('show'); }, 6000);
       }
 
-      // Best-effort prefill from the signed-in Supabase session
-      // knows who's paying (the session JSON lives in localStorage).
-      function sessionUser() {
-        try {
-          var u = window.GLITCHIT_USER;
-          if (u && !u.guest && u.email) return { email: u.email, id: u.id };
-        } catch (e) { /* ignore */ }
-        try {
-          for (var i = 0; i < localStorage.length; i++) {
-            var key = localStorage.key(i);
-            if (!key || key.indexOf('sb-') !== 0 || key.indexOf('-auth-token') === -1) continue;
-            var data = JSON.parse(localStorage.getItem(key));
-            if (data && data.user) return { email: data.user.email || '', id: data.user.id || '' };
-          }
-        } catch (e) { /* ignore */ }
-        return { email: '', id: '' };
-      }
-
-      document.querySelectorAll('.prem-cta').forEach(function (btn) {
+      // "Get Premium" buttons → open PesaPal store link directly
+      document.querySelectorAll('.prem-cta:not(.pay-wallet-btn)').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var plan = btn.dataset.plan === 'yearly' ? 'yearly' : 'monthly';
-          var user = sessionUser();
-          var planDef = PLANS[plan];
-          btn.disabled = true;
-          var original = btn.textContent;
-          btn.textContent = 'Opening secure checkout…';
-          glitchitCheckout({
-            amount: planDef.amount,
-            currency: 'USD',
-            api_ref: 'glitchit-premium-' + plan + '-' + Date.now(),
-            title: 'GlitchIt Premium',
-            description: planDef.label,
-            email: user.email,
-          })
-            .then(function () {
-              show("You're Premium! 🎉 Your benefits are active.");
-            })
-            .catch(function (err) {
-              if (err && err.message === 'payment closed') {
-                show('Checkout canceled — no charge was made.');
-              } else {
-                show('Could not start checkout right now — please try again in a moment.');
-              }
-            })
-            .finally(function () {
-              btn.disabled = false;
-              btn.textContent = original;
-            });
+          var url = plan === 'yearly' ? PESAPAL_YEARLY_URL : PESAPAL_MONTHLY_URL;
+          window.open(url, '_blank', 'noopener');
         });
       });
 
