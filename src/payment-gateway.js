@@ -3,6 +3,7 @@
 
 const API_BASE = window.GLITCHIT_API_BASE || '';
 const PESAPAL_MONTHLY_URL = 'https://store.pesapal.com/monthlyverification';
+const PESAPAL_YEARLY_URL = 'https://store.pesapal.com/yearlypayment';
 
 function formatAmount(amount, currency = 'USD') {
   return `${currency} ${Number(amount).toLocaleString()}`;
@@ -219,7 +220,8 @@ function loadPesaPalFrame() {
   const frame = overlay.querySelector('#pg-pesapal-frame');
   const loading = overlay.querySelector('.pg-pesapal-loading');
   if (frame && !frame.src) {
-    frame.src = PESAPAL_MONTHLY_URL;
+    const isYearly = (currentOptions?.api_ref || '').includes('yearly');
+    frame.src = isYearly ? PESAPAL_YEARLY_URL : PESAPAL_MONTHLY_URL;
   }
   if (frame) frame.style.display = '';
   if (loading) loading.style.display = 'none';
