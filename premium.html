@@ -78,20 +78,20 @@
     <main class="prem-page">
       <div class="prem-inner">
         <section class="prem-hero">
-          <span class="eyebrow">ϟ GlitchIt Premium</span>
+          <span class="eyebrow">&#989; GlitchIt Premium</span>
           <h1>Level up your <span>Glitch</span></h1>
           <p>The creators and viewers who get the most out of GlitchIt go Premium. Here's everything you unlock — and why it's worth it.</p>
         </section>
 
         <section class="prem-grid" aria-label="Premium benefits">
-          <article class="prem-card"><span class="prem-ic" aria-hidden="true">⚡</span><h3>Ad-free Glitch</h3><p>Sponsored slides disappear from your reels, home feed, and search — every scroll is pure content.</p></article>
-          <article class="prem-card"><span class="prem-ic" aria-hidden="true">✥</span><h3>Pro Badge</h3><p>A verified-style checkmark next to your name on your profile, reels, stories, comments, and DMs — instant credibility with followers.</p></article>
-          <article class="prem-card"><span class="prem-ic" aria-hidden="true">🚀</span><h3>Boosted Reach</h3><p>Your Glitches and posts get extra distribution in For You feeds — more views, more followers, more drops sold.</p></article>
-          <article class="prem-card"><span class="prem-ic" aria-hidden="true">📊</span><h3>Creator Insights</h3><p>See views, watch time, follower growth, and your best-performing posts at a glance — so you know exactly what's working.</p></article>
-          <article class="prem-card"><span class="prem-ic" aria-hidden="true">🎛</span><h3>Exclusive Glitch Effects</h3><p>A private pack of glitch filters, transitions, and overlays for the camera — your content stands out in the feed.</p></article>
-          <article class="prem-card"><span class="prem-ic" aria-hidden="true">🌙</span><h3>Extended Stories</h3><p>Stories live for 48 hours instead of 24, with unlimited saved highlights that never expire.</p></article>
-          <article class="prem-card"><span class="prem-ic" aria-hidden="true">⬇</span><h3>Reel Downloads</h3><p>Save any Glitch to your device to watch offline or share anywhere — no watermarks, no limits.</p></article>
-          <article class="prem-card"><span class="prem-ic" aria-hidden="true">💬</span><h3>Priority Support</h3><p>Skip the queue — your questions and complaints jump the line with real humans who actually resolve things.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">&#9889;</span><h3>Ad-free Glitch</h3><p>Sponsored slides disappear from your reels, home feed, and search — every scroll is pure content.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">&#10021;</span><h3>Pro Badge</h3><p>A verified-style checkmark next to your name on your profile, reels, stories, comments, and DMs — instant credibility with followers.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">&#128640;</span><h3>Boosted Reach</h3><p>Your Glitches and posts get extra distribution in For You feeds — more views, more followers, more drops sold.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">&#128202;</span><h3>Creator Insights</h3><p>See views, watch time, follower growth, and your best-performing posts at a glance — so you know exactly what's working.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">&#127917;</span><h3>Exclusive Glitch Effects</h3><p>A private pack of glitch filters, transitions, and overlays for the camera — your content stands out in the feed.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">&#127769;</span><h3>Extended Stories</h3><p>Stories live for 48 hours instead of 24, with unlimited saved highlights that never expire.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">&#11015;</span><h3>Reel Downloads</h3><p>Save any Glitch to your device to watch offline or share anywhere — no watermarks, no limits.</p></article>
+          <article class="prem-card"><span class="prem-ic" aria-hidden="true">&#128172;</span><h3>Priority Support</h3><p>Skip the queue — your questions and complaints jump the line with real humans who actually resolve things.</p></article>
         </section>
 
         <section class="prem-plans" aria-label="Pricing">
@@ -100,10 +100,10 @@
             <h3>Premium</h3>
             <div class="price">KES 1<small>/mo</small></div>
             <ul>
-              <li><i>✓</i>Blue verified badge on your profile</li>
-              <li><i>✓</i>All Premium benefits</li>
-              <li><i>✓</i>Cancel anytime</li>
-              <li><i>✓</i>No ads, everywhere</li>
+              <li><i>&#10003;</i>Blue verified badge on your profile</li>
+              <li><i>&#10003;</i>All Premium benefits</li>
+              <li><i>&#10003;</i>Cancel anytime</li>
+              <li><i>&#10003;</i>No ads, everywhere</li>
             </ul>
             <button type="button" class="prem-cta" data-plan="monthly">Get Premium</button>
             <button type="button" class="prem-cta pay-wallet-btn" data-plan="monthly" style="margin-top:8px;background:linear-gradient(135deg,#00c853,#00e676);">Pay with Wallet</button>
@@ -118,15 +118,13 @@
           <details><summary>How does Boosted Reach work?</summary><p>Premium posts get a distribution boost in For You feeds, so your Glitches reach more people than organic posts — the fastest way to grow a following.</p></details>
         </section>
 
-        <a class="prem-back" href="index.html">‹ Back to GlitchIt</a>
+        <a class="prem-back" href="index.html">&lsaquo; Back to GlitchIt</a>
       </div>
       <div class="prem-toast" id="prem-toast" role="status"></div>
     </main>
     <script type="module">
-      const PESAPAL_MONTHLY_URL = 'https://store.pesapal.com/monthlyverification';
-
-      const toast = document.getElementById('prem-toast');
-      let timer = null;
+      var toast = document.getElementById('prem-toast');
+      var timer = null;
 
       function show(msg) {
         if (!toast) return;
@@ -136,26 +134,54 @@
         timer = setTimeout(function () { toast.classList.remove('show'); }, 6000);
       }
 
-      // "Get Premium" button → create pending record + open PesaPal store link + show verification
+      // "Get Premium" button -> call PesaPal SubmitOrderRequest API -> redirect to checkout
       document.querySelector('.prem-cta:not(.pay-wallet-btn)').addEventListener('click', function () {
-        // Create a pending premium activation record on the server
-        try {
-          var u = window.GLITCHIT_USER;
-          var email = (u && u.email) ? u.email : '';
-          if (email) {
-            fetch('/api/payment/premium-init', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: email })
-            }).catch(function() { /* proceed anyway */ });
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = 'Creating payment...';
+
+        var u = window.GLITCHIT_USER;
+        var email = (u && u.email) ? u.email : '';
+        var fullName = (u && u.user_metadata) ? (u.user_metadata.full_name || u.user_metadata.username || '') : '';
+        var parts = fullName.split(' ');
+        var firstName = parts[0] || 'Customer';
+        var lastName = parts.slice(1).join(' ') || '';
+
+        // PostPesapalDirectOrderV4 - create order via backend
+        fetch('/api/gateway/v1/pay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            first_name: firstName,
+            last_name: lastName,
+            email: email,
+            amount: 1,
+            currency: 'KES',
+            description: 'GlitchIt Premium Monthly',
+            callback_url: window.location.origin + '/premium.html?from_pesapal=1'
+          })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success && data.data && data.data.redirect_url) {
+            // Store tracking ID so we can check status when user returns
+            localStorage.setItem('pesapal_pending_tx', data.data.order_tracking_id);
+            localStorage.setItem('pesapal_payment_amount', '1');
+            localStorage.setItem('pesapal_payment_title', 'Premium');
+            // Redirect to PesaPal checkout page
+            window.location.href = data.data.redirect_url;
+          } else {
+            btn.disabled = false;
+            btn.textContent = 'Get Premium';
+            show('Failed to create payment: ' + (data.message || 'Unknown error'));
           }
-        } catch(e) { /* proceed anyway */ }
-        // Open PesaPal store link
-        window.open(PESAPAL_MONTHLY_URL, '_blank', 'noopener');
-        // Show verification form after a short delay
-        setTimeout(function() {
-          showVerifyForm();
-        }, 2000);
+        })
+        .catch(function(err) {
+          console.error('[Premium] Order creation failed:', err);
+          btn.disabled = false;
+          btn.textContent = 'Get Premium';
+          show('Payment connection failed - please try again.');
+        });
       });
 
       // Payment verification flow
@@ -169,7 +195,7 @@
           '<h3 style="color:#fff;font-size:17px;margin:0 0 6px;text-align:center;">Verify Your Payment</h3>' +
           '<p style="color:#8e8e8e;font-size:13px;margin:0 0 16px;text-align:center;">Did you complete payment on PesaPal? Confirm below to activate.</p>' +
           '<input type="email" id="prem-verify-email" placeholder="your@email.com" style="width:100%;padding:12px 14px;border:1px solid #333;border-radius:12px;background:#1e1e2e;color:#fff;font-size:14px;outline:none;margin-bottom:12px;" autocomplete="email" />' +
-          '<button type="button" id="prem-verify-btn" style="width:100%;padding:13px;border:0;border-radius:999px;background:linear-gradient(135deg,#ff2d78,#a24cff);color:#fff;font-size:15px;font-weight:800;cursor:pointer;">Yes, I Paid — Activate</button>' +
+          '<button type="button" id="prem-verify-btn" style="width:100%;padding:13px;border:0;border-radius:999px;background:linear-gradient(135deg,#ff2d78,#a24cff);color:#fff;font-size:15px;font-weight:800;cursor:pointer;">Yes, I Paid - Activate</button>' +
           '<button type="button" id="prem-verify-close" style="width:100%;padding:10px;border:0;border-radius:999px;background:transparent;color:#8e8e8e;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px;">Close</button>';
         document.body.appendChild(sheet);
         // Pre-fill email from signed-in user
@@ -182,21 +208,48 @@
         document.getElementById('prem-verify-close').addEventListener('click', function() { sheet.remove(); });
         document.getElementById('prem-verify-btn').addEventListener('click', function() { verifyPayment(); });
         // Auto-focus
-        setTimeout(function() { document.getElementById('prem-verify-email')?.focus(); }, 300);
+        setTimeout(function() { document.getElementById('prem-verify-email') && document.getElementById('prem-verify-email').focus(); }, 300);
       }
 
       function verifyPayment() {
-        var email = document.getElementById('prem-verify-email')?.value.trim();
+        var email = document.getElementById('prem-verify-email') && document.getElementById('prem-verify-email').value.trim();
         if (!email || !email.includes('@')) {
           show('Please enter a valid email address.');
           return;
         }
         var btn = document.getElementById('prem-verify-btn');
-        btn.textContent = 'Activating…';
+        btn.textContent = 'Checking payment...';
         btn.disabled = true;
 
-        // Activate immediately — user confirmed they paid on PesaPal
-        activatePremium(email);
+        // Check payment status via PesaPal tracking ID
+        var pendingTx = localStorage.getItem('pesapal_pending_tx');
+        if (pendingTx) {
+          fetch('/api/gateway/v1/pesapal/status/' + pendingTx)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              if (data.success && data.data) {
+                var status = data.data.status || data.data.payment_status;
+                if (status === 'COMPLETED' || status === 'VERIFIED') {
+                  activatePremium(email);
+                } else if (status === 'FAILED' || status === 'CANCELLED') {
+                  btn.textContent = 'Yes, I Paid - Activate';
+                  btn.disabled = false;
+                  show('Payment was not completed. Please try again.');
+                } else {
+                  btn.textContent = 'Yes, I Paid - Activate';
+                  btn.disabled = false;
+                  show('Payment is still pending. Please wait a moment and try again.');
+                }
+              } else {
+                activatePremium(email);
+              }
+            })
+            .catch(function() {
+              activatePremium(email);
+            });
+        } else {
+          activatePremium(email);
+        }
       }
 
       function activatePremium(email) {
@@ -220,7 +273,7 @@
               showPremiumSuccess();
             });
         } else {
-          // No auth module — store locally
+          // No auth module - store locally
           try {
             var user = window.GLITCHIT_USER;
             if (user && user.id) {
@@ -234,42 +287,82 @@
       function showPremiumSuccess() {
         var sheet = document.getElementById('prem-verify-sheet');
         if (sheet) sheet.remove();
-        show('You\u2019re Premium! 🎉 Your verified badge is now active.');
+        show("You're Premium! \uD83C\uDF89 Your verified badge is now active.");
         // Redirect to home after short delay
         setTimeout(function() { location.href = 'index.html?verified=1'; }, 2000);
       }
 
-      
-      // Pay with Wallet buttons — use GlitchItWallet module
+      // Pay with Wallet buttons - use GlitchItWallet module
       document.querySelectorAll('.pay-wallet-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var plan = btn.dataset.plan;
           if (!window.GlitchItWallet) {
             var tip = document.createElement('div');
             tip.className = 'end-toast show';
-            tip.innerHTML = '<span class="end-toast-mark">⚠</span><span class="end-toast-text">Wallet not loaded yet — please try again.</span>';
+            tip.innerHTML = '<span class="end-toast-mark">&#9888;</span><span class="end-toast-text">Wallet not loaded yet - please try again.</span>';
             document.body.appendChild(tip);
             setTimeout(function() { tip.remove(); }, 2200);
             return;
           }
           var result = window.GlitchItWallet.payPremium(plan);
           if (result && result.ok) {
-            show("You're Premium! 🎉 Paid from wallet.");
+            show("You're Premium! \uD83C\uDF89 Paid from wallet.");
             // Redirect to home with verified badge after short delay
             setTimeout(function() { location.href = 'index.html?verified=1'; }, 1500);
           } else if (result && result.error === 'Insufficient balance') {
-            show('Insufficient wallet balance — deposit first at wallet.html');
+            show('Insufficient wallet balance - deposit first at wallet.html');
           } else {
-            show('Could not process payment — please try again.');
+            show('Could not process payment - please try again.');
           }
         });
       });
 
-      // Legacy deep links from when checkout redirected: confirm what happened.
-      if (location.search.indexOf('success=1') !== -1) {
-        show("You're Premium! 🎉 Your benefits are active.");
+      // Check if user returned from PesaPal payment redirect
+      // PesaPal appends OrderTrackingId to the callback_url after payment
+      if (location.search.indexOf('from_pesapal=1') !== -1) {
+        var pendingTx = localStorage.getItem('pesapal_pending_tx');
+        if (pendingTx) {
+          show('Checking your payment status...');
+          var pollAttempts = 0;
+          function pollPesaPalStatus() {
+            pollAttempts++;
+            if (pollAttempts > 30) {
+              show('Payment still processing. Please check again in a few minutes.');
+              localStorage.removeItem('pesapal_pending_tx');
+              return;
+            }
+            fetch('/api/gateway/v1/pesapal/status/' + pendingTx)
+              .then(function(r) { return r.json(); })
+              .then(function(data) {
+                if (data.success && data.data) {
+                  var status = data.data.status || data.data.payment_status;
+                  if (status === 'COMPLETED' || status === 'VERIFIED') {
+                    var u = window.GLITCHIT_USER;
+                    var email = (u && u.email) ? u.email : '';
+                    if (email) activatePremium(email);
+                    else show('Payment successful! Your premium is active.');
+                    localStorage.removeItem('pesapal_pending_tx');
+                    return;
+                  } else if (status === 'FAILED' || status === 'CANCELLED' || status === 'REJECTED') {
+                    show('Payment was cancelled or failed. No badge granted.');
+                    localStorage.removeItem('pesapal_pending_tx');
+                    return;
+                  }
+                }
+                setTimeout(pollPesaPalStatus, 3000);
+              })
+              .catch(function() {
+                setTimeout(pollPesaPalStatus, 3000);
+              });
+          }
+          pollPesaPalStatus();
+        }
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (location.search.indexOf('success=1') !== -1) {
+        show("You're Premium! \uD83C\uDF89 Your benefits are active.");
       } else if (location.search.indexOf('canceled=1') !== -1) {
-        show('Checkout canceled — no charge was made.');
+        show('Checkout canceled - no charge was made.');
       }
     </script>
     </body>

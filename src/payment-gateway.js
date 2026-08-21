@@ -169,18 +169,58 @@ async function showPaymentMethods() {
   if (walletBal >= amount && walletForm) {
     walletForm.style.display = '';
   } else {
-    // Redirect to PesaPal subscription URL directly
-    // Using the user's monthly subscription link
-    const pesapalUrl = 'https://store.pesapal.com/monthlyverification';
-    
-    // Store payment details for status checking
+    // Use PesaPal PostPesapalDirectOrderV4 (API 3.0 SubmitOrderRequest)
+    // Create order via our backend, get redirect_url, then redirect user
     const txRef = currentOptions?.api_ref || generateTxRef();
-    localStorage.setItem('pesapal_pending_tx', txRef);
-    localStorage.setItem('pesapal_payment_amount', amount);
-    localStorage.setItem('pesapal_payment_title', currentOptions?.title || 'Premium');
-    
-    // Redirect to PesaPal hosted payment page
-    window.location.href = pesapalUrl;
+    const buyer = {
+      first_name: currentOptions._buyerName?.split(' ')[0] || currentOptions._buyerName || 'Customer',
+      last_name: currentOptions._buyerName?.split(' ').slice(1).join(' ') || '',
+      email: currentOptions._buyerEmail || '',
+      phone: currentOptions._buyerPhone || '',
+    };
+
+    // Show loading state
+    const continueBtn = overlay.querySelector('#pg-continue-btn');
+    if (continueBtn) { continueBtn.classList.add('loading'); continueBtn.disabled = true; }
+
+    try {
+      const response = await fetch('/api/gateway/v1/pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: buyer.first_name,
+          last_name: buyer.last_name,
+          email: buyer.email,
+          phone: buyer.phone,
+          amount: amount,
+          currency: 'KES',
+          description: currentOptions?.title || 'GlitchIt Payment',
+          tx_ref: txRef,
+          callback_url: window.location.origin + '/premium.html?from_pesapal=1',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data && data.data.redirect_url) {
+        // Store tracking ID for status checking when user returns
+        localStorage.setItem('pesapal_pending_tx', data.data.order_tracking_id || txRef);
+        localStorage.setItem('pesapal_payment_amount', amount);
+        localStorage.setItem('pesapal_payment_title', currentOptions?.title || 'Premium');
+
+        // Redirect to PesaPal checkout page
+        window.location.href = data.data.redirect_url;
+      } else {
+        if (continueBtn) { continueBtn.classList.remove('loading'); continueBtn.disabled = false; }
+        toast('\u274c', data.message || 'Failed to create payment order');
+        showCheckout();
+      }
+    } catch (err) {
+      console.error('[PesaPal] Order creation failed:', err);
+      if (continueBtn) { continueBtn.classList.remove('loading'); continueBtn.disabled = false; }
+      toast('\u274c', 'Payment connection failed — please try again');
+      showCheckout();
+    }
   }
 }
 
@@ -338,43 +378,53 @@ if (document.readyState === 'loading') {
 } else { injectStyles(); }
 
 // ─── Payment Status Checker (runs on page load) ─────────────────────
-// Checks if user returned from PesaPal and handles success/cancellation
+// Checks if user returned from PesaPal after payment.
+// PesaPal redirects back with OrderTrackingId as a query parameter.
 async function checkPaymentStatus() {
   const urlParams = new URLSearchParams(window.location.search);
-  const paymentStatus = urlParams.get('payment_status');
+  const orderTrackingId = urlParams.get('OrderTrackingId') || urlParams.get('order_tracking_id');
   const pendingTx = localStorage.getItem('pesapal_pending_tx');
 
-  if (!paymentStatus || !pendingTx) return;
+  const trackingId = orderTrackingId || pendingTx;
+  if (!trackingId) return;
 
   // Clean up URL
   window.history.replaceState({}, document.title, window.location.pathname);
 
   // Check transaction status with backend
   try {
-    const response = await fetch(`${API_BASE}/api/gateway/v1/pesapal/status/${pendingTx}`);
+    const response = await fetch(`/api/gateway/v1/pesapal/status/${trackingId}`);
     const data = await response.json();
 
     if (data.success && data.data) {
       const status = data.data.status || data.data.payment_status;
 
       if (status === 'COMPLETED' || status === 'VERIFIED') {
-        // Payment successful — give blue badge
         giveBlueBadge();
         localStorage.removeItem('pesapal_pending_tx');
-        showToast('✅', 'Payment successful! You now have a verified badge.');
+        showToast('\u2705', 'Payment successful! You now have a verified badge.');
       } else if (status === 'FAILED' || status === 'CANCELLED' || status === 'REJECTED') {
-        // Payment cancelled or failed — no badge
         localStorage.removeItem('pesapal_pending_tx');
-        showToast('❌', 'Payment was cancelled or failed.');
+        showToast('\u274c', 'Payment was cancelled or failed.');
       } else {
-        // Still pending — check again in 2 seconds
-        setTimeout(checkPaymentStatus, 2000);
+        if (!window._pesapalPollAttempts) window._pesapalPollAttempts = 0;
+        window._pesapalPollAttempts++;
+        if (window._pesapalPollAttempts < 30) {
+          setTimeout(checkPaymentStatus, 3000);
+        } else {
+          localStorage.removeItem('pesapal_pending_tx');
+          showToast('\u26a0\ufe0f', 'Payment still pending \u2014 check again later.');
+        }
         return;
       }
     }
   } catch (err) {
     console.error('[PesaPal] Status check failed:', err);
-    localStorage.removeItem('pesapal_pending_tx');
+    if (!window._pesapalPollAttempts) window._pesapalPollAttempts = 0;
+    window._pesapalPollAttempts++;
+    if (window._pesapalPollAttempts < 10) {
+      setTimeout(checkPaymentStatus, 3000);
+    }
   }
 }
 

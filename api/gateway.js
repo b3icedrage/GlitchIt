@@ -285,6 +285,11 @@ function handleHealth(req, res) {
       configured: Boolean(PESAPAL_CONSUMER_KEY && PESAPAL_CONSUMER_SECRET),
       base_url: PESAPAL_BASE_URL,
     },
+    pay: {
+      endpoint: '/v1/pay',
+      method: 'POST',
+      fields: ['first_name', 'last_name', 'email', 'amount', 'currency (optional, defaults to KES)'],
+    },
     ipn: {
       url: ipnUrl,
       status: 'active',
@@ -754,7 +759,94 @@ async function deliverWebhook(tx) {
   console.log(`[Gateway] ✅ Webhook delivered to ${tx.merchant_name}`);
 }
 
-// POST /v1/pesapal/order — Create PesaPal payment order
+// POST /v1/pay — Public endpoint: collect customer info + payment info, create PesaPal order, return redirect URL
+// This is Step 1 of the PesaPal integration flow.
+async function handlePay(req, res) {
+  const body = await readBody(req);
+  if (!body) return json(res, 400, { success: false, message: 'Invalid JSON', timestamp: now() });
+
+  // Validate required PesaPal fields
+  const required = ['first_name', 'last_name', 'email', 'amount'];
+  const missing = required.filter((k) => !body[k]);
+  if (missing.length > 0) {
+    return json(res, 400, { success: false, message: `Missing required fields: ${missing.join(', ')}`, timestamp: now() });
+  }
+
+  const amount = Number(body.amount);
+  if (!amount || amount <= 0) {
+    return json(res, 400, { success: false, message: 'Amount must be a positive number', timestamp: now() });
+  }
+  if (amount > 500000) {
+    return json(res, 400, { success: false, message: 'Amount cannot exceed KES 500,000', timestamp: now() });
+  }
+
+  // Validate email format
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+    return json(res, 400, { success: false, message: 'Invalid email address', timestamp: now() });
+  }
+
+  const txRef = body.tx_ref || generateTxRef('glt');
+  const currency = body.currency || 'KES';
+  const description = body.description || 'GlitchIt Payment';
+  const callbackUrl = body.callback_url || PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitchit.app')}/api/gateway/v1/pesapal/callback`;
+
+  const orderData = {
+    id: txRef,
+    currency: currency,
+    amount: amount,
+    description: description,
+    callback_url: callbackUrl,
+    notification_id: '',
+    billing_address: {
+      email_address: body.email,
+      phone_number: body.phone || '',
+      country_code: body.country_code || 'KE',
+      first_name: body.first_name,
+      last_name: body.last_name,
+    },
+  };
+
+  console.log(`[Gateway] /v1/pay → Creating PesaPal order: ${txRef} | ${body.first_name} ${body.last_name} | ${currency} ${amount}`);
+
+  try {
+    const result = await submitPesaPalOrder(orderData);
+
+    console.log(`[Gateway] PesaPal order created: ${txRef} → tracking ${result.order_tracking_id}`);
+
+    // Store pending transaction in DB if pool is available
+    const pool = getDb();
+    if (pool) {
+      try {
+        await pool.query(
+          `INSERT INTO transactions (id, checkout_request_id, amount, phone_number, account_reference, status, pesapal_tracking_id, payment_method, created_at, updated_at)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'PENDING', $5, 'PesaPal', NOW(), NOW())`,
+          [txRef, amount, body.phone || '', body.email, result.order_tracking_id]
+        );
+      } catch (dbErr) {
+        console.error('[Gateway] DB insert failed (non-fatal):', dbErr.message);
+      }
+    }
+
+    json(res, 200, {
+      success: true,
+      message: 'Payment order created — redirect user to redirect_url',
+      data: {
+        tx_ref: txRef,
+        order_tracking_id: result.order_tracking_id,
+        redirect_url: result.redirect_url,
+        amount: amount,
+        currency: currency,
+        status: 'PENDING',
+      },
+      timestamp: now(),
+    });
+  } catch (err) {
+    console.error('[Gateway] /v1/pay order creation failed:', err.message);
+    json(res, 500, { success: false, message: 'Payment processing failed: ' + err.message, timestamp: now() });
+  }
+}
+
+// POST /v1/pesapal/order — Create PesaPal payment order (authenticated merchant endpoint)
 async function handlePesaPalOrder(req, res) {
   const body = await readBody(req);
   if (!body) return json(res, 400, { success: false, message: 'Invalid JSON', timestamp: now() });
@@ -1015,6 +1107,11 @@ module.exports = async function gatewayHandler(req, res) {
     // Submit confirmation code (no auth — customer does this)
     if (path === '/v1/charges/submit' && method === 'POST') {
       return handleSubmitCode(req, res);
+    }
+
+    // Public pay endpoint — collect customer info + payment info → PesaPal order
+    if (path === '/v1/pay' && method === 'POST') {
+      return handlePay(req, res);
     }
 
     // PesaPal order creation (authenticated)
