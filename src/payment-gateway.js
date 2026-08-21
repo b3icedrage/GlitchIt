@@ -2,7 +2,7 @@
 // All payments go through PesaPal's hosted payment page.
 
 const API_BASE = window.GLITCHIT_API_BASE || '';
-const PESAPAL_MONTHLY_URL = 'https://store.pesapal.com/monthlypayment';
+const PESAPAL_MONTHLY_URL = 'https://store.pesapal.com/monthlyverification';
 
 function formatAmount(amount, currency = 'USD') {
   return `${currency} ${Number(amount).toLocaleString()}`;
