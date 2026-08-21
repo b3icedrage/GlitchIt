@@ -195,11 +195,8 @@
         btn.textContent = 'Activating…';
         btn.disabled = true;
 
-        // Quick backend check then activate immediately
-        fetch('/api/payment/check-premium?email=' + encodeURIComponent(email))
-          .then(function(r) { return r.json(); })
-          .then(function() { activatePremium(email); })
-          .catch(function() { activatePremium(email); });
+        // Activate immediately — user confirmed they paid on PesaPal
+        activatePremium(email);
       }
 
       function activatePremium(email) {
