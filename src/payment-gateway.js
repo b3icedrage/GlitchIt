@@ -170,8 +170,7 @@ function showPaymentMethods() {
     walletForm.style.display = '';
   } else {
     // Redirect to external PesaPal store link
-    const isYearly = (currentOptions?.api_ref || '').includes('yearly');
-    const url = isYearly ? 'https://store.pesapal.com/yearlypayment' : 'https://store.pesapal.com/monthlyverification';
+    const url = 'https://store.pesapal.com/monthlyverification';
     window.open(url, '_blank', 'noopener');
     close();
   }

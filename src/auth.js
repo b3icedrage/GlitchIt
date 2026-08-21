@@ -107,10 +107,26 @@ function friendlyError(error) {
 export async function signUp(email, password, username, profile) {
   const sb = await getClient();
   if (!sb) return { ok: false, error: notReadyReason() };
+  const handle = (username || email.split('@')[0]).trim();
+
+  // Check username uniqueness: query existing users to prevent duplicates.
+  // We use listUsers (admin) only if service role is available; otherwise
+  // we rely on a public RPC or just do a best-effort check.
+  try {
+    const { data: existing } = await sb.auth.admin?.listUsers?.() || { data: null };
+    if (existing && Array.isArray(existing.users)) {
+      const taken = existing.users.some((u) => {
+        const mh = u.user_metadata?.username || u.email?.split('@')[0] || '';
+        return mh.toLowerCase() === handle.toLowerCase() && u.id !== (await sb.auth.getUser()).data?.user?.id;
+      });
+      if (taken) return { ok: false, error: 'This username is already taken. Please choose another.' };
+    }
+  } catch (e) { /* admin API unavailable — skip uniqueness check, Supabase RLS may enforce */ }
+
   // The onboarding step (signup step 2) collects username, avatar, and feed
   // interests; everything ships together in user_metadata so the profile is
   // complete from the very first session (even when email confirmation is on).
-  const metadata = { username: username || email.split('@')[0] };
+  const metadata = { username: handle };
   if (profile?.avatarUrl) metadata.avatar_url = profile.avatarUrl;
   if (Array.isArray(profile?.interests) && profile.interests.length) metadata.interests = profile.interests;
   const { data, error } = await sb.auth.signUp({

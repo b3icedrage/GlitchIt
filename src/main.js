@@ -133,11 +133,7 @@ function safeAvatar(value) {
 }
 
 function userAvatar(user, handle = '') {
-  // A picture picked on the profile page wins over account metadata.
-  try {
-    const custom = localStorage.getItem('glitchit.avatar.v1') || '';
-    if (custom && /^(?:https?:\/\/|data:image\/|blob:)/i.test(custom)) return custom;
-  } catch (e) { /* ignore */ }
+  // Always load from database (Supabase user_metadata) — no localStorage override.
   const metadata = user?.user_metadata || {};
   const identity = user?.identities?.[0]?.identity_data || {};
   return [metadata.avatar_url, metadata.picture, metadata.avatar, metadata.image, identity.avatar_url, identity.picture]
@@ -261,14 +257,20 @@ function applyProfileAvatarUi() {
   const avatar = profile.avatar || fallbackAvatar(handle);
   const user = window.GLITCHIT_USER;
   const userId = user && !user.guest ? user.id : '';
-  // Check if user has active premium (verified badge)
+  // Check if user has active premium (verified badge) — from Supabase user_metadata
   let isVerified = false;
   if (userId) {
     try {
-      const raw = localStorage.getItem('glitchit.premium.' + userId);
-      if (raw) {
-        const data = JSON.parse(raw);
-        isVerified = data && data.expiresAt && Date.now() < data.expiresAt;
+      const prem = user?.user_metadata?.premium;
+      if (prem && prem.expiresAt && Date.now() < prem.expiresAt) {
+        isVerified = true;
+      } else {
+        // Fallback: check localStorage cache
+        const raw = localStorage.getItem('glitchit.premium.' + userId);
+        if (raw) {
+          const data = JSON.parse(raw);
+          isVerified = data && data.expiresAt && Date.now() < data.expiresAt;
+        }
       }
     } catch (e) { /* ignore */ }
   }
@@ -328,6 +330,12 @@ function applyProfileAvatarUi() {
 function applyCurrentUserProfile() {
   syncProfileFromUser(window.GLITCHIT_USER);
   applyProfileAvatarUi();
+  // Sync premium status from Supabase user_metadata to localStorage cache
+  // so other parts of the app can read it fast without checking user_metadata
+  const user = window.GLITCHIT_USER;
+  if (user && !user.guest && user.id && user.user_metadata?.premium) {
+    try { localStorage.setItem('glitchit.premium.' + user.id, JSON.stringify(user.user_metadata.premium)); } catch (e) { /* ignore */ }
+  }
 }
 
 // ---------- Profile picture changer ----------
@@ -370,7 +378,6 @@ async function attachPhotoChange() {
     const dataUrl = await readImageSquare(file);
     if (!dataUrl) { showEndToast('Couldn’t read that image — try another.'); return; }
     const applyAvatar = (url) => {
-      try { localStorage.setItem('glitchit.avatar.v1', url); } catch (e) { /* ignore */ }
       const me = window.GLITCHIT_USER;
       if (me && !me.guest) {
         if (me.user_metadata) me.user_metadata.avatar = url;
@@ -496,15 +503,21 @@ async function hydrateSearchAccounts() {
         avatar: a.avatar || '',
         verified: false,
       }));
-      // Check if current user has active premium
+      // Check if current user has active premium (from Supabase user_metadata)
       const cu = window.GLITCHIT_USER;
       if (cu && !cu.guest && cu.id) {
         try {
-          const pr = localStorage.getItem('glitchit.premium.' + cu.id);
-          if (pr) { const pd = JSON.parse(pr); if (pd && pd.expiresAt && Date.now() < pd.expiresAt) {
+          const cp = cu.user_metadata?.premium;
+          if (cp && cp.expiresAt && Date.now() < cp.expiresAt) {
             const me = creators.find((c) => c.id === cu.id);
             if (me) me.verified = true;
-          }}
+          } else {
+            const pr = localStorage.getItem('glitchit.premium.' + cu.id);
+            if (pr) { const pd = JSON.parse(pr); if (pd && pd.expiresAt && Date.now() < pd.expiresAt) {
+              const me = creators.find((c) => c.id === cu.id);
+              if (me) me.verified = true;
+            }}
+          }
         } catch (e) { /* ignore */ }
       }
     }
@@ -3213,11 +3226,15 @@ function attachProfileAuth() {
 
   if (!user || user.guest) return;
   const handle = user.user_metadata?.username || user.email?.split('@')[0] || '';
-  // Check premium status for verified badge
+  // Check premium status for verified badge (from Supabase user_metadata)
   let isVerified = false;
   try {
-    const raw = localStorage.getItem('glitchit.premium.' + user.id);
-    if (raw) { const d = JSON.parse(raw); isVerified = d && d.expiresAt && Date.now() < d.expiresAt; }
+    const cp = user?.user_metadata?.premium;
+    if (cp && cp.expiresAt && Date.now() < cp.expiresAt) { isVerified = true; }
+    else {
+      const raw = localStorage.getItem('glitchit.premium.' + user.id);
+      if (raw) { const d = JSON.parse(raw); isVerified = d && d.expiresAt && Date.now() < d.expiresAt; }
+    }
   } catch (e) { /* ignore */ }
   const bolt = isVerified ? verifiedBolt('verified-bolt-inline') : '';
   const top = document.querySelector('.profile-topbar strong');

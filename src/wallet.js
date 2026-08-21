@@ -198,11 +198,16 @@ export function payPremium(plan) {
     ref: 'premium-monthly-' + Date.now(),
   });
 
-  // Store premium status with 30-day expiry from now
+  // Store premium status with 30-day expiry from now in Supabase user_metadata
   const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+  const premData = { plan: 'monthly', activatedAt: Date.now(), expiresAt };
+  // Also store in localStorage as fast cache (Supabase is source of truth)
+  try { localStorage.setItem('glitchit.premium.' + user.id, JSON.stringify(premData)); } catch (e) { /* ignore */ }
+  // Push to Supabase so premium persists across devices
   try {
-    const premKey = 'glitchit.premium.' + user.id;
-    localStorage.setItem(premKey, JSON.stringify({ plan: 'monthly', activatedAt: Date.now(), expiresAt }));
+    if (window.GLITCHIT_AUTH && window.GLITCHIT_AUTH.updateUserMetadata) {
+      window.GLITCHIT_AUTH.updateUserMetadata({ premium: premData }).catch(() => {});
+    }
   } catch (e) { /* ignore */ }
 
   toast('✓', 'You\u2019re Premium! 🎉');
@@ -210,8 +215,20 @@ export function payPremium(plan) {
   return { ok: true, balance: getBalance(user.id) };
 }
 
+/** Read premium data from user object (Supabase user_metadata) */
+function readPremiumFromUser(user) {
+  if (!user || !user.user_metadata) return null;
+  const p = user.user_metadata.premium;
+  if (!p || !p.expiresAt) return null;
+  return p;
+}
+
 /** Check if premium is currently active for a user */
-export function isPremiumActive(userId) {
+export function isPremiumActive(userId, userObj) {
+  // Try user_metadata first (Supabase source of truth)
+  const prem = readPremiumFromUser(userObj || window.GLITCHIT_USER);
+  if (prem && prem.expiresAt && Date.now() < prem.expiresAt) return true;
+  // Fallback to localStorage cache
   try {
     const raw = localStorage.getItem('glitchit.premium.' + userId);
     if (!raw) return false;
@@ -221,7 +238,9 @@ export function isPremiumActive(userId) {
 }
 
 /** Get premium expiry date for a user */
-export function getPremiumExpiry(userId) {
+export function getPremiumExpiry(userId, userObj) {
+  const prem = readPremiumFromUser(userObj || window.GLITCHIT_USER);
+  if (prem && prem.expiresAt) return new Date(prem.expiresAt);
   try {
     const raw = localStorage.getItem('glitchit.premium.' + userId);
     if (!raw) return null;
