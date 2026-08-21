@@ -41,6 +41,7 @@ const ENTRIES = [
   'ads.txt',
   'vercel.json',
   'api',
+  'icon.svg',
 ];
 
 (async () => {

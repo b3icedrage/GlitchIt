@@ -8,7 +8,7 @@
 //    (immutable URLs) with a FIFO budget so maps open instantly on repeat visits.
 'use strict';
 
-const CACHE_NAME = 'glitchit-cache-v3';
+const CACHE_NAME = 'glitchit-cache-v4';
 const MEDIA_CACHE_NAME = 'glitchit-media-v2';
 const MEDIA_BUDGET = 40;
 const MAP_CACHE_NAME = 'glitchit-map-v1';
@@ -37,6 +37,12 @@ const SHELL_URLS = [
   './user.html',
   './auth.html',
   './camera.html',
+  './wallet.html',
+  './premium.html',
+  './terms.html',
+  './receipt.html',
+  './about.html',
+  './privacy.html',
   './src/styles.css?v=9',
   './src/bottombar.css?v=2',
   './src/profile-media.css',
@@ -63,7 +69,32 @@ const SHELL_URLS = [
   './src/ai-chat.js?v=3',
   './src/story-camera.css?v=4',
   './src/story-camera.js?v=4',
-];
+  './src/payment-gateway.js?v=3',
+  './src/payment-checkout.css?v=1',
+  './src/wallet.js',
+  './src/wallet.css',
+  './src/config.js',
+  './src/auth.js?v=4',
+  './src/db.js?v=7',
+  './src/ads.js',
+  './src/settings-enhancements.js',
+  './src/pull-refresh.js',
+  './src/notes-location.js',
+  './src/notes-story-enhancements.js',
+  './src/live-camera.js',
+  './src/location-share.js',
+  './src/search.css',
+  './src/messages.css',
+  './src/home-app.css',
+  './src/live.css',
+  './src/user-profile.css',
+  './src/notes-location.css',
+  './src/settings.css',
+  './src/auth.css',
+  './src/db.css',
+  './src/seo.css',
+  './manifest.json',
+]
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
