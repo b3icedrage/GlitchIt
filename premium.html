@@ -136,10 +136,132 @@
         timer = setTimeout(function () { toast.classList.remove('show'); }, 6000);
       }
 
-      // "Get Premium" button → open PesaPal store link directly
+      // "Get Premium" button → create pending record + open PesaPal store link + show verification
       document.querySelector('.prem-cta:not(.pay-wallet-btn)').addEventListener('click', function () {
+        // Create a pending premium activation record on the server
+        try {
+          var u = window.GLITCHIT_USER;
+          var email = (u && u.email) ? u.email : '';
+          if (email) {
+            fetch('/api/payment/premium-init', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: email })
+            }).catch(function() { /* proceed anyway */ });
+          }
+        } catch(e) { /* proceed anyway */ }
+        // Open PesaPal store link
         window.open(PESAPAL_MONTHLY_URL, '_blank', 'noopener');
+        // Show verification form after a short delay
+        setTimeout(function() {
+          showVerifyForm();
+        }, 2000);
       });
+
+      // Payment verification flow
+      function showVerifyForm() {
+        var existing = document.getElementById('prem-verify-sheet');
+        if (existing) return;
+        var sheet = document.createElement('div');
+        sheet.id = 'prem-verify-sheet';
+        sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#141321;border-radius:20px 20px 0 0;z-index:1000;padding:20px 20px 30px;box-shadow:0 -8px 30px rgba(0,0,0,.5);';
+        sheet.innerHTML = '<div style="width:36px;height:4px;border-radius:2px;background:#444;margin:0 auto 14px;"></div>' +
+          '<h3 style="color:#fff;font-size:17px;margin:0 0 6px;text-align:center;">Verify Your Payment</h3>' +
+          '<p style="color:#8e8e8e;font-size:13px;margin:0 0 16px;text-align:center;">Enter the email you used on PesaPal to activate your premium badge.</p>' +
+          '<input type="email" id="prem-verify-email" placeholder="your@email.com" style="width:100%;padding:12px 14px;border:1px solid #333;border-radius:12px;background:#1e1e2e;color:#fff;font-size:14px;outline:none;margin-bottom:12px;" autocomplete="email" />' +
+          '<button type="button" id="prem-verify-btn" style="width:100%;padding:13px;border:0;border-radius:999px;background:linear-gradient(135deg,#ff2d78,#a24cff);color:#fff;font-size:15px;font-weight:800;cursor:pointer;">Check Payment Status</button>' +
+          '<button type="button" id="prem-verify-close" style="width:100%;padding:10px;border:0;border-radius:999px;background:transparent;color:#8e8e8e;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px;">Close</button>';
+        document.body.appendChild(sheet);
+        // Pre-fill email from signed-in user
+        try {
+          var u = window.GLITCHIT_USER;
+          if (u && u.email) {
+            document.getElementById('prem-verify-email').value = u.email;
+          }
+        } catch (e) { /* ignore */ }
+        document.getElementById('prem-verify-close').addEventListener('click', function() { sheet.remove(); });
+        document.getElementById('prem-verify-btn').addEventListener('click', function() { verifyPayment(); });
+        // Auto-focus
+        setTimeout(function() { document.getElementById('prem-verify-email')?.focus(); }, 300);
+      }
+
+      var verifyPolling = null;
+      function verifyPayment() {
+        var email = document.getElementById('prem-verify-email')?.value.trim();
+        if (!email || !email.includes('@')) {
+          show('Please enter a valid email address.');
+          return;
+        }
+        var btn = document.getElementById('prem-verify-btn');
+        btn.textContent = 'Checking…';
+        btn.disabled = true;
+
+        // Poll the backend for payment status
+        var attempts = 0;
+        var maxAttempts = 30; // 30 attempts × 3s = 90 seconds max
+        if (verifyPolling) clearInterval(verifyPolling);
+
+        verifyPolling = setInterval(function() {
+          attempts++;
+          if (attempts > maxAttempts) {
+            clearInterval(verifyPolling);
+            btn.textContent = 'Check Payment Status';
+            btn.disabled = false;
+            show('Payment not found yet. Try again in a few minutes or contact support.');
+            return;
+          }
+          fetch('/api/payment/check-premium?email=' + encodeURIComponent(email))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              if (data.ok && data.active) {
+                clearInterval(verifyPolling);
+                // Payment verified! Activate premium in Supabase
+                activatePremium(email);
+              }
+            })
+            .catch(function() { /* retry */ });
+        }, 3000);
+      }
+
+      function activatePremium(email) {
+        var expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+        var premData = { plan: 'monthly', activatedAt: Date.now(), expiresAt: expiresAt };
+
+        // Try to update Supabase user_metadata
+        if (window.GLITCHIT_AUTH && window.GLITCHIT_AUTH.updateUserMetadata) {
+          window.GLITCHIT_AUTH.updateUserMetadata({ premium: premData })
+            .then(function() {
+              showPremiumSuccess();
+            })
+            .catch(function() {
+              // Fallback: just store locally
+              try {
+                var user = window.GLITCHIT_USER;
+                if (user && user.id) {
+                  localStorage.setItem('glitchit.premium.' + user.id, JSON.stringify(premData));
+                }
+              } catch (e) { /* ignore */ }
+              showPremiumSuccess();
+            });
+        } else {
+          // No auth module — store locally
+          try {
+            var user = window.GLITCHIT_USER;
+            if (user && user.id) {
+              localStorage.setItem('glitchit.premium.' + user.id, JSON.stringify(premData));
+            }
+          } catch (e) { /* ignore */ }
+          showPremiumSuccess();
+        }
+      }
+
+      function showPremiumSuccess() {
+        var sheet = document.getElementById('prem-verify-sheet');
+        if (sheet) sheet.remove();
+        show('You\u2019re Premium! 🎉 Your verified badge is now active.');
+        // Redirect to home after short delay
+        setTimeout(function() { location.href = 'index.html?verified=1'; }, 2000);
+      }
 
       
       // Pay with Wallet buttons — use GlitchItWallet module

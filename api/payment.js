@@ -1,6 +1,7 @@
 // GlitchIt Pay — payment handler
 // Payments go through external PesaPal store links.
-// This backend only handles manual payment verification fallback.
+// Premium activation: user clicks Get Premium → we create pending record →
+// PesaPal IPN confirms payment → we mark activation as verified → client polls check-premium.
 //
 // Required env vars (Freebuff Settings → Environment):
 //   PAYMENT_BUSINESS_NAME   — display name (default: 'GlitchIt')
@@ -18,6 +19,32 @@ function getDatabaseUrl()    { return cfg('DATABASE_URL', ''); }
 
 // ─── Database (optional, graceful) ──────────────────────────────────
 let dbPool = null;
+let tablesEnsured = false;
+
+async function ensureTables(db) {
+  if (tablesEnsured) return;
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS premium_activations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email TEXT NOT NULL,
+        order_reference TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        activated_at TIMESTAMPTZ,
+        expires_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_prem_act_email ON premium_activations (LOWER(email))`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_prem_act_status ON premium_activations (status)`);
+    tablesEnsured = true;
+    console.log('[Pay] ✅ premium_activations table ready');
+  } catch (e) {
+    console.log('[Pay] Table ensure skipped:', e.message);
+    tablesEnsured = true; // don't retry on every request
+  }
+}
+
 function getDb() {
   if (!Pool || !getDatabaseUrl()) return null;
   if (!dbPool) {
@@ -56,41 +83,46 @@ function generateTxRef() {
 
 // ─── Route Handlers ─────────────────────────────────────────────────
 
-// POST /api/payment — Record a payment reference
-async function handleInitialize(req, res) {
+// POST /api/payment/premium-init — Called when user clicks "Get Premium"
+// Creates a PENDING premium activation record so the IPN handler can match it.
+async function handlePremiumInit(req, res) {
   const body = await readBody(req);
-  if (!body || !body.amount || body.amount <= 0) {
-    return json(res, 400, { ok: false, error: 'Valid amount required' });
+  const email = (body && body.email || '').trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    return json(res, 400, { ok: false, error: 'Valid email required' });
   }
 
-  const txRef = body.tx_ref || generateTxRef();
-  const amount = Math.round(Number(body.amount));
-  const title = body.title || 'GlitchIt Payment';
-  const buyerName = body.name || body.buyer_name || '';
-  const buyerEmail = body.email || body.buyer_email || '';
-
-  // Store in DB if available
   const db = getDb();
-  if (db) {
-    try {
-      await db.query(
-        `INSERT INTO transactions (id, merchant_id, checkout_request_id, amount, phone_number, account_reference, status, created_at, updated_at)
-         VALUES (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', $1, $2, $3, $4, 'PENDING', NOW(), NOW())
-         ON CONFLICT (checkout_request_id) DO NOTHING`,
-        [txRef, amount, buyerName || buyerEmail || '', title]
-      );
-    } catch(e) { console.log('[Pay] DB insert skipped:', e.message); }
+  if (!db) {
+    // No DB — can't track, still let them proceed
+    return json(res, 200, { ok: true, message: 'Proceed with payment', tracked: false });
   }
 
-  console.log(`[Pay] 📤 Payment recorded: $${amount} ref=${txRef}`);
+  await ensureTables(db);
 
-  // Return success — the actual payment happens on the PesaPal store page
-  return json(res, 200, {
-    ok: true,
-    tx_ref: txRef,
-    status: 'recorded',
-    message: 'Payment reference recorded. Complete payment on the PesaPal checkout page.',
-  });
+  try {
+    // Check if there's already an active premium for this email
+    const existing = await db.query(
+      `SELECT id, expires_at FROM premium_activations WHERE LOWER(email) = $1 AND status = 'verified' AND expires_at > NOW() ORDER BY expires_at DESC LIMIT 1`,
+      [email]
+    );
+    if (existing.rows.length > 0) {
+      return json(res, 200, { ok: true, message: 'Already premium', active: true, expiresAt: existing.rows[0].expires_at });
+    }
+
+    // Create a pending activation record
+    const ref = `premium-monthly-${Date.now()}-${email}`;
+    await db.query(
+      `INSERT INTO premium_activations (id, email, order_reference, status, created_at)
+       VALUES (gen_random_uuid(), $1, $2, 'pending', NOW())`,
+      [email, ref]
+    );
+    console.log(`[Pay] 📤 Premium init: ${email} ref=${ref}`);
+    return json(res, 200, { ok: true, message: 'Proceed with payment', tracked: true });
+  } catch (e) {
+    console.log('[Pay] premium-init error:', e.message);
+    return json(res, 200, { ok: true, message: 'Proceed with payment', tracked: false });
+  }
 }
 
 // POST /api/payment/ipn — PesaPal IPN (Instant Payment Notification) callback
@@ -115,6 +147,8 @@ async function handleIPN(req, res) {
 
   const db = getDb();
   if (db) {
+    await ensureTables(db);
+
     const lookupRef = orderTrackingId || merchantRef;
     try {
       const r = await db.query(
@@ -132,10 +166,109 @@ async function handleIPN(req, res) {
         );
       }
     } catch(e) { console.log('[Pay] DB update skipped:', e.message); }
+
+    // If payment is verified, activate ALL pending premium activations
+    // (PesaPal store links don't carry our custom refs, so we activate any pending)
+    if (txStatus === 'VERIFIED') {
+      try {
+        const pendingResult = await db.query(
+          `UPDATE premium_activations
+           SET status = 'verified', activated_at = NOW(), expires_at = NOW() + INTERVAL '30 days'
+           WHERE status = 'pending' AND created_at > NOW() - INTERVAL '1 hour'
+           RETURNING id, email`
+        );
+        if (pendingResult.rows.length > 0) {
+          for (const row of pendingResult.rows) {
+            console.log(`[Pay] 🎉 Premium activated for ${row.email} (id=${row.id})`);
+          }
+        }
+      } catch (e) { console.log('[Pay] Premium activation skipped:', e.message); }
+    }
   }
 
   console.log(`[Pay] ${txStatus === 'VERIFIED' ? '✅' : '❌'} ${orderTrackingId} → ${txStatus}`);
   json(res, 200, { ResultCode: 0, ResultDesc: 'OK' });
+}
+
+// GET /api/payment/check-premium?email=... — Check if user has a verified premium payment
+async function handleCheckPremium(req, res, url) {
+  const email = (url.searchParams.get('email') || '').trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    return json(res, 400, { ok: false, error: 'Valid email required' });
+  }
+
+  const db = getDb();
+  if (!db) {
+    return json(res, 200, { ok: true, active: false, message: 'Database not available' });
+  }
+
+  try {
+    await ensureTables(db);
+
+    // Check premium_activations table for verified, non-expired premium
+    const r = await db.query(
+      `SELECT activated_at, expires_at FROM premium_activations
+       WHERE LOWER(email) = $1 AND status = 'verified' AND expires_at > NOW()
+       ORDER BY activated_at DESC LIMIT 1`,
+      [email]
+    );
+    if (r.rows.length > 0) {
+      return json(res, 200, {
+        ok: true,
+        active: true,
+        activatedAt: r.rows[0].activated_at,
+        expiresAt: r.rows[0].expires_at,
+      });
+    }
+
+    // Fallback: check transactions table for premium-activated marker
+    const r2 = await db.query(
+      `SELECT stk_response_description FROM transactions
+       WHERE account_reference LIKE $1 AND status = 'VERIFIED'
+       ORDER BY created_at DESC LIMIT 1`,
+      ['%' + email + '%']
+    );
+    if (r2.rows.length > 0 && r2.rows[0].stk_response_description?.includes('PREMIUM_ACTIVATED')) {
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      return json(res, 200, { ok: true, active: true, activatedAt: new Date(), expiresAt });
+    }
+  } catch (e) { console.log('[Pay] check-premium error:', e.message); }
+
+  json(res, 200, { ok: true, active: false });
+}
+
+// POST /api/payment — Record a payment reference (general payments)
+async function handleInitialize(req, res) {
+  const body = await readBody(req);
+  if (!body || !body.amount || body.amount <= 0) {
+    return json(res, 400, { ok: false, error: 'Valid amount required' });
+  }
+
+  const txRef = body.tx_ref || generateTxRef();
+  const amount = Math.round(Number(body.amount));
+  const title = body.title || 'GlitchIt Payment';
+  const buyerName = body.name || body.buyer_name || '';
+  const buyerEmail = body.email || body.buyer_email || '';
+
+  const db = getDb();
+  if (db) {
+    try {
+      await db.query(
+        `INSERT INTO transactions (id, merchant_id, checkout_request_id, amount, phone_number, account_reference, status, created_at, updated_at)
+         VALUES (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', $1, $2, $3, $4, 'PENDING', NOW(), NOW())
+         ON CONFLICT (checkout_request_id) DO NOTHING`,
+        [txRef, amount, buyerName || buyerEmail || '', title]
+      );
+    } catch(e) { console.log('[Pay] DB insert skipped:', e.message); }
+  }
+
+  console.log(`[Pay] 📤 Payment recorded: $${amount} ref=${txRef}`);
+  return json(res, 200, {
+    ok: true,
+    tx_ref: txRef,
+    status: 'recorded',
+    message: 'Payment reference recorded. Complete payment on the PesaPal checkout page.',
+  });
 }
 
 // POST /api/payment/submit — Customer submits confirmation code (manual fallback)
@@ -216,7 +349,7 @@ async function handleApprove(req, res) {
   if (!body || !body.tx_ref) return json(res, 400, { ok: false, error: 'tx_ref required' });
   const db = getDb();
   if (db) { try { await db.query(`UPDATE transactions SET status = 'VERIFIED', updated_at = NOW() WHERE checkout_request_id = $1`, [body.tx_ref]); } catch(e) {} }
-  console.log(`[Pay/PesaPal] ✅ Approved: ${body.tx_ref}`);
+  console.log(`[Pay] ✅ Approved: ${body.tx_ref}`);
   json(res, 200, { ok: true, tx_ref: body.tx_ref, status: 'verified' });
 }
 
@@ -255,15 +388,17 @@ module.exports = async function handler(req, res) {
     return res.end();
   }
 
-  if (method === 'POST' && path === '/api/payment') return handleInitialize(req, res);
+  if (method === 'POST' && path === '/api/payment/premium-init') return handlePremiumInit(req, res);
   if (method === 'POST' && path === '/api/payment/ipn') return handleIPN(req, res);
-  if (method === 'POST' && path === '/api/payment/callback') return handleIPN(req, res); // alias for backwards compat
+  if (method === 'POST' && path === '/api/payment/callback') return handleIPN(req, res); // alias
+  if (method === 'POST' && path === '/api/payment') return handleInitialize(req, res);
   if (method === 'POST' && path === '/api/payment/submit') return handleSubmit(req, res);
   if (method === 'POST' && path === '/api/payment/verify') return handleVerify(req, res);
   if (method === 'GET' && path === '/api/payment/verify') return handleVerifyGet(req, res, url);
   if (method === 'GET' && path === '/api/payment/config') return handleConfig(req, res);
   if (method === 'POST' && path === '/api/payment/approve') return handleApprove(req, res);
   if (method === 'POST' && path === '/api/payment/reject') return handleReject(req, res);
+  if (method === 'GET' && path === '/api/payment/check-premium') return handleCheckPremium(req, res, url);
   if (method === 'GET' && path === '/api/payment/pending') return handlePending(req, res);
 
   json(res, 405, { ok: false, error: 'Method not allowed' });
