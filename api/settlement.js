@@ -16,7 +16,8 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const { Pool } = require('pg');
+let Pool;
+try { Pool = require('pg').Pool; } catch (e) { /* pg optional — DB features disabled */ }
 
 // ─── Configuration (lazy) ───────────────────────────────────────────
 function cfg(k, fb) { return process.env[k] || fb; }

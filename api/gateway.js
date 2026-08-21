@@ -13,8 +13,9 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const { Pool } = require('pg');
-const Redis = require('ioredis');
+let Pool, Redis;
+try { Pool = require('pg').Pool; } catch (e) { /* pg optional — DB features disabled */ }
+try { Redis = require('ioredis'); } catch (e) { /* ioredis optional — Redis features disabled */ }
 
 // Vacuum settlement engine (lazy load to avoid circular deps)
 let _creditVault = null;
