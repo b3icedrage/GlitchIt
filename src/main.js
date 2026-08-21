@@ -3095,6 +3095,38 @@ function attachAuthPage(auth) {
   let pendingAvatar = '';
   const selectedInterests = new Set();
 
+  // ─── Remember-me support ───
+  const rememberCb = document.getElementById('auth-remember');
+  const emailInput = document.getElementById('auth-email');
+  const forgotLink = document.getElementById('auth-forgot-link');
+  const REMEMBER_KEY = 'glitchit.auth.remember';
+  try {
+    const remembered = localStorage.getItem(REMEMBER_KEY);
+    if (remembered && emailInput && !emailInput.value) {
+      emailInput.value = remembered;
+      if (rememberCb) rememberCb.checked = true;
+    }
+  } catch (e) { /* storage unavailable */ }
+  forgotLink?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const em = (emailInput?.value || '').trim();
+    if (!em) { showError(errorEl, 'Enter your email above first, then click Forgot password.'); emailInput?.focus(); return; }
+    (async () => {
+      try {
+        const sb = auth && typeof auth.getClient === 'function' ? await auth.getClient() : null;
+        if (sb && sb.auth && sb.auth.resetPasswordForEmail) {
+          const { error } = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + '/auth.html' });
+          if (error) throw error;
+          showError(errorEl, ''); errorEl.hidden = true;
+          glitchToast('Reset link sent — check your inbox');
+        } else {
+          showError(errorEl, 'Password reset not available. Contact support@glitchit.app.');
+        }
+      } catch (err) { showError(errorEl, err?.message || 'Could not send reset email.'); }
+    })();
+  });
+
+
   const showError = (el, msg) => { if (el) { el.textContent = msg; el.hidden = false; } };
   const hideErrors = () => { if (errorEl) errorEl.hidden = true; if (onboardingError) onboardingError.hidden = true; };
 
@@ -3182,6 +3214,10 @@ function attachAuthPage(auth) {
       const res = await auth.signIn(email, password);
       if (submit) { submit.disabled = false; submit.textContent = 'Log in'; }
       if (!res.ok) { showError(errorEl, res.error || 'Something went wrong.'); return; }
+      try {
+        if (rememberCb && rememberCb.checked) { localStorage.setItem(REMEMBER_KEY, email); }
+        else { localStorage.removeItem(REMEMBER_KEY); }
+      } catch (e) { /* ignore */ }
       finishAuth(res.user, auth);
       return;
     }
