@@ -3213,6 +3213,7 @@ function attachAuthPage(auth) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     hideErrors();
+    try {
     const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
     if (mode !== 'signup') {
@@ -3249,6 +3250,14 @@ function attachAuthPage(auth) {
     pendingEmail = email;
     pendingPassword = password;
     setStep(2);
+    } catch (err) {
+      console.warn('GlitchIt: auth form error', err);
+      if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'auth-form' });
+      const errEl = document.getElementById('auth-error');
+      if (errEl) { errEl.textContent = 'Something went wrong. Please check your connection and try again.'; errEl.hidden = false; }
+      const sub = document.getElementById('auth-submit');
+      if (sub) { sub.disabled = false; sub.textContent = mode === 'signup' ? 'Sign up' : 'Log in'; }
+    }
   });
 }
 

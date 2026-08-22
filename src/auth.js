@@ -105,6 +105,7 @@ function friendlyError(error) {
 }
 
 export async function signUp(email, password, username, profile) {
+  try {
   const sb = await getClient();
   if (!sb) return { ok: false, error: notReadyReason() };
   const handle = (username || email.split('@')[0]).trim();
@@ -141,15 +142,26 @@ export async function signUp(email, password, username, profile) {
   }
   handle = userHandle(data.user);
   return { ok: true, user: data.user };
+  } catch (err) {
+    console.warn('GlitchIt: signUp exception', err);
+    if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'auth-signup' });
+    return { ok: false, error: 'Sign-up failed: ' + (err?.message || 'Network or connection error. Check your internet and try again.') };
+  }
 }
 
 export async function signIn(email, password) {
-  const sb = await getClient();
-  if (!sb) return { ok: false, error: notReadyReason() };
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) return { ok: false, error: friendlyError(error) };
-  handle = userHandle(data.user);
-  return { ok: true, user: data.user };
+  try {
+    const sb = await getClient();
+    if (!sb) return { ok: false, error: notReadyReason() };
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) return { ok: false, error: friendlyError(error) };
+    handle = userHandle(data.user);
+    return { ok: true, user: data.user };
+  } catch (err) {
+    console.warn('GlitchIt: signIn exception', err);
+    if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'auth-signin' });
+    return { ok: false, error: 'Sign-in failed: ' + (err?.message || 'Network or connection error. Check your internet and try again.') };
+  }
 }
 
 // Update the signed-in user's profile metadata (e.g. { avatar: url }). Returns
