@@ -2994,6 +2994,11 @@ function finishAuth(user, auth) {
   window.GLITCHIT_USER = user;
   auth.setHandle(auth.userHandle(user));
   import('./db.js?v=7').then((db) => db.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) })).catch(() => {});
+  // Mirror auth event to Firebase alongside Supabase.
+  import('./firebase.js?v=1').then((fb) => {
+    try { fb.trackEvent('login', { method: 'supabase' }); } catch (_) {}
+    if (user?.email) fb.mirrorSignIn(user.email, '').catch(() => {});
+  }).catch(() => {});
   location.href = returnToPage() || 'index.html';
 }
 
@@ -3113,6 +3118,8 @@ function attachAuthPage(auth) {
       const res = await auth.signIn(email, password);
       if (submit) { submit.disabled = false; submit.textContent = 'Log in'; }
       if (!res.ok) { showError(errorEl, res.error || 'Something went wrong.'); return; }
+      // Mirror Supabase sign-in to Firebase Auth + Analytics.
+      import('./firebase.js?v=1').then((fb) => fb.mirrorSignIn(email, password).catch(() => {})).catch(() => {});
       finishAuth(res.user, auth);
       return;
     }
@@ -3128,6 +3135,8 @@ function attachAuthPage(auth) {
       });
       if (finish) { finish.disabled = false; finish.textContent = 'Create account'; }
       if (!res.ok) { showError(onboardingError, res.error || 'Something went wrong.'); return; }
+      // Mirror Supabase sign-up to Firebase Auth + Analytics.
+      import('./firebase.js?v=1').then((fb) => fb.mirrorSignUp(email, password).catch(() => {})).catch(() => {});
       finishAuth(res.user, auth);
       return;
     }
@@ -3149,6 +3158,8 @@ function attachProfileAuth() {
     logoutBtn.addEventListener('click', async () => {
       const auth = window.GLITCHIT_AUTH;
       if (auth) await auth.signOut();
+      // Mirror sign-out to Firebase Auth.
+      import('./firebase.js?v=1').then((fb) => fb.mirrorSignOut().catch(() => {})).catch(() => {});
       window.GLITCHIT_USER = null;
       try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
       location.href = 'auth.html';
@@ -3330,6 +3341,8 @@ async function boot() {
   // account metadata) before any page hydrates, so the story shelf, upload
   // cards, notes and rails show the real profile picture — not the fallback.
   applyCurrentUserProfile();
+  // Firebase Analytics: fire a page_view event on every navigation.
+  import('./firebase.js?v=1').then((fb) => fb.trackPageView(page)).catch(() => {});
   runPage();
 }
 
