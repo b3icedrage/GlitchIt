@@ -1,163 +1,144 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <script>document.documentElement.setAttribute("data-theme","dark");</script>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In · GlitchIt</title>
+  <link rel="stylesheet" href="src/styles.css?v=9">
+  <link rel="stylesheet" href="src/auth.css?v=3">
+  <script>
+    // Prevent redirect loops - if we're stuck, clear auth state
+    try {
+      const attempts = parseInt(sessionStorage.getItem('glitchit.auth.attempts') || '0');
+      if (attempts > 3) {
+        sessionStorage.removeItem('glitchit.auth.attempts');
+        localStorage.removeItem('glitchit.auth.session.v1');
+      } else {
+        sessionStorage.setItem('glitchit.auth.attempts', String(attempts + 1));
+      }
+    } catch(e) {}
+  </script>
+</head>
+<body data-page="auth">
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-mark">ϟ</div>
+      <h1>GlitchIt</h1>
+      <p class="auth-sub">Sign in to your account</p>
 
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="google-adsense-account" content="ca-pub-6010592277770538" />
-    <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin />
-    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6010592277770538" crossorigin="anonymous"></script>
-    <script>
-      // Login wall for humans; Googlebot / AdSense crawlers browse read-only
-      // (no password) so indexing and ad review keep working.
-      try { if (/Googlebot|Mediapartners-Google|AdsBot-Google/i.test(navigator.userAgent || '')) localStorage.setItem('glitchit.auth.guest.v1', '1'); } catch (err) {}
-    </script>
-    <meta name="description" content="Sign in or create your GlitchIt account to post glitch videos, follow creators, chat, go live and shop creator storefronts." />
-    <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://glitchit.app/auth.html" />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="GlitchIt" />
-    <meta property="og:title" content="Log in or Sign up · GlitchIt" />
-    <meta property="og:description" content="Sign in or create your GlitchIt account to post glitch videos, follow creators, chat, go live and shop creator storefronts." />
-    <meta property="og:url" content="https://glitchit.app/auth.html" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Log in or Sign up · GlitchIt" />
-    <meta name="twitter:description" content="Sign in or create your GlitchIt account to post glitch videos, follow creators, chat, go live and shop creator storefronts." />
-    <title>Log in or Sign up · GlitchIt</title>
-    <link rel="stylesheet" href="src/styles.css?v=9" />
-    <link rel="stylesheet" href="src/story-extras.css?v=2" />
-    <link rel="stylesheet" href="src/bottombar.css?v=2" />
-    <link rel="stylesheet" href="src/auth.css?v=3" />
-  </head>
-  <body data-page="auth">
-    <div class="auth-page">
-      <div class="auth-card glitch-boot">
-        <span class="auth-mark" aria-hidden="true">ϟ</span>
-        <h1>GlitchIt</h1>
-        <p class="auth-sub">Create · Drop · Glitch</p>
-
-        <div class="auth-tabs" role="tablist" aria-label="Account">
-          <button type="button" class="auth-tab active" data-auth-mode="login" role="tab" aria-selected="true">Log in</button>
-          <button type="button" class="auth-tab" data-auth-mode="signup" role="tab" aria-selected="false">Sign up</button>
+      <form id="auth-form" novalidate>
+        <!-- Email field -->
+        <div class="auth-field">
+          <label for="auth-email">Email</label>
+          <input 
+            type="email" 
+            id="auth-email" 
+            name="email" 
+            autocomplete="email" 
+            placeholder="you@example.com"
+            required
+          >
         </div>
 
-        <form id="auth-form" novalidate>
-          <!-- Step 1: email + password -->
-          <div id="auth-step-1">
-            <div class="auth-field">
-              <label for="auth-email">Email</label>
-              <input id="auth-email" name="email" type="email" autocomplete="email" required />
-            </div>
-            <div class="auth-field">
-              <label for="auth-password">Password</label>
-              <div class="auth-password">
-                <input id="auth-password" name="password" type="password" autocomplete="current-password" required />
-                <button type="button" id="auth-toggle-password" class="auth-eye" aria-label="Show password" aria-pressed="false">
-                  <svg class="auth-eye-open" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  <svg class="auth-eye-closed" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                </button>
-              </div>
-            </div>
-            <div class="auth-remember">
-              <label class="auth-remember-label">
-                <input type="checkbox" id="auth-remember" name="remember" class="auth-remember-cb" />
-                <span class="auth-remember-box"></span>
-                <span>Remember me</span>
-              </label>
-              <a href="#" class="auth-forgot" id="auth-forgot-link">Forgot password?</a>
-            </div>
-            <p class="auth-error" id="auth-error" role="alert" hidden></p>
-            <button type="submit" class="auth-submit" id="auth-submit">Log in</button>
+        <!-- Password field -->
+        <div class="auth-field">
+          <label for="auth-password">Password</label>
+          <div class="auth-password">
+            <input 
+              type="password" 
+              id="auth-password" 
+              name="password" 
+              autocomplete="current-password"
+              placeholder="Enter your password"
+              required
+            >
+            <button type="button" id="auth-toggle-password" class="auth-eye" aria-label="Show password">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
           </div>
-
-          <!-- Step 2 (signup only): username, profile picture, and feed interests -->
-          <div id="auth-onboarding" hidden>
-            <div class="auth-step-title">
-              <span class="eyebrow">Step 2 of 2</span>
-              <h2>Set up your profile</h2>
-              <p>Pick a username, add a profile picture, and choose what you want to see in your feed.</p>
-            </div>
-
-            <div class="auth-avatar">
-              <img id="auth-avatar-preview" class="auth-avatar-img" src="" alt="Profile picture preview" hidden / loading="lazy" />
-              <button type="button" id="auth-avatar-btn" class="auth-avatar-btn">Add a profile photo</button>
-              <input type="file" id="auth-avatar-input" accept="image/*" hidden />
-            </div>
-            <p class="auth-avatar-hint">You can change this anytime from your profile.</p>
-
-            <div class="auth-field">
-              <label for="auth-username">Username</label>
-              <input id="auth-username" name="username" autocomplete="username" maxlength="24" spellcheck="false" />
-            </div>
-
-            <div class="auth-interests">
-              <label id="auth-interests-label">What do you want to see in your feed?</label>
-              <div class="auth-chip-grid" id="auth-interests" role="group" aria-labelledby="auth-interests-label">
-                <button type="button" class="auth-chip" data-interest="Space &amp; Science"><span aria-hidden="true">🚀</span>Space &amp; Science<span class="chip-check" aria-hidden="true">✓</span></button>
-                <button type="button" class="auth-chip" data-interest="Art &amp; Design"><span aria-hidden="true">🎨</span>Art &amp; Design<span class="chip-check" aria-hidden="true">✓</span></button>
-                <button type="button" class="auth-chip" data-interest="Music"><span aria-hidden="true">🎵</span>Music<span class="chip-check" aria-hidden="true">✓</span></button>
-                <button type="button" class="auth-chip" data-interest="Gaming"><span aria-hidden="true">🎮</span>Gaming<span class="chip-check" aria-hidden="true">✓</span></button>
-                <button type="button" class="auth-chip" data-interest="Fashion"><span aria-hidden="true">🛍️</span>Fashion<span class="chip-check" aria-hidden="true">✓</span></button>
-                <button type="button" class="auth-chip" data-interest="Fitness"><span aria-hidden="true">💪</span>Fitness<span class="chip-check" aria-hidden="true">✓</span></button>
-                <button type="button" class="auth-chip" data-interest="Food &amp; Drink"><span aria-hidden="true">🍜</span>Food &amp; Drink<span class="chip-check" aria-hidden="true">✓</span></button>
-                <button type="button" class="auth-chip" data-interest="Travel"><span aria-hidden="true">✈️</span>Travel<span class="chip-check" aria-hidden="true">✓</span></button>
-                <button type="button" class="auth-chip" data-interest="Tech &amp; AI"><span aria-hidden="true">💻</span>Tech &amp; AI<span class="chip-check" aria-hidden="true">✓</span></button>
-                <button type="button" class="auth-chip" data-interest="Nature"><span aria-hidden="true">🌿</span>Nature<span class="chip-check" aria-hidden="true">✓</span></button>
-              </div>
-            </div>
-
-            <p class="auth-error" id="auth-onboarding-error" role="alert" hidden></p>
-            <button type="submit" class="auth-submit" id="auth-finish">Create account</button>
-            <div class="auth-back-row">
-              <button type="button" class="auth-back" id="auth-back">← Back to email &amp; password</button>
-            </div>
-          </div>
-        </form>
-
-        <div class="auth-guest">
-          <span>— or —</span>
-          <button type="button" id="auth-guest">Continue without an account</button>
         </div>
+
+        <!-- Remember me -->
+        <div class="auth-remember">
+          <label class="auth-remember-label">
+            <input type="checkbox" id="auth-remember" name="remember">
+            <span>Remember me</span>
+          </label>
+        </div>
+
+        <!-- Error message -->
+        <div id="auth-error" class="auth-error" hidden></div>
+
+        <!-- Submit button -->
+        <button type="submit" id="auth-submit" class="auth-submit">
+          Sign In
+        </button>
+      </form>
+
+      <!-- Guest option -->
+      <div class="auth-guest">
+        <span>— or —</span>
+        <button type="button" id="auth-guest">Continue as guest</button>
       </div>
-      <p class="auth-foot">Guests can browse read-only. Sign in to follow, like, comment, share, post, message, and shop.</p>
-      <p class="auth-foot">By continuing, you agree to our <a href="privacy.html" style="color: inherit; text-decoration: underline;">Privacy Policy</a>.</p>
+
+      <!-- Sign up link -->
+      <p class="auth-foot">
+        Don't have an account? <a href="#" id="auth-switch">Sign up</a>
+      </p>
     </div>
-    <script src="src/main.js?v=37" defer></script>
-    <script src="src/edit-profile.js?v=3" defer></script>
-    <script src="src/story-features.js?v=3" defer></script>
-    <script src="src/profile-avatar.js" defer></script>
-    <script>
-      // Auth page micro-interactions: SVG password eye + tab-switch re-entry animation.
-      (function () {
-        var input = document.getElementById('auth-password');
-        var eye = document.getElementById('auth-toggle-password');
-        var form = document.getElementById('auth-form');
-        document.addEventListener('click', function (event) {
-          var target = event.target;
-          if (!target || typeof target.closest !== 'function') return;
-          if (target.closest('#auth-toggle-password') && input && eye) {
-            // Own the eye toggle here (capture phase) so main.js's legacy
-            // emoji handler never runs and cannot clobber the SVG icons.
-            event.stopImmediatePropagation();
-            var show = input.type === 'password';
-            input.type = show ? 'text' : 'password';
-            eye.setAttribute('aria-pressed', String(show));
-            eye.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-            var open = eye.querySelector('.auth-eye-open');
-            var closed = eye.querySelector('.auth-eye-closed');
-            if (open) open.hidden = !show;
-            if (closed) closed.hidden = show;
-            return;
-          }
-          if (target.closest('.auth-tab') && form) {
-            form.classList.remove('auth-swap');
-            void form.offsetWidth;
-            form.classList.add('auth-swap');
-          }
-        }, true);
-      })();
-    </script>
-  </body>
+  </div>
+
+  <script src="src/main.js?v=38" defer></script>
+  <script>
+    // Inline script for immediate UI feedback
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.getElementById('auth-form');
+      const emailInput = document.getElementById('auth-email');
+      const passwordInput = document.getElementById('auth-password');
+      const toggleBtn = document.getElementById('auth-toggle-password');
+      const rememberCb = document.getElementById('auth-remember');
+      const guestBtn = document.getElementById('auth-guest');
+      const switchLink = document.getElementById('auth-switch');
+      const errorEl = document.getElementById('auth-error');
+      const submitBtn = document.getElementById('auth-submit');
+
+      // Restore remembered email
+      try {
+        const remembered = localStorage.getItem('glitchit.auth.remember');
+        if (remembered && emailInput) {
+          emailInput.value = remembered;
+          if (rememberCb) rememberCb.checked = true;
+        }
+      } catch(e) {}
+
+      // Password visibility toggle
+      if (toggleBtn && passwordInput) {
+        toggleBtn.addEventListener('click', function() {
+          const isPassword = passwordInput.type === 'password';
+          passwordInput.type = isPassword ? 'text' : 'password';
+          toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+        });
+      }
+
+      // Guest button
+      if (guestBtn) {
+        guestBtn.addEventListener('click', function() {
+          try { localStorage.setItem('glitchit.auth.guest.v1', '1'); } catch(e) {}
+          window.location.href = 'index.html';
+        });
+      }
+
+      // Switch to sign up (for now, just show message)
+      if (switchLink) {
+        switchLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          alert('Sign up is available through the app. Please create your account there.');
+        });
+      }
+    });
+  </script>
+</body>
 </html>

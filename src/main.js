@@ -3065,198 +3065,96 @@ function finishAuth(user, auth) {
   try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
   window.GLITCHIT_USER = user;
   auth.setHandle(auth.userHandle(user));
-  // Save session backup to localStorage (survives CDN failures, page reloads)
-  try { localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ id: user.id, email: user.email, user_metadata: user.user_metadata || {}, ts: Date.now() })); } catch (err) { /* ignore */ }
-  // Also save to sessionStorage as secondary fallback
-  try { sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ id: user.id, email: user.email, user_metadata: user.user_metadata || {}, ts: Date.now() })); } catch (err) { /* ignore */ }
+  // Save session backup so boot() can find it even if Supabase CDN is slow
+  try {
+    const backup = { id: user.id, email: user.email, user_metadata: user.user_metadata || {}, ts: Date.now() };
+    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(backup));
+    sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(backup));
+  } catch (err) { /* ignore */ }
+  // Clear redirect loop counter on successful login
+  try { sessionStorage.removeItem('glitchit.auth.attempts'); } catch(e) {}
   import('./db.js?v=7').then((db) => db.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) })).catch(() => {});
   location.href = returnToPage() || 'index.html';
 }
 
-// Guests may browse read-only, but every account action (follow, like,
-// comment, share, post, messages, profile, create, shop) requires sign-in.
-// Signup is a two-step flow: email + password first, then a profile setup
-// step (username, profile picture, and feed interests) before the account is
-// created — everything ships to Supabase in one user_metadata payload.
+// Auth page handler - simplified for clean login/signup flow
 function attachAuthPage(auth) {
   const form = document.getElementById('auth-form');
   if (!form || !auth) return;
-  const tabs = [...document.querySelectorAll('.auth-tab')];
-  const step1 = document.getElementById('auth-step-1');
-  const onboarding = document.getElementById('auth-onboarding');
-  const errorEl = document.getElementById('auth-error');
-  const onboardingError = document.getElementById('auth-onboarding-error');
-  const submit = document.getElementById('auth-submit');
-  const finish = document.getElementById('auth-finish');
-  const backBtn = document.getElementById('auth-back');
-  const guestRow = document.querySelector('.auth-guest');
-  const usernameInput = document.getElementById('auth-username');
-  const avatarBtn = document.getElementById('auth-avatar-btn');
-  const avatarInput = document.getElementById('auth-avatar-input');
-  const avatarPreview = document.getElementById('auth-avatar-preview');
-  const chips = [...document.querySelectorAll('.auth-chip')];
 
-  let mode = 'login';
-  let pendingEmail = '';
-  let pendingPassword = '';
-  let pendingAvatar = '';
-  const selectedInterests = new Set();
-
-  // ─── Remember-me support ───
-  const rememberCb = document.getElementById('auth-remember');
   const emailInput = document.getElementById('auth-email');
-  const forgotLink = document.getElementById('auth-forgot-link');
+  const passwordInput = document.getElementById('auth-password');
+  const submitBtn = document.getElementById('auth-submit');
+  const errorEl = document.getElementById('auth-error');
+  const rememberCb = document.getElementById('auth-remember');
   const REMEMBER_KEY = 'glitchit.auth.remember';
+
+  // Restore remembered email
   try {
     const remembered = localStorage.getItem(REMEMBER_KEY);
     if (remembered && emailInput && !emailInput.value) {
       emailInput.value = remembered;
       if (rememberCb) rememberCb.checked = true;
     }
-  } catch (e) { /* storage unavailable */ }
-  forgotLink?.addEventListener('click', (e) => {
-    e.preventDefault();
-    const em = (emailInput?.value || '').trim();
-    if (!em) { showError(errorEl, 'Enter your email above first, then click Forgot password.'); emailInput?.focus(); return; }
-    (async () => {
-      try {
-        const sb = auth && typeof auth.getClient === 'function' ? await auth.getClient() : null;
-        if (sb && sb.auth && sb.auth.resetPasswordForEmail) {
-          const { error } = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + '/auth.html' });
-          if (error) throw error;
-          showError(errorEl, ''); errorEl.hidden = true;
-          glitchToast('Reset link sent — check your inbox');
-        } else {
-          showError(errorEl, 'Password reset not available. Contact support@glitchit.app.');
-        }
-      } catch (err) { showError(errorEl, err?.message || 'Could not send reset email.'); }
-    })();
-  });
+  } catch(e) {}
 
+  // Clear auth attempt counter on successful page load
+  try { sessionStorage.removeItem('glitchit.auth.attempts'); } catch(e) {}
 
-  const showError = (el, msg) => { if (el) { el.textContent = msg; el.hidden = false; } };
-  const hideErrors = () => { if (errorEl) errorEl.hidden = true; if (onboardingError) onboardingError.hidden = true; };
+  function showError(msg) {
+    if (errorEl) { errorEl.textContent = msg; errorEl.hidden = false; }
+  }
 
-  const setStep = (step) => {
-    if (!step1 || !onboarding) return;
-    step1.hidden = step === 2;
-    onboarding.hidden = step === 1;
-    if (guestRow) guestRow.hidden = step === 2;
-    if (step === 2 && usernameInput && !usernameInput.value) {
-      usernameInput.value = (pendingEmail.split('@')[0] || '').replace(/[^a-z0-9._-]/gi, '').slice(0, 20);
+  function hideError() {
+    if (errorEl) errorEl.hidden = true;
+  }
+
+  function setLoading(loading) {
+    if (submitBtn) {
+      submitBtn.disabled = loading;
+      submitBtn.textContent = loading ? 'Please wait...' : 'Sign In';
     }
-    hideErrors();
-  };
+  }
 
-  const setMode = (m) => {
-    mode = m;
-    tabs.forEach((t) => {
-      const on = t.dataset.authMode === m;
-      t.classList.toggle('active', on);
-      t.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
-    if (submit) submit.textContent = m === 'signup' ? 'Sign up' : 'Log in';
-    setStep(1);
-  };
-  tabs.forEach((t) => t.addEventListener('click', () => setMode(t.dataset.authMode)));
-  // Profile picture: resize locally, preview instantly, then push a durable
-  // CDN copy to Cloudinary when configured (the data URL stays as fallback).
-  avatarBtn?.addEventListener('click', () => avatarInput?.click());
-  avatarInput?.addEventListener('change', async () => {
-    const file = avatarInput.files && avatarInput.files[0];
-    if (!file || !/^image\//.test(file.type)) return;
-    try {
-      const dataUrl = await resizeImage(file, 256);
-      pendingAvatar = dataUrl;
-      if (avatarPreview) { avatarPreview.src = dataUrl; avatarPreview.hidden = false; }
-      try {
-        const db = await import('./db.js?v=7');
-        const up = await db.uploadToCloudinary(dataUrlToBlob(dataUrl), 'avatar');
-        if (up && up.ok) {
-          pendingAvatar = up.url;
-          if (avatarPreview) avatarPreview.src = up.url;
-        }
-      } catch (err) { /* keep the local data URL */ }
-    } catch (err) { /* unreadable image — ignore */ }
-  });
-  document.getElementById('auth-toggle-password')?.addEventListener('click', (e) => {
-    const input = document.getElementById('auth-password');
-    const show = input.type === 'password';
-    input.type = show ? 'text' : 'password';
-    e.currentTarget.textContent = show ? '\u{1F647}' : '\u{1F441}';
-    e.currentTarget.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-  });
-
-  // Interest chips: tap to toggle what the user wants in their feed.
-  chips.forEach((chip) => {
-    chip.addEventListener('click', () => {
-      const key = chip.dataset.interest;
-      if (!key) return;
-      if (selectedInterests.has(key)) {
-        selectedInterests.delete(key);
-        chip.classList.remove('selected');
-        chip.setAttribute('aria-pressed', 'false');
-      } else {
-        selectedInterests.add(key);
-        chip.classList.add('selected');
-        chip.setAttribute('aria-pressed', 'true');
-      }
-    });
-  });
-
-  backBtn?.addEventListener('click', () => setStep(1));
-  document.getElementById('auth-guest')?.addEventListener('click', () => {
-    try { localStorage.setItem(GUEST_KEY, '1'); } catch (err) { /* storage unavailable */ }
-    location.href = returnToPage() || 'index.html';
-  });
-
+  // Handle form submission
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    hideErrors();
+    hideError();
+
+    const email = emailInput?.value?.trim();
+    const password = passwordInput?.value;
+
+    if (!email || !password) {
+      showError('Please enter your email and password.');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-    const email = document.getElementById('auth-email').value.trim();
-    const password = document.getElementById('auth-password').value;
-    if (mode !== 'signup') {
-      if (!email || !password) { showError(errorEl, 'Enter your email and password.'); return; }
-      if (submit) { submit.disabled = true; submit.textContent = 'Please wait…'; }
-      const res = await auth.signIn(email, password);
-      if (submit) { submit.disabled = false; submit.textContent = 'Log in'; }
-      if (!res.ok) { showError(errorEl, res.error || 'Something went wrong.'); return; }
-      try {
-        if (rememberCb && rememberCb.checked) { localStorage.setItem(REMEMBER_KEY, email); }
-        else { localStorage.removeItem(REMEMBER_KEY); }
-      } catch (e) { /* ignore */ }
-      finishAuth(res.user, auth);
-      return;
-    }
+      const result = await auth.signIn(email, password);
 
-    if (onboarding && !onboarding.hidden) {
-      // Step 2 — create the account with the complete profile.
-      const username = (usernameInput?.value || '').trim();
-      if (!username) { showError(onboardingError, 'Choose a username.'); return; }
-      if (finish) { finish.disabled = true; finish.textContent = 'Creating account…'; }
-      const res = await auth.signUp(email, password, username, {
-        avatarUrl: pendingAvatar || '',
-        interests: [...selectedInterests],
-      });
-      if (finish) { finish.disabled = false; finish.textContent = 'Create account'; }
-      if (!res.ok) { showError(onboardingError, res.error || 'Something went wrong.'); return; }
-      finishAuth(res.user, auth);
-      return;
-    }
+      if (result.ok) {
+        // Save remembered email
+        try {
+          if (rememberCb?.checked) {
+            localStorage.setItem(REMEMBER_KEY, email);
+          } else {
+            localStorage.removeItem(REMEMBER_KEY);
+          }
+        } catch(e) {}
 
-    // Step 1 (signup) — collect credentials, then move to profile setup.
-    if (!email || !password) { showError(errorEl, 'Enter your email and password.'); return; }
-    pendingEmail = email;
-    pendingPassword = password;
-    setStep(2);
+        // Success - redirect to app
+        finishAuth(result.user, auth);
+      } else {
+        // Show error
+        showError(result.error || 'Sign-in failed. Please try again.');
+        setLoading(false);
+      }
     } catch (err) {
-      console.warn('GlitchIt: auth form error', err);
-      if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'auth-form' });
-      const errEl = document.getElementById('auth-error');
-      if (errEl) { errEl.textContent = 'Something went wrong. Please check your connection and try again.'; errEl.hidden = false; }
-      const sub = document.getElementById('auth-submit');
-      if (sub) { sub.disabled = false; sub.textContent = mode === 'signup' ? 'Sign up' : 'Log in'; }
+      console.error('[GlitchIt] Auth form error:', err);
+      showError('Something went wrong. Please check your connection and try again.');
+      setLoading(false);
     }
   });
 }
@@ -3413,151 +3311,135 @@ function proDashStatsHtml(stats) {
 
 
 // Check whether this device is signed in before showing any app page.
+// Simplified boot function - check auth and route accordingly
 async function boot() {
   const isAuthPage = page === 'auth';
+  
+  // Load auth module
   let auth = null;
-  try { auth = await import('./auth.js?v=4'); } catch (err) { auth = null; }
+  try { auth = await import('./auth.js?v=5'); } catch (err) { auth = null; }
   window.GLITCHIT_AUTH = auth;
+
+  // Check guest status
   let guest = false;
-  try { guest = localStorage.getItem(GUEST_KEY) === '1'; } catch (err) { /* ignore */ }
+  try { guest = localStorage.getItem(GUEST_KEY) === '1'; } catch (err) {}
+
+  // Helper to load database module
   const dbReady = async () => {
     if (DB) return DB;
     try { return await import('./db.js?v=7'); } catch (err) { return null; }
   };
+
+  // Helper to check session backup
+  function getBackupUser() {
+    try {
+      // Check localStorage first
+      const raw = localStorage.getItem(AUTH_SESSION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.id && parsed?.ts && (Date.now() - parsed.ts < AUTH_SESSION_EXPIRY)) {
+          return parsed;
+        }
+        localStorage.removeItem(AUTH_SESSION_KEY);
+      }
+      // Then sessionStorage
+      const raw2 = sessionStorage.getItem(AUTH_SESSION_KEY);
+      if (raw2) {
+        const parsed = JSON.parse(raw2);
+        if (parsed?.id) return parsed;
+        sessionStorage.removeItem(AUTH_SESSION_KEY);
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  // Helper to set user and continue
+  async function setUserAndContinue(user) {
+    window.GLITCHIT_USER = user;
+    if (auth) auth.setHandle(auth.userHandle(user));
+    const db = await dbReady();
+    db?.setCurrentUser?.({ id: user.id, username: auth?.userHandle(user) || '' });
+    applyCurrentUserProfile();
+    try {
+      const pg = (typeof page === 'string' ? page : '') || 'index';
+      if (pg !== 'camera') sessionStorage.setItem('glitchit.lastPage', pg + '.html');
+    } catch (e) {}
+    runPage();
+  }
+
+  // Helper to redirect to auth page
+  function redirectToAuth() {
+    const returnTo = location.pathname.split('/').pop() || 'index.html';
+    location.replace(`auth.html?returnTo=${encodeURIComponent(returnTo)}`);
+  }
+
+  // Main auth logic
   if (auth && auth.authAvailable()) {
     if (isAuthPage) {
-      // Already signed in? Skip the form and go straight to the app.
+      // On auth page - check if already logged in
       const user = await auth.currentUser();
       if (user) {
-        window.GLITCHIT_USER = user;
-        auth.setHandle(auth.userHandle(user));
-        const db = await dbReady();
-        db?.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) });
+        // Already logged in - redirect to app
+        await setUserAndContinue(user);
         location.replace(returnToPage() || 'index.html');
         return;
       }
-      // CDN fallback: check session backup on auth page too
-      let backupUser = null;
-      try {
-        let raw = localStorage.getItem(AUTH_SESSION_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && parsed.id && parsed.ts && (Date.now() - parsed.ts < AUTH_SESSION_EXPIRY)) {
-            backupUser = parsed;
-          } else {
-            localStorage.removeItem(AUTH_SESSION_KEY);
-          }
-        }
-        if (!backupUser) {
-          raw = sessionStorage.getItem(AUTH_SESSION_KEY);
-          if (raw) { backupUser = JSON.parse(raw); sessionStorage.removeItem(AUTH_SESSION_KEY); }
-        }
-      } catch (e) { /* ignore */ }
-      if (backupUser) {
-        window.GLITCHIT_USER = backupUser;
-        if (auth && auth.setHandle) auth.setHandle(auth.userHandle(backupUser));
-        const db = await dbReady();
-        db?.setCurrentUser?.({ id: backupUser.id, username: auth.userHandle(backupUser) });
+
+      // Check backup session
+      const backup = getBackupUser();
+      if (backup) {
+        await setUserAndContinue(backup);
         location.replace(returnToPage() || 'index.html');
         return;
       }
+
+      // Not logged in - show auth form
       attachAuthPage(auth);
     } else {
-      // Quick localStorage check BEFORE slow CDN-dependent auth.currentUser()
-      let quickUser = null;
-      try {
-        const raw = localStorage.getItem(AUTH_SESSION_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && parsed.id && parsed.ts && (Date.now() - parsed.ts < AUTH_SESSION_EXPIRY)) {
-            quickUser = { id: parsed.id, email: parsed.email, user_metadata: parsed.user_metadata || {}, guest: false };
-          } else {
-            localStorage.removeItem(AUTH_SESSION_KEY);
-          }
-        }
-      } catch (e) { /* ignore */ }
+      // Not on auth page - check if logged in
+      
+      // Quick check backup first (fast, no CDN needed)
+      const backup = getBackupUser();
+      if (backup) {
+        await setUserAndContinue(backup);
+        return;
+      }
 
-      const user = quickUser || await auth.currentUser();
+      // Try Supabase session
+      const user = await auth.currentUser();
       if (user) {
-        // Signed in — full access.
-        window.GLITCHIT_USER = user;
-        auth.setHandle(auth.userHandle(user));
-        const db = await dbReady();
-        db?.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) });
-      } else if (guest) {
-        // Guest browsing: view-only. Account-only pages redirect to sign-in.
+        await setUserAndContinue(user);
+        return;
+      }
+
+      // Not logged in
+      if (guest) {
+        // Guest mode
         window.GLITCHIT_USER = { guest: true };
         if (ACCOUNT_PAGES.includes(page)) {
-          location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
+          redirectToAuth();
           return;
         }
         const db = await dbReady();
         db?.setCurrentUser?.('');
+        applyCurrentUserProfile();
+        runPage();
       } else {
-        // CDN fallback: check session backup saved by finishAuth()
-        let backupUser = null;
-        try {
-          // Check localStorage first (more durable)
-          let raw = localStorage.getItem(AUTH_SESSION_KEY);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed && parsed.id && parsed.ts && (Date.now() - parsed.ts < AUTH_SESSION_EXPIRY)) {
-              backupUser = parsed;
-            } else {
-              localStorage.removeItem(AUTH_SESSION_KEY);
-            }
-          }
-          if (!backupUser) {
-            // Then check sessionStorage (secondary)
-            raw = sessionStorage.getItem(AUTH_SESSION_KEY);
-            if (raw) { backupUser = JSON.parse(raw); sessionStorage.removeItem(AUTH_SESSION_KEY); }
-          }
-        } catch (e) { /* ignore */ }
-        if (backupUser) {
-          window.GLITCHIT_USER = backupUser;
-          if (auth && auth.setHandle) auth.setHandle(auth.userHandle(backupUser));
-        } else {
-          location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
-          return;
-        }
+        // Need to log in
+        redirectToAuth();
       }
     }
   } else if (!isAuthPage && !PUBLIC_PAGES.includes(page)) {
-    // Auth module failed to load (CDN blocked, network, etc.)
-    // Check session backup before forcing login
-    let backupUser = null;
-    try {
-      let raw = localStorage.getItem(AUTH_SESSION_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && parsed.id && parsed.ts && (Date.now() - parsed.ts < AUTH_SESSION_EXPIRY)) {
-          backupUser = parsed;
-        } else {
-          localStorage.removeItem(AUTH_SESSION_KEY);
-        }
-      }
-      if (!backupUser) {
-        raw = sessionStorage.getItem(AUTH_SESSION_KEY);
-        if (raw) { backupUser = JSON.parse(raw); sessionStorage.removeItem(AUTH_SESSION_KEY); }
-      }
-    } catch (e) { /* ignore */ }
-    if (backupUser) {
-      window.GLITCHIT_USER = backupUser;
+    // Auth module failed to load - check backup
+    const backup = getBackupUser();
+    if (backup) {
+      window.GLITCHIT_USER = backup;
+      applyCurrentUserProfile();
+      runPage();
     } else {
-      location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
-      return;
+      redirectToAuth();
     }
   }
-  // Sync profile.avatar from the signed-in user (localStorage override +
-  // account metadata) before any page hydrates, so the story shelf, upload
-  // cards, notes and rails show the real profile picture — not the fallback.
-  applyCurrentUserProfile();
-  // Remember this page so camera.html can navigate back to it on exit
-  try {
-    const pg = (typeof page === 'string' ? page : '') || 'index';
-    if (pg !== 'camera') sessionStorage.setItem('glitchit.lastPage', pg + '.html');
-  } catch (e) { /* storage unavailable */ }
-  runPage();
 }
 
 boot();
