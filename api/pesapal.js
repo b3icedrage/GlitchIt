@@ -57,30 +57,55 @@ async function getOAuthToken() {
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
 
   const base = getPesapalBase();
-  const res = await fetch(`${base}/api/Auth/GetToken`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ConsumerKey: PESAPAL_CONSUMER_KEY,
-      ConsumerSecret: PESAPAL_CONSUMER_SECRET,
-    }),
-    signal: AbortSignal.timeout(15000),
-  });
+  
+  // Try the documented API v3 endpoint first, then fallback paths
+  const endpointPaths = ['/api/Auth/GetToken', '/Auth/GetToken'];
+  let lastError = null;
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`PesaPal OAuth failed (${res.status}): ${text.slice(0, 200)}`);
+  for (const ep of endpointPaths) {
+    try {
+      const res = await fetch(`${base}${ep}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ConsumerKey: PESAPAL_CONSUMER_KEY,
+          ConsumerSecret: PESAPAL_CONSUMER_SECRET,
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+
+      const ct = res.headers.get('content-type') || '';
+      const text = await res.text();
+      
+      // If response is HTML, this endpoint doesn't exist
+      if (ct.includes('html') || text.trim().startsWith('<')) {
+        lastError = new Error('PesaPal API endpoint returned HTML (not JSON)');
+        continue;
+      }
+
+      if (!res.ok) {
+        lastError = new Error(`PesaPal OAuth failed (${res.status}): ${text.slice(0, 200)}`);
+        continue;
+      }
+
+      const data = JSON.parse(text);
+      const token = data.token;
+      if (!token) {
+        lastError = new Error('No token in PesaPal OAuth response');
+        continue;
+      }
+
+      cachedToken = token;
+      tokenExpiry = Date.now() + 4 * 60 * 1000;
+      console.log('[PesaPal] ✅ OAuth token obtained from', ep);
+      return token;
+    } catch (err) {
+      lastError = err;
+      console.warn('[PesaPal] Endpoint failed:', ep, err.message);
+    }
   }
 
-  const data = await res.json();
-  const token = data.token;
-  if (!token) throw new Error('No token in PesaPal OAuth response');
-
-  cachedToken = token;
-  // Token typically expires in 5 minutes; refresh at 4 minutes
-  tokenExpiry = Date.now() + 4 * 60 * 1000;
-  console.log('[PesaPal] ✅ OAuth token obtained');
-  return token;
+  throw lastError || new Error('PesaPal API unreachable. Check your credentials and network.');
 }
 
 // ─── POST /api/pesapal/order ───────────────────────────────────────
@@ -291,6 +316,9 @@ function handleConfig(req, res) {
     configured: Boolean(PESAPAL_CONSUMER_KEY && PESAPAL_CONSUMER_SECRET),
     environment: env,
     base_url: getPesapalBase(),
+    note: env === 'sandbox' 
+      ? 'Sandbox mode — credentials must be sandbox keys from sandbox.pesapal.com'
+      : 'Production mode — credentials must be live keys from pesapal.com dashboard',
   });
 }
 

@@ -266,16 +266,21 @@ async function handlePay() {
         return;
       }
 
-      // PesaPal order creation failed — show error
+      // PesaPal order creation failed — fall back to M-Pesa
+      console.warn('[Pay] PesaPal unavailable:', result.error);
       btn.classList.remove('loading');
       btn.disabled = false;
       isProcessing = false;
-      toast('⚠', result.error || 'Could not start PesaPal checkout. Please try again.');
+      // Switch back to M-Pesa tab automatically
+      selectMethod('mpesa');
+      toast('📱', 'Card payment unavailable. Use M-Pesa instead.');
     } catch (err) {
+      console.warn('[Pay] PesaPal error:', err);
       btn.classList.remove('loading');
       btn.disabled = false;
       isProcessing = false;
-      toast('⚠', 'Payment service unavailable. Please try again.');
+      selectMethod('mpesa');
+      toast('📱', 'Card payment unavailable. Use M-Pesa instead.');
     }
     return;
   }
