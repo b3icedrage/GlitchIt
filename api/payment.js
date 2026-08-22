@@ -3,8 +3,9 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const { Pool } = require('pg');
-const Redis = require('ioredis');
+let Pool, Redis;
+try { Pool = require('pg').Pool; } catch(e) { /* pg not installed — DB features disabled */ }
+try { Redis = require('ioredis'); } catch(e) { /* ioredis not installed — Redis features disabled */ }
 
 // ─── Configuration (read lazily so env vars injected after startup are picked up) ──
 function cfg(key, fallback) { return process.env[key] || fallback; }
