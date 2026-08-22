@@ -50,7 +50,7 @@ const SHELL_URLS = [
   './src/ai-chat.css',
   './src/dm-inbox.css?v=2',
   './src/social.css?v=2',
-  './src/main.js?v=39',
+  './src/main.js?v=40',
   './src/firebase.js?v=1',
   './src/calls.css?v=2',
   './src/calls.js?v=2',

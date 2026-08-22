@@ -162,6 +162,29 @@ export async function signUp(email, password, username, profile = {}) {
   }
 }
 
+// Sign in with Google OAuth via Supabase
+export async function signInWithGoogle() {
+  try {
+    const sb = await getClient();
+    if (!sb) {
+      return { ok: false, error: 'Could not connect to authentication service.' };
+    }
+    const redirectTo = location.origin + '/auth.html';
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
+    });
+    if (error) {
+      console.error('[GlitchIt] Google sign-in error:', error);
+      return { ok: false, error: formatError(error) };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error('[GlitchIt] Google sign-in exception:', err);
+    return { ok: false, error: 'Google sign-in failed. Please try again.' };
+  }
+}
+
 // Sign out
 export async function signOut() {
   try {

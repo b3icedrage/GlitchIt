@@ -255,6 +255,29 @@
   animation: authShimmer 3.4s ease-in-out infinite;
 }
 
+/* Google sign-in button */
+.auth-social { margin-top: 16px; }
+.auth-social .auth-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  background: #fff;
+  color: #3c4043;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, box-shadow .15s;
+}
+.auth-social .auth-google-btn:hover { background: #f7f8f8; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.auth-social .auth-google-btn:disabled { opacity: .6; cursor: not-allowed; }
+.auth-social .auth-google-btn svg { flex-shrink: 0; }
+:root[data-theme="dark"] .auth-social .auth-google-btn { background: #1a1a2e; border-color: #333; color: #e0e0e0; }
+:root[data-theme="dark"] .auth-social .auth-google-btn:hover { background: #252540; }
 .auth-guest { margin-top: 16px; font-size: 12px; color: #8e8e8e; }
 .auth-guest span { display: block; margin-bottom: 8px; }
 .auth-guest button {
