@@ -15,6 +15,9 @@ const OUT = join(ROOT, 'dist');
 // hosting; the static hosting ignores what it does not need.
 const ENTRIES = [
   'index.html',
+  'about.html',
+  'robots.txt',
+  'sitemap.xml',
   'search.html',
   'glitches.html',
   'messages.html',
@@ -26,14 +29,19 @@ const ENTRIES = [
   'profile.html',
   'user.html',
   'auth.html',
+  'terms.html',
   'privacy.html',
+  'manifest.json',
   'premium.html',
+  'wallet.html',
+  'receipt.html',
   'camera.html',
   'src',
   'sw.js',
   'ads.txt',
   'vercel.json',
   'api',
+  'icon.svg',
 ];
 
 (async () => {

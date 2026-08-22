@@ -1,6 +1,6 @@
-// GlitchIt — Supabase authentication (client-side, no build step).
-// Loaded from main.js via dynamic import, same pattern as db.js. When the
-// config is empty or the network fails, auth degrades gracefully (no gating).
+// GlitchIt — Supabase authentication module
+// Clean, simple auth with robust CDN loading and error handling.
+
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=6';
 
 let client = null;
@@ -8,161 +8,240 @@ let clientPromise = null;
 let clientFailed = false;
 let handle = '';
 
-// Try several CDNs so one blocked/unreachable mirror (ad-blocker, region, etc.)
-// doesn't take down auth. First one that loads wins.
-// Note: the bare jsDelivr URL serves a UMD build (no ESM exports), so we use
-// the /+esm variant — import() needs named exports like createClient.
-const SUPABASE_CDNS = [
+// CDN fallbacks for supabase-js - try each in order
+const CDN_URLS = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm',
   'https://esm.sh/@supabase/supabase-js@2',
   'https://unpkg.com/@supabase/supabase-js@2?module',
-  'https://cdn.skypack.dev/@supabase/supabase-js@2',
 ];
 
-async function importSupabase() {
-  let lastErr = null;
-  for (const url of SUPABASE_CDNS) {
+// Load supabase-js from one of the CDNs
+async function loadSupabase() {
+  for (const url of CDN_URLS) {
     try {
-      return await import(url);
+      console.log('[GlitchIt] Trying Supabase CDN:', url);
+      const mod = await import(url);
+      console.log('[GlitchIt] Supabase loaded from:', url);
+      return mod;
     } catch (err) {
-      lastErr = err;
-      console.warn(`GlitchIt: supabase-js unavailable from ${url}`, err);
+      console.warn('[GlitchIt] CDN failed:', url, err.message);
     }
   }
-  throw lastErr || new Error('All Supabase CDNs unreachable');
+  throw new Error('Could not load Supabase from any CDN');
 }
 
+// Get or create the Supabase client
+async function getClient() {
+  if (!authAvailable()) return null;
+  
+  // Return existing client if available
+  if (client) return client;
+  
+  // Wait for existing initialization if in progress
+  if (clientPromise) return clientPromise;
+  
+  // Start new initialization
+  clientPromise = (async () => {
+    try {
+      const mod = await loadSupabase();
+      client = mod.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+        },
+      });
+      return client;
+    } catch (err) {
+      console.error('[GlitchIt] Failed to initialize Supabase:', err);
+      clientFailed = true;
+      clientPromise = null;
+      return null;
+    }
+  })();
+  
+  return clientPromise;
+}
+
+// Check if auth is configured
 export function authAvailable() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
 
-function getClient() {
-  if (!authAvailable()) return Promise.resolve(null);
-  if (client) return Promise.resolve(client);
-  if (!clientPromise) {
-    clientPromise = importSupabase()
-      .then((mod) => {
-        client = mod.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-        });
-        return client;
-      })
-      .catch((err) => {
-        console.warn('GlitchIt: auth client failed to load from all CDNs', err);
-        if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'auth-client' });
-        clientPromise = null;
-        clientFailed = true;
-        return null;
-      });
-  }
-  return clientPromise;
-}
-
-// The handle used to tag posts/saves in the database.
-export function currentHandle() {
-  return handle;
-}
-
-export function setHandle(value) {
-  handle = value || '';
-}
-
-// Derive a friendly handle from a Supabase user object.
-export function userHandle(user) {
-  if (!user) return '';
-  return user.user_metadata?.username || user.email?.split('@')[0] || user.id || '';
-}
-
-// The signed-in user for this device, or null. Relies on supabase-js
-// persisting the session in localStorage ("first check if this device has
-// logged in").
+// Get the current user or null
 export async function currentUser() {
   try {
     const sb = await getClient();
     if (!sb) return null;
-    const { data: { session } } = await sb.auth.getSession();
+    
+    const { data: { session }, error } = await sb.auth.getSession();
+    if (error) {
+      console.warn('[GlitchIt] getSession error:', error);
+      return null;
+    }
+    
     if (session?.user) {
       handle = userHandle(session.user);
       return session.user;
     }
     return null;
   } catch (err) {
-    console.warn('GlitchIt: session read failed', err);
-    if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'auth-session' });
+    console.error('[GlitchIt] currentUser error:', err);
     return null;
   }
 }
 
-// Supabase caps confirmation emails per address/hour; turn the cryptic
-// "Email rate limit exceeded" into an actionable message instead of
-// showing the raw error string.
-function friendlyError(error) {
-  const msg = String(error?.message || error || '');
-  if (/rate limit|over_email_send_rate_limit/i.test(msg)) {
-    return 'Too many emails were sent to this address recently. Wait about an hour or try a different email. (You can also raise the email limits in Supabase: Authentication → Rate Limits.)';
-  }
-  return msg;
-}
-
-export async function signUp(email, password, username, profile) {
-  const sb = await getClient();
-  if (!sb) return { ok: false, error: notReadyReason() };
-  // The onboarding step (signup step 2) collects username, avatar, and feed
-  // interests; everything ships together in user_metadata so the profile is
-  // complete from the very first session (even when email confirmation is on).
-  const metadata = { username: username || email.split('@')[0] };
-  if (profile?.avatarUrl) metadata.avatar_url = profile.avatarUrl;
-  if (Array.isArray(profile?.interests) && profile.interests.length) metadata.interests = profile.interests;
-  const { data, error } = await sb.auth.signUp({
-    email,
-    password,
-    options: { data: metadata },
-  });
-  if (error) return { ok: false, error: friendlyError(error) };
-  if (data.user && !data.session) {
-    // Email confirmation is enabled — the user must confirm before signing in.
-    return { ok: false, error: 'Check your inbox to confirm your email, then log in.' };
-  }
-  handle = userHandle(data.user);
-  return { ok: true, user: data.user };
-}
-
+// Sign in with email and password
 export async function signIn(email, password) {
-  const sb = await getClient();
-  if (!sb) return { ok: false, error: notReadyReason() };
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) return { ok: false, error: friendlyError(error) };
-  handle = userHandle(data.user);
-  return { ok: true, user: data.user };
-}
-
-// Update the signed-in user's profile metadata (e.g. { avatar: url }). Returns
-// the refreshed user object so callers can mirror it into window.GLITCHIT_USER.
-export async function updateUserMetadata(data) {
-  const sb = await getClient();
-  if (!sb) return { ok: false, error: notReadyReason() };
-  const { data: updated, error } = await sb.auth.updateUser({ data });
-  if (error) return { ok: false, error: friendlyError(error) };
-  if (updated && updated.user) handle = userHandle(updated.user);
-  return { ok: true, user: updated && updated.user };
-}
-
-export async function signOut() {
-  handle = '';
   try {
     const sb = await getClient();
-    if (!sb) return;
-    await sb.auth.signOut();
+    if (!sb) {
+      return { ok: false, error: 'Could not connect to authentication service. Please check your internet connection and try again.' };
+    }
+    
+    console.log('[GlitchIt] Signing in:', email);
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    
+    if (error) {
+      console.error('[GlitchIt] Sign in error:', error);
+      return { ok: false, error: formatError(error) };
+    }
+    
+    console.log('[GlitchIt] Sign in successful');
+    handle = userHandle(data.user);
+    return { ok: true, user: data.user };
   } catch (err) {
-    console.warn('GlitchIt: sign out failed', err);
-    if (window.GLITCHIT_REPORT) window.GLITCHIT_REPORT(err, { phase: 'auth-signout' });
+    console.error('[GlitchIt] Sign in exception:', err);
+    return { ok: false, error: 'Sign-in failed. Please check your internet connection and try again.' };
   }
 }
 
-// Distinguish "keys missing" from "client couldn't load" so the message
-// never points you at config.js when the keys are actually present.
-function notReadyReason() {
-  if (!authAvailable()) return 'Supabase is not configured yet (src/config.js).';
-  if (clientFailed) return 'Could not load the Supabase client from any CDN (network or an ad-blocker may be blocking them). Check your connection, disable ad-block for this site, and refresh.';
-  return 'Supabase is not ready yet. Check your connection and refresh.';
+// Sign up with email, password, and optional profile data
+export async function signUp(email, password, username, profile = {}) {
+  try {
+    const sb = await getClient();
+    if (!sb) {
+      return { ok: false, error: 'Could not connect to authentication service. Please check your internet connection and try again.' };
+    }
+    
+    console.log('[GlitchIt] Signing up:', email);
+    
+    // Prepare user metadata
+    const metadata = {
+      username: username || email.split('@')[0],
+    };
+    if (profile.avatarUrl) metadata.avatar_url = profile.avatarUrl;
+    if (profile.interests?.length) metadata.interests = profile.interests;
+    
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password,
+      options: { data: metadata },
+    });
+    
+    if (error) {
+      console.error('[GlitchIt] Sign up error:', error);
+      return { ok: false, error: formatError(error) };
+    }
+    
+    // Check if email confirmation is required
+    if (data.user && !data.session) {
+      console.log('[GlitchIt] Email confirmation required');
+      return { 
+        ok: false, 
+        error: 'Please check your email for a confirmation link, then try signing in.' 
+      };
+    }
+    
+    console.log('[GlitchIt] Sign up successful');
+    handle = userHandle(data.user);
+    return { ok: true, user: data.user };
+  } catch (err) {
+    console.error('[GlitchIt] Sign up exception:', err);
+    return { ok: false, error: 'Sign-up failed. Please check your internet connection and try again.' };
+  }
+}
+
+// Sign out
+export async function signOut() {
+  try {
+    const sb = await getClient();
+    if (sb) {
+      await sb.auth.signOut();
+    }
+    handle = '';
+  } catch (err) {
+    console.error('[GlitchIt] Sign out error:', err);
+  }
+}
+
+// Update user metadata (profile)
+export async function updateUserMetadata(data) {
+  try {
+    const sb = await getClient();
+    if (!sb) return { ok: false, error: 'Not connected' };
+    
+    const { data: updated, error } = await sb.auth.updateUser({ data });
+    if (error) return { ok: false, error: error.message };
+    
+    if (updated?.user) handle = userHandle(updated.user);
+    return { ok: true, user: updated?.user };
+  } catch (err) {
+    console.error('[GlitchIt] Update metadata error:', err);
+    return { ok: false, error: 'Update failed' };
+  }
+}
+
+// Get current handle
+export function currentHandle() {
+  return handle;
+}
+
+// Set handle
+export function setHandle(value) {
+  handle = value || '';
+}
+
+// Extract display handle from user object
+export function userHandle(user) {
+  if (!user) return '';
+  return user.user_metadata?.username || user.email?.split('@')[0] || user.id || '';
+}
+
+// Format Supabase errors into user-friendly messages
+function formatError(error) {
+  const msg = String(error?.message || error || '');
+  
+  // Rate limiting
+  if (/rate limit|over_email_send_rate_limit/i.test(msg)) {
+    return 'Too many attempts. Please wait a few minutes and try again.';
+  }
+  
+  // Invalid credentials
+  if (/invalid.*login.*credentials|invalid.*grant/i.test(msg)) {
+    return 'Invalid email or password. Please try again.';
+  }
+  
+  // User not found
+  if (/user.*not.*found|no.*user/i.test(msg)) {
+    return 'No account found with this email. Please sign up first.';
+  }
+  
+  // Email already registered
+  if (/already.*registered|user.*already.*exists/i.test(msg)) {
+    return 'This email is already registered. Please sign in.';
+  }
+  
+  // Weak password
+  if (/password.*length|password.*short/i.test(msg)) {
+    return 'Password must be at least 6 characters.';
+  }
+  
+  // Network errors
+  if (/network|fetch|timeout|cors/i.test(msg)) {
+    return 'Network error. Please check your internet connection and try again.';
+  }
+  
+  // Return original message for other errors
+  return msg || 'An unexpected error occurred. Please try again.';
 }

@@ -47,7 +47,7 @@
     { name: 'Perpetua', css: 'contrast(1.1) brightness(1.05) saturate(.9) sepia(.1)' },
   ];
   const TEXT_COLORS = ['#ffffff', '#000000', '#ff3040', '#0095f6', '#ffd60a', '#37e237', '#ff5ce1', 'rainbow'];
-  const STORY_RATIO = { w: 1080, h: 1440 }; // 9:16 story canvas
+  const STORY_RATIO = { w: 1280, h: 1920 }; // 1280×1920 story canvas
   const TIMERS = [3, 5, 10];
 
   let stream = null;
@@ -81,11 +81,24 @@
     toastTimer = setTimeout(() => els.toast.classList.remove('show'), ms);
   }
   // Cover-fit draw (video frames or <img>) into W×H with the active filter baked.
-  function drawCover(ctx, src, W, H) {
+  // When mirror=true the source is horizontally flipped (front camera selfie mode).
+  function drawCover(ctx, src, W, H, mirror) {
     const sw = src.videoWidth || src.naturalWidth || W;
     const sh = src.videoHeight || src.naturalHeight || H;
     const s = Math.max(W / sw, H / sh);
-    ctx.drawImage(src, (W - sw * s) / 2, (H - sh * s) / 2, sw * s, sh * s);
+    const dw = sw * s;
+    const dh = sh * s;
+    const dx = (W - dw) / 2;
+    const dy = (H - dh) / 2;
+    if (mirror) {
+      ctx.save();
+      ctx.translate(W, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(src, -dx, dy, dw, dh);
+      ctx.restore();
+    } else {
+      ctx.drawImage(src, dx, dy, dw, dh);
+    }
   }
 
   // ---------- auth + data layer ----------
@@ -122,7 +135,7 @@
     }
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 1920 } },
+        video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 1920 }, aspectRatio: { ideal: 9 / 16 } },
         audio: true,
       });
     } catch (err) {
@@ -223,10 +236,29 @@
   });
 
   // ---------- top bar / misc ----------
-  els.dismiss.addEventListener('click', () => {
-    if (history.length > 1) history.back();
-    else location.href = 'index.html';
-  });
+  // Back navigation: go to the last page the user visited, or index.html
+  function goBack() {
+    stopStream();
+    let prev = '';
+    try { prev = sessionStorage.getItem('glitchit.lastPage') || ''; } catch (e) {}
+    if (prev && prev !== 'camera.html' && prev !== location.pathname.split('/').pop()) {
+      location.href = prev;
+    } else if (history.length > 2) {
+      history.back();
+    } else {
+      location.href = 'index.html';
+    }
+  }
+  if (els.dismiss) els.dismiss.addEventListener('click', goBack);
+  // Top bar flip button (same as settings sheet flip)
+  const camFlipBtn = document.getElementById('cam-flip');
+  if (camFlipBtn) {
+    camFlipBtn.addEventListener('click', () => {
+      facing = facing === 'user' ? 'environment' : 'user';
+      startCamera();
+      toast(facing === 'user' ? 'Front camera' : 'Back camera');
+    });
+  }
   els.flash.addEventListener('click', () => {
     setFlash(flash === 'off' ? 'on' : flash === 'on' ? 'auto' : 'off');
   });
@@ -255,6 +287,11 @@
     });
   });
   window.addEventListener('pagehide', () => stopStream(), { once: true });
+  // Save where the user came from so we can navigate back to it
+  try {
+    const ref = document.referrer ? document.referrer.split('/').pop() : '';
+    if (ref && ref !== 'camera.html') sessionStorage.setItem('glitchit.lastPage', ref);
+  } catch (e) {}
 
   // ---------- shutter: photo / boomerang / hands-free ----------
   els.shutter.addEventListener('click', () => {
@@ -293,22 +330,23 @@
     c.height = H;
     const ctx = c.getContext('2d');
     ctx.filter = FILTERS[filterIdx].css;
-    drawCover(ctx, els.video, W, H);
+    drawCover(ctx, els.video, W, H, facing === 'user');
     preview = { kind: 'image', url: c.toDataURL('image/jpeg', 0.92), canvas: c };
     openPreview('image');
   }
 
   // Boomerang: record ~1.6s of the filtered viewfinder via a capture-stream canvas.
   function startBoomerang() {
-    const vw = els.video.videoWidth || 720;
-    const vh = els.video.videoHeight || 1280;
-    const W = 720;
-    const H = 1280;
+    const vw = els.video.videoWidth || 1280;
+    const vh = els.video.videoHeight || 1920;
+    const W = 1280;
+    const H = 1920;
     els.canvas.width = W;
     els.canvas.height = H;
     const ctx = els.canvas.getContext('2d');
     ctx.filter = FILTERS[filterIdx].css;
-    const render = () => drawCover(ctx, els.video, W, H);
+    const mirror = facing === 'user';
+    const render = () => drawCover(ctx, els.video, W, H, mirror);
     const capStream = els.canvas.captureStream(30);
     const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
       .find((m) => typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(m)) || '';
@@ -341,15 +379,16 @@
   const REEL_MAX = 90;
 
   function startReelRecording() {
-    const vw = els.video.videoWidth || 720;
-    const vh = els.video.videoHeight || 1280;
-    const W = 720;
-    const H = 1280;
+    const vw = els.video.videoWidth || 1280;
+    const vh = els.video.videoHeight || 1920;
+    const W = 1280;
+    const H = 1920;
     els.canvas.width = W;
     els.canvas.height = H;
     const ctx = els.canvas.getContext('2d');
     ctx.filter = FILTERS[filterIdx].css;
-    const render = () => drawCover(ctx, els.video, W, H);
+    const mirror = facing === 'user';
+    const render = () => drawCover(ctx, els.video, W, H, mirror);
     const capStream = els.canvas.captureStream(30);
     // "Original audio": bake the microphone into the recording when available.
     if (stream && typeof stream.getAudioTracks === 'function' && stream.getAudioTracks().length) {
@@ -394,14 +433,14 @@
   }
 
   // First frame of a video source as a small JPEG poster (for the story ring).
-  function framePoster(src, w = 540, h = 960) {
+  function framePoster(src, w = 640, h = 960) {
     try {
       const c = document.createElement('canvas');
       c.width = w;
       c.height = h;
       const ctx = c.getContext('2d');
       ctx.filter = FILTERS[filterIdx].css;
-      drawCover(ctx, src, w, h);
+      drawCover(ctx, src, w, h, facing === 'user');
       return c.toDataURL('image/jpeg', 0.8);
     } catch (e) {
       return '';
@@ -558,7 +597,7 @@
     });
   }
 
-  // Bake the image + text overlays into the 1080×1440 story canvas.
+  // Bake the image + text overlays into the 1280×1920 story canvas.
   function bakeImage() {
     const c = preview.canvas;
     const ctx = c.getContext('2d');
@@ -881,10 +920,17 @@
   async function musicLoadTrending() {
     els.musicList.innerHTML = '<p class="cam-music-empty">Loading trending songs…</p>';
     try {
-      const res = await fetch('/api/music?chart=1');
+      // Call Deezer chart directly (no server needed — works in the APK)
+      const res = await fetch('https://api.deezer.com/chart/0/tracks?limit=30');
       const data = await res.json();
-      if (!data || !data.ok || !Array.isArray(data.tracks) || !data.tracks.length) throw new Error('empty');
-      musicTracksCache = data.tracks;
+      if (!data || !Array.isArray(data.data) || !data.data.length) throw new Error('empty');
+      musicTracksCache = data.data.map((t) => ({
+        title: t.title || '',
+        artist: (t.artist && t.artist.name) || '',
+        art: t.album && t.album.cover_medium ? t.album.cover_medium : '',
+        url: t.preview || '',
+        source: 'Deezer',
+      }));
       renderMusicRows(musicTracksCache);
     } catch (e) {
       els.musicList.innerHTML = '<p class="cam-music-empty">Trending songs are unavailable right now — try again soon.</p>';
@@ -894,10 +940,39 @@
   async function musicSearch(q) {
     els.musicList.innerHTML = '<p class="cam-music-empty">Searching…</p>';
     try {
-      const res = await fetch('/api/music?q=' + encodeURIComponent(q));
-      const data = await res.json();
-      if (!data || !data.ok || !Array.isArray(data.tracks)) throw new Error('bad');
-      musicTracksCache = data.tracks;
+      // Search Deezer + iTunes directly (no server needed — works in the APK)
+      const [deezerRes, itunesRes] = await Promise.allSettled([
+        fetch('https://api.deezer.com/search?q=' + encodeURIComponent(q) + '&limit=15'),
+        fetch('https://itunes.apple.com/search?media=music&limit=15&term=' + encodeURIComponent(q)),
+      ]);
+      const tracks = [];
+      if (deezerRes.status === 'fulfilled') {
+        const d = await deezerRes.value.json();
+        if (d && d.data) d.data.forEach((t) => {
+          if (t.preview) tracks.push({
+            title: t.title || '', artist: (t.artist && t.artist.name) || '',
+            art: t.album && t.album.cover_medium ? t.album.cover_medium : '',
+            url: t.preview, source: 'Deezer',
+          });
+        });
+      }
+      if (itunesRes.status === 'fulfilled') {
+        const it = await itunesRes.value.json();
+        if (it && it.results) it.results.forEach((t) => {
+          if (t.previewUrl) tracks.push({
+            title: t.trackName || '', artist: t.artistName || '',
+            art: t.artworkUrl100 || '', url: t.previewUrl, source: 'Apple Music',
+          });
+        });
+      }
+      // Deduplicate by title+artist
+      const seen = new Set();
+      musicTracksCache = tracks.filter((t) => {
+        const k = (t.title + '|' + t.artist).toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
       renderMusicRows(musicTracksCache, 'No songs found for that search.');
     } catch (e) {
       els.musicList.innerHTML = '<p class="cam-music-empty">Search is unavailable right now — try again soon.</p>';
@@ -916,11 +991,11 @@
   }
 
   // Re-encode the preview video with the chosen song as its audio track.
-  async function remixWithAudio() {
+  async  function remixWithAudio() {
     const v = els.previewVideo;
     if (!v || !v.videoWidth) return null;
-    const W = 720;
-    const H = 1280;
+    const W = 1280;
+    const H = 1920;
     const c = document.createElement('canvas');
     c.width = W;
     c.height = H;
@@ -949,7 +1024,17 @@
     rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
     const stopped = new Promise((res) => { rec.onstop = res; });
     rec.start();
-    const draw = () => ctx.drawImage(v, 0, 0, W, H);
+    const draw = () => {
+      if (facing === 'user') {
+        ctx.save();
+        ctx.translate(W, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(v, 0, 0, W, H);
+        ctx.restore();
+      } else {
+        ctx.drawImage(v, 0, 0, W, H);
+      }
+    };
     const loop = () => { if (rec.state !== 'recording') return; draw(); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
     const durMs = (v.duration && isFinite(v.duration) ? v.duration : 15) * 1000;
@@ -1003,7 +1088,7 @@
     if (!els.sheet.hidden) { els.sheet.hidden = true; return; }
     if (!els.menu.hidden) { openMenu(false); return; }
     if (!els.preview.hidden) closePreview();
-    else els.dismiss.click();
+    else goBack();
   });
 
   boot();

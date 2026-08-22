@@ -48,7 +48,7 @@
     });
 
     document.querySelectorAll('a[href="profile.html"]').forEach(function (link) {
-      if (!link.closest('.bottom-bar, .sidebar nav')) return;
+      if (!link.closest('.bottom-bar, .ig-bottom-bar, .sidebar nav')) return;
       var icon = link.querySelector('.profile-nav-avatar');
       if (!icon) {
         icon = document.createElement('img');

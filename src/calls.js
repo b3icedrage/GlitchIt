@@ -63,7 +63,7 @@
 
   async function fetchToken(room, identity) {
     try {
-      const res = await fetch(`/api/livekit-token?room=${encodeURIComponent(room)}&identity=${encodeURIComponent(identity)}`, { cache: 'no-store' });
+      const res = await fetch(`${window.GLITCHIT_API_BASE || ''}/api/livekit-token?room=${encodeURIComponent(room)}&identity=${encodeURIComponent(identity)}`, { cache: 'no-store' });
       if (!res.ok) return null;
       const data = await res.json();
       if (!data || data.ok !== true || !data.token || !data.url) return null;

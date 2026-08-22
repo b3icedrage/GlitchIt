@@ -21,9 +21,12 @@ const { join, normalize, extname, resolve, sep, basename } = require('node:path'
 
 // Account registry (lists every registered user via the Supabase Admin API).
 const accountsHandler = require('./api/accounts.js');
-const glitchitVideoHandler = require('./api/glitchit-video.js');
 // LiveKit Cloud access-token minting (real WebRTC calls on chat.html).
 const livekitTokenHandler = require('./api/livekit-token.js');
+const paymentHandler = require('./api/payment.js');
+const gatewayHandler = require('./api/gateway.js');
+const settlementHandler = require('./api/settlement.js');
+const { creditVault } = require('./api/settlement.js');
 
 const ROOT = resolve(__dirname);
 const PORT = Number(process.env.PORT || 4173);
@@ -70,6 +73,24 @@ const MIME = {
 
 // Text-ish extensions worth gzip-compressing.
 const COMPRESSIBLE_EXT = new Set(['.html', '.css', '.js', '.mjs', '.json', '.svg', '.txt']);
+
+// Security headers applied to every response.
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+  'X-XSS-Protection': '1; mode=block',
+};
+
+// Apply security headers to every response.
+function applySecurityHeaders(headers) {
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
+    headers[k] = v;
+  }
+}
+
+
 
 // Gzip cache: key = `${mtimeMs}:${path}` so any edit invalidates automatically.
 const gzipCache = new Map();
@@ -432,6 +453,24 @@ async function musicChart() {
   return (data.data || []).filter((t) => t.preview).map((t) => musicFromDeezer(t, 'Trending'));
 }
 
+
+// ---------------- GlitchIt Wallet API ----------------
+// POST /api/wallet — verify a transaction and credit the wallet.
+// In v1 the wallet is client-side (localStorage), but this endpoint provides
+// a server-side verification hook for future use.
+async function handleWalletRequest(req, res) {
+  const body = await readJsonBody(req, 8 * 1024);
+  if (!body || !body.tx_ref) {
+    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ ok: false, error: 'tx_ref is required.' }));
+    return;
+  }
+  // In production this would verify with the payment provider's API.
+  // For now, acknowledge the transaction.
+  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify({ ok: true, verified: true, tx_ref: body.tx_ref }));
+}
+
 async function handleMusicRequest(req, res) {
   const url = new URL(req.url, 'http://glitchit.local');
   const chart = url.searchParams.get('chart') === '1';
@@ -462,6 +501,18 @@ async function handleMusicRequest(req, res) {
 }
 
 const server = http.createServer(async (req, res) => {
+
+// Hook: apply security headers to every response.
+const origWriteHead = res.writeHead;
+res.writeHead = function (status, headers) {
+  if (headers && typeof headers === 'object' && !Array.isArray(headers)) {
+    for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
+      if (!(k in headers)) headers[k] = v;
+    }
+  }
+  return origWriteHead.call(this, status, headers);
+};
+
   // Rate limit before doing any work — abusive traffic gets a fast 429.
   const verdict = rateLimit(clientIp(req));
   if (verdict.limited) {
@@ -494,8 +545,20 @@ const server = http.createServer(async (req, res) => {
     await livekitTokenHandler(req, res);
     return;
   }
-  if (req.method === 'GET' && new URL(req.url, 'http://glitchit.local').pathname === '/api/glitchit-video') {
-    await glitchitVideoHandler(req, res);
+  // Payment gateway: all /api/payment/* routes
+  if (new URL(req.url, 'http://glitchit.local').pathname.startsWith('/api/payment')) {
+    await paymentHandler(req, res);
+    return;
+  }
+  // Settlement & B2C payout routes (/v1/admin/*, /v1/payout-callback)
+  const v1Path = new URL(req.url, 'http://glitchit.local').pathname;
+  if (v1Path.startsWith('/v1/admin/') || v1Path === '/v1/payout-callback') {
+    await settlementHandler(req, res);
+    return;
+  }
+  // White-label M-Pesa Express Gateway: all /v1/* routes + /api/gateway/v1/* routes
+  if (v1Path.startsWith('/v1/') || v1Path.startsWith('/api/gateway/v1/')) {
+    await gatewayHandler(req, res);
     return;
   }
 

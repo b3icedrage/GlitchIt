@@ -80,21 +80,28 @@
   line-height: 1;
 }
 
-/* Scroll-driven icon crossfade (enabled by settings-enhancements.js): row
-   icons fade out as they leave the settings viewport and fade back in as
-   they enter. Only active once JS adds .icons-crossfade, so a missing or
-   failing observer leaves every icon fully visible. */
-.settings-scroll.icons-crossfade .setting-icon {
+/* Scroll-driven button crossfade (enabled by settings-enhancements.js):
+   settings buttons fade out as they leave the drawer viewport and fade back
+   in as they re-enter, so new buttons appear as old ones dissolve. Only
+   active once JS adds .rows-crossfade, so a missing or failing observer
+   leaves every button fully visible. */
+.settings-scroll.rows-crossfade .settings-row,
+.settings-scroll.rows-crossfade .settings-view-all,
+.settings-scroll.rows-crossfade .settings-add-account,
+.settings-scroll.rows-crossfade #auth-logout {
   opacity: 0;
-  transform: translateY(6px) scale(.94);
-  transition: opacity .32s ease, transform .32s ease;
+  transform: translateY(10px) scale(.97);
+  transition: opacity .34s ease, transform .34s ease;
 }
-.settings-scroll.icons-crossfade .setting-icon.icon-in-view {
+.settings-scroll.rows-crossfade .row-in-view {
   opacity: 1;
   transform: translateY(0) scale(1);
 }
 @media (prefers-reduced-motion: reduce) {
-  .settings-scroll.icons-crossfade .setting-icon {
+  .settings-scroll.rows-crossfade .settings-row,
+  .settings-scroll.rows-crossfade .settings-view-all,
+  .settings-scroll.rows-crossfade .settings-add-account,
+  .settings-scroll.rows-crossfade #auth-logout {
     opacity: 1;
     transform: none;
     transition: none;

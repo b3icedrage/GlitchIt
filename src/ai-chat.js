@@ -289,7 +289,7 @@
       user: currentUser(),
     };
 
-    fetch('/api/chat', {
+    fetch((window.GLITCHIT_API_BASE || '') + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
