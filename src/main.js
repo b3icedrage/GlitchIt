@@ -2964,7 +2964,8 @@ function runPage() {
 
 // ---------- Supabase auth bootstrap ----------
 const GUEST_KEY = 'glitchit.auth.guest.v1'; // guest browsing flag
-const AUTH_SESSION_KEY = 'glitchit.auth.session.v1'; // login backup for CDN failures
+const AUTH_SESSION_KEY = 'glitchit.auth.session.v1'; // login backup (localStorage, survives CDN failures)
+const AUTH_SESSION_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 const ACCOUNT_PAGES = ['messages', 'chat', 'profile', 'shop'];
 const PUBLIC_PAGES = ['auth', 'about', 'terms', 'privacy'];
 
@@ -3064,8 +3065,10 @@ function finishAuth(user, auth) {
   try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
   window.GLITCHIT_USER = user;
   auth.setHandle(auth.userHandle(user));
-  // Save session backup so boot() can find it even if Supabase CDN fails
-  try { sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ id: user.id, email: user.email, user_metadata: user.user_metadata || {} })); } catch (err) { /* ignore */ }
+  // Save session backup to localStorage (survives CDN failures, page reloads)
+  try { localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ id: user.id, email: user.email, user_metadata: user.user_metadata || {}, ts: Date.now() })); } catch (err) { /* ignore */ }
+  // Also save to sessionStorage as secondary fallback
+  try { sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ id: user.id, email: user.email, user_metadata: user.user_metadata || {}, ts: Date.now() })); } catch (err) { /* ignore */ }
   import('./db.js?v=7').then((db) => db.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) })).catch(() => {});
   location.href = returnToPage() || 'index.html';
 }
@@ -3260,6 +3263,7 @@ function attachProfileAuth() {
       if (auth) await auth.signOut();
       window.GLITCHIT_USER = null;
       try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
+      try { localStorage.removeItem(AUTH_SESSION_KEY); } catch (err) { /* ignore */ }
       try { sessionStorage.removeItem(AUTH_SESSION_KEY); } catch (err) { /* ignore */ }
       location.href = 'auth.html';
     });
@@ -3426,8 +3430,19 @@ async function boot() {
       // CDN fallback: check session backup on auth page too
       let backupUser = null;
       try {
-        const raw = sessionStorage.getItem(AUTH_SESSION_KEY);
-        if (raw) { backupUser = JSON.parse(raw); sessionStorage.removeItem(AUTH_SESSION_KEY); }
+        let raw = localStorage.getItem(AUTH_SESSION_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.id && parsed.ts && (Date.now() - parsed.ts < AUTH_SESSION_EXPIRY)) {
+            backupUser = parsed;
+          } else {
+            localStorage.removeItem(AUTH_SESSION_KEY);
+          }
+        }
+        if (!backupUser) {
+          raw = sessionStorage.getItem(AUTH_SESSION_KEY);
+          if (raw) { backupUser = JSON.parse(raw); sessionStorage.removeItem(AUTH_SESSION_KEY); }
+        }
       } catch (e) { /* ignore */ }
       if (backupUser) {
         window.GLITCHIT_USER = backupUser;
@@ -3439,7 +3454,21 @@ async function boot() {
       }
       attachAuthPage(auth);
     } else {
-      const user = await auth.currentUser();
+      // Quick localStorage check BEFORE slow CDN-dependent auth.currentUser()
+      let quickUser = null;
+      try {
+        const raw = localStorage.getItem(AUTH_SESSION_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.id && parsed.ts && (Date.now() - parsed.ts < AUTH_SESSION_EXPIRY)) {
+            quickUser = { id: parsed.id, email: parsed.email, user_metadata: parsed.user_metadata || {}, guest: false };
+          } else {
+            localStorage.removeItem(AUTH_SESSION_KEY);
+          }
+        }
+      } catch (e) { /* ignore */ }
+
+      const user = quickUser || await auth.currentUser();
       if (user) {
         // Signed in — full access.
         window.GLITCHIT_USER = user;
@@ -3459,8 +3488,21 @@ async function boot() {
         // CDN fallback: check session backup saved by finishAuth()
         let backupUser = null;
         try {
-          const raw = sessionStorage.getItem(AUTH_SESSION_KEY);
-          if (raw) { backupUser = JSON.parse(raw); sessionStorage.removeItem(AUTH_SESSION_KEY); }
+          // Check localStorage first (more durable)
+          let raw = localStorage.getItem(AUTH_SESSION_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.id && parsed.ts && (Date.now() - parsed.ts < AUTH_SESSION_EXPIRY)) {
+              backupUser = parsed;
+            } else {
+              localStorage.removeItem(AUTH_SESSION_KEY);
+            }
+          }
+          if (!backupUser) {
+            // Then check sessionStorage (secondary)
+            raw = sessionStorage.getItem(AUTH_SESSION_KEY);
+            if (raw) { backupUser = JSON.parse(raw); sessionStorage.removeItem(AUTH_SESSION_KEY); }
+          }
         } catch (e) { /* ignore */ }
         if (backupUser) {
           window.GLITCHIT_USER = backupUser;
@@ -3476,8 +3518,19 @@ async function boot() {
     // Check session backup before forcing login
     let backupUser = null;
     try {
-      const raw = sessionStorage.getItem(AUTH_SESSION_KEY);
-      if (raw) { backupUser = JSON.parse(raw); sessionStorage.removeItem(AUTH_SESSION_KEY); }
+      let raw = localStorage.getItem(AUTH_SESSION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.id && parsed.ts && (Date.now() - parsed.ts < AUTH_SESSION_EXPIRY)) {
+          backupUser = parsed;
+        } else {
+          localStorage.removeItem(AUTH_SESSION_KEY);
+        }
+      }
+      if (!backupUser) {
+        raw = sessionStorage.getItem(AUTH_SESSION_KEY);
+        if (raw) { backupUser = JSON.parse(raw); sessionStorage.removeItem(AUTH_SESSION_KEY); }
+      }
     } catch (e) { /* ignore */ }
     if (backupUser) {
       window.GLITCHIT_USER = backupUser;
