@@ -3164,6 +3164,27 @@ function attachAuthPage(auth) {
       setLoading(false);
     }
   });
+
+  // --- Signup form (custom event from auth.html inline script) ---
+  document.addEventListener('glitchit-signup', async (e) => {
+    const { email, password, username } = e.detail || {};
+    if (!email || !password || !username) return;
+    const sErr = document.getElementById('auth-signup-error');
+    const sBtn = document.getElementById('auth-signup-submit');
+    function showSignupError(msg) { if (sErr) { sErr.textContent = msg; sErr.hidden = false; } if (sBtn) { sBtn.disabled = false; sBtn.textContent = 'Create account'; } }
+    try {
+      const result = await auth.signUp(email, password, username, {});
+      if (result.ok) {
+        import('./firebase.js?v=1').then((fb) => fb.mirrorSignUp(email, password).catch(() => {})).catch(() => {});
+        finishAuth(result.user, auth);
+      } else {
+        showSignupError(result.error || 'Sign-up failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('[GlitchIt] Signup error:', err);
+      showSignupError('Something went wrong. Please try again.');
+    }
+  });
 }
 
 // Profile page: reflect the signed-in user and wire the Log out button.

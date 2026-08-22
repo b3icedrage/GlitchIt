@@ -34,8 +34,9 @@
     <div class="auth-card">
       <div class="auth-mark">ϟ</div>
       <h1>GlitchIt</h1>
-      <p class="auth-sub">Sign in to your account</p>
+      <p class="auth-sub" id="auth-subtitle">Sign in to your account</p>
 
+      <!-- Login form (default) -->
       <form id="auth-form" novalidate>
         <!-- Email field -->
         <div class="auth-field">
@@ -88,20 +89,43 @@
         </button>
       </form>
 
+      <!-- Sign-up form (hidden by default) -->
+      <form id="auth-signup-form" novalidate style="display:none;">
+        <div class="auth-field">
+          <label for="auth-signup-email">Email</label>
+          <input type="email" id="auth-signup-email" name="email" autocomplete="email" placeholder="you@example.com" required>
+        </div>
+        <div class="auth-field">
+          <label for="auth-signup-username">Username</label>
+          <input type="text" id="auth-signup-username" name="username" autocomplete="username" placeholder="Choose a username" required maxlength="20">
+        </div>
+        <div class="auth-field">
+          <label for="auth-signup-password">Password</label>
+          <input type="password" id="auth-signup-password" name="password" autocomplete="new-password" placeholder="Create a password" required minlength="6">
+        </div>
+        <div id="auth-signup-error" class="auth-error" hidden></div>
+        <button type="submit" id="auth-signup-submit" class="auth-submit">Create account</button>
+      </form>
+
       <!-- Guest option -->
       <div class="auth-guest">
         <span>— or —</span>
         <button type="button" id="auth-guest">Continue as guest</button>
       </div>
 
-      <!-- Sign up link -->
-      <p class="auth-foot">
+      <!-- Sign up link (shown during login) -->
+      <p class="auth-foot" id="auth-switch-login">
         Don't have an account? <a href="#" id="auth-switch">Sign up</a>
+      </p>
+
+      <!-- Sign-up link (shown during signup) -->
+      <p class="auth-foot" id="auth-switch-signup" style="display:none;">
+        Already have an account? <a href="#" id="auth-switch-back">Log in</a>
       </p>
     </div>
   </div>
 
-  <script src="src/main.js?v=38" defer></script>
+  <script src="src/main.js?v=39" defer></script>
   <script>
     // Inline script for immediate UI feedback
     document.addEventListener('DOMContentLoaded', function() {
@@ -141,11 +165,62 @@
         });
       }
 
-      // Switch to sign up (for now, just show message)
-      if (switchLink) {
-        switchLink.addEventListener('click', function(e) {
+      // --- Signup toggle ---
+      var signupForm = document.getElementById('auth-signup-form');
+      var signupSubtitle = document.getElementById('auth-subtitle');
+      var switchLogin = document.getElementById('auth-switch-login');
+      var switchSignup = document.getElementById('auth-switch-signup');
+      var switchBack = document.getElementById('auth-switch-back');
+
+      function showLogin() {
+        if (form) form.style.display = '';
+        if (signupForm) signupForm.style.display = 'none';
+        if (signupSubtitle) signupSubtitle.textContent = 'Sign in to your account';
+        if (switchLogin) switchLogin.style.display = '';
+        if (switchSignup) switchSignup.style.display = 'none';
+        var err = document.getElementById('auth-error'); if (err) err.hidden = true;
+        var err2 = document.getElementById('auth-signup-error'); if (err2) err2.hidden = true;
+      }
+      function showSignup() {
+        if (form) form.style.display = 'none';
+        if (signupForm) signupForm.style.display = '';
+        if (signupSubtitle) signupSubtitle.textContent = 'Create your GlitchIt account';
+        if (switchLogin) switchLogin.style.display = 'none';
+        if (switchSignup) switchSignup.style.display = '';
+        var err = document.getElementById('auth-error'); if (err) err.hidden = true;
+        var err2 = document.getElementById('auth-signup-error'); if (err2) err2.hidden = true;
+        // Pre-fill username from email
+        var emailVal = (emailInput && emailInput.value || '').split('@')[0].replace(/[^a-z0-9._-]/gi, '').slice(0, 20);
+        var usernameField = document.getElementById('auth-signup-username');
+        if (usernameField && !usernameField.value && emailVal) usernameField.value = emailVal;
+      }
+      if (switchLink) { switchLink.addEventListener('click', function(e) { e.preventDefault(); showSignup(); }); }
+      if (switchBack) { switchBack.addEventListener('click', function(e) { e.preventDefault(); showLogin(); }); }
+
+      // --- Signup form submission (client-side, mirrors to main.js handler) ---
+      if (signupForm) {
+        signupForm.addEventListener('submit', function(e) {
           e.preventDefault();
-          alert('Sign up is available through the app. Please create your account there.');
+          var sErr = document.getElementById('auth-signup-error');
+          if (sErr) sErr.hidden = true;
+          var sEmail = document.getElementById('auth-signup-email');
+          var sUser = document.getElementById('auth-signup-username');
+          var sPass = document.getElementById('auth-signup-password');
+          var sBtn = document.getElementById('auth-signup-submit');
+          var email = (sEmail && sEmail.value || '').trim();
+          var username = (sUser && sUser.value || '').trim();
+          var password = sPass && sPass.value || '';
+          if (!email || !password) { if (sErr) { sErr.textContent = 'Please enter your email and password.'; sErr.hidden = false; } return; }
+          if (!username) { if (sErr) { sErr.textContent = 'Please choose a username.'; sErr.hidden = false; } return; }
+          if (password.length < 6) { if (sErr) { sErr.textContent = 'Password must be at least 6 characters.'; sErr.hidden = false; } return; }
+          // Store signup data so main.js attachAuthPage can pick it up
+          try {
+            window.__glitchit_signup = { email: email, password: password, username: username };
+            sessionStorage.setItem('glitchit.signup', JSON.stringify(window.__glitchit_signup));
+          } catch(e) {}
+          // Dispatch a custom event that main.js listens for
+          document.dispatchEvent(new CustomEvent('glitchit-signup', { detail: { email: email, password: password, username: username } }));
+          if (sBtn) { sBtn.disabled = true; sBtn.textContent = 'Creating account...'; }
         });
       }
     });
