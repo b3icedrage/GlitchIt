@@ -158,32 +158,30 @@
         var lastName = parts.slice(1).join(' ') || '';
 
         // PostPesapalDirectOrderV4 - create order via backend
-        fetch('/api/gateway/v1/pay', {
+        fetch('/api/pesapal/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            first_name: firstName,
-            last_name: lastName,
+            firstName: firstName,
+            lastName: lastName,
             email: email,
             amount: 1,
             currency: 'KES',
             description: 'GlitchIt Premium Monthly',
-            callback_url: window.location.origin + '/premium.html?from_pesapal=1'
           })
-        })
-        .then(function(r) { return r.json(); })
+        }).then(function(r) { return r.json(); })
         .then(function(data) {
-          if (data.success && data.data && data.data.redirect_url) {
+          if (data.ok && data.redirect_url) {
             // Store tracking ID so we can check status when user returns
-            localStorage.setItem('pesapal_pending_tx', data.data.order_tracking_id);
+            localStorage.setItem('pesapal_pending_tx', data.order_tracking_id);
             localStorage.setItem('pesapal_payment_amount', '1');
             localStorage.setItem('pesapal_payment_title', 'Premium');
             // Redirect to PesaPal checkout page
-            window.location.href = data.data.redirect_url;
+            window.location.href = data.redirect_url;
           } else {
             btn.disabled = false;
             btn.textContent = 'Get Premium';
-            show('Failed to create payment: ' + (data.message || 'Unknown error'));
+            show('Failed to create payment: ' + (data.error || data.message || 'Unknown error'));
           }
         })
         .catch(function(err) {
@@ -234,11 +232,11 @@
         // Check payment status via PesaPal tracking ID
         var pendingTx = localStorage.getItem('pesapal_pending_tx');
         if (pendingTx) {
-          fetch('/api/gateway/v1/pesapal/status/' + pendingTx)
+          fetch('/api/pesapal/status?tracking=' + pendingTx)
             .then(function(r) { return r.json(); })
             .then(function(data) {
-              if (data.success && data.data) {
-                var status = data.data.status || data.data.payment_status;
+              if (data.ok) {
+                var status = data.status || data.payment_status;
                 if (status === 'COMPLETED' || status === 'VERIFIED') {
                   activatePremium(email);
                 } else if (status === 'FAILED' || status === 'CANCELLED') {
@@ -341,11 +339,11 @@
               localStorage.removeItem('pesapal_pending_tx');
               return;
             }
-            fetch('/api/gateway/v1/pesapal/status/' + pendingTx)
+            fetch('/api/pesapal/status?tracking=' + pendingTx)
               .then(function(r) { return r.json(); })
               .then(function(data) {
-                if (data.success && data.data) {
-                  var status = data.data.status || data.data.payment_status;
+                if (data.ok) {
+                  var status = data.status || data.payment_status;
                   if (status === 'COMPLETED' || status === 'VERIFIED') {
                     var u = window.GLITCHIT_USER;
                     var email = (u && u.email) ? u.email : '';
