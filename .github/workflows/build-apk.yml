@@ -1,23 +1,3 @@
-# Builds the GlitchIt Android APK on GitHub's Android-equipped runners and
-# uploads it as a downloadable artifact.
-#
-#   - Runs on every push to main and manually via the "Run workflow" button
-#     (Actions tab -> Build Android APK -> Run workflow). Every push rebuilds
-#     the APK from the exact code in that commit, so the downloadable artifact
-#     is always in sync with the latest changes — no manual sync needed.
-#   - Each build gets its own version (versionCode = run number, versionName =
-#     short git SHA) so installing a fresh APK over an old one updates cleanly.
-#   - The APK ships the app's static assets inside the package
-#     (capacitor.config.json -> webDir: dist, no server.url) and launches
-#     standalone — it does not load a website, so it works even when the
-#     production domain is down. The /api proxies (chat, music, NVIDIA video,
-#     LiveKit, accounts) need a real backend: point GLITCHIT_API_BASE (or the
-#     glitchit.apiBase localStorage override) at one before shipping to users.
-#   - Signing: when the four ANDROID_KEYSTORE_* secrets are set, both debug
-#     and release builds use the same keystore — so every APK installs
-#     cleanly over a previous one without signature collisions.
-#   - The artifact `glitchit-apk` contains app-debug.apk, which installs
-#     directly (sideload) — no Play Store needed.
 name: Build Android APK
 
 on:
@@ -26,44 +6,51 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      - name: Set up Java 21 (required by Capacitor 7 / compileSdk 35)
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build static site
+        run: node build.js
+
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 17
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Build web assets
-        run: node build.js
-
-      - name: Sync web assets into the Android project
+      - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Build debug APK
+      - name: Build APK (Debug)
         working-directory: android
-        run: ./gradlew assembleDebug -PglitchVersionCode=$GITHUB_RUN_NUMBER -PglitchVersionName="${GITHUB_SHA::7}"
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: chmod +x gradlew && ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Build APK (Release)
+        working-directory: android
+        run: ./gradlew assembleRelease
+
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: glitchit-apk
+          name: glitchit-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: glitchit-release
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
