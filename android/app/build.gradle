@@ -24,10 +24,7 @@ android {
                 keyAlias 'glitchit'
                 keyPassword 'glitchit2024'
             }
-            // Explicitly enable all APK signature schemes for Android 12+ (API 31+)
-            v1SigningEnabled true
-            v2SigningEnabled true
-            v3SigningEnabled true
+            // v1 and v2 signing enabled by default in AGP 8.x — sufficient for Android 12+
         }
     }
 
