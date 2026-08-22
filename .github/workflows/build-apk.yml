@@ -46,6 +46,12 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease
 
+      - name: Verify Debug APK
+        run: |
+          echo "=== Debug APK Info ==="
+          ls -lh android/app/build/outputs/apk/debug/
+          java -jar $ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar verify --verbose android/app/build/outputs/apk/debug/app-debug.apk 2>&1 || echo "apksigner verify failed"
+
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
