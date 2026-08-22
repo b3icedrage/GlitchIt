@@ -13,7 +13,7 @@ function getPesapalBase() {
   const env = (process.env.PESAPAL_ENV || 'production').toLowerCase();
   return env === 'sandbox'
     ? 'https://sandbox.pesapal.com/v3'
-    : 'https://api.pesapal.com/v3';
+    : 'https://pay.pesapal.com/v3/api';
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -53,59 +53,98 @@ function generateOrderRef() {
 let cachedToken = null;
 let tokenExpiry = 0;
 
+function base64(str) { return Buffer.from(str).toString('base64'); }
+
+function oauth1Sign(method, url, params, consumerSecret) {
+  const sorted = Object.keys(params).sort().map(k => k + '=' + encodeURIComponent(params[k])).join('&');
+  const baseString = method.toUpperCase() + '&' + encodeURIComponent(url) + '&' + encodeURIComponent(sorted);
+  const { createHmac } = require('node:crypto');
+  return createHmac('sha1', consumerSecret + '&').update(baseString).digest('base64');
+}
+
 async function getOAuthToken() {
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
 
   const base = getPesapalBase();
+  const authUrl = base + '/Auth/GetToken';
   
-  // Try the documented API v3 endpoint first, then fallback paths
-  const endpointPaths = ['/api/Auth/GetToken', '/Auth/GetToken'];
-  let lastError = null;
-
-  for (const ep of endpointPaths) {
-    try {
-      const res = await fetch(`${base}${ep}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ConsumerKey: PESAPAL_CONSUMER_KEY,
-          ConsumerSecret: PESAPAL_CONSUMER_SECRET,
-        }),
-        signal: AbortSignal.timeout(15000),
-      });
-
-      const ct = res.headers.get('content-type') || '';
-      const text = await res.text();
-      
-      // If response is HTML, this endpoint doesn't exist
-      if (ct.includes('html') || text.trim().startsWith('<')) {
-        lastError = new Error('PesaPal API endpoint returned HTML (not JSON)');
-        continue;
-      }
-
-      if (!res.ok) {
-        lastError = new Error(`PesaPal OAuth failed (${res.status}): ${text.slice(0, 200)}`);
-        continue;
-      }
-
+  // Method 1: JSON body POST (standard PesaPal API v3)
+  try {
+    const res = await fetch(authUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ConsumerKey: PESAPAL_CONSUMER_KEY, ConsumerSecret: PESAPAL_CONSUMER_SECRET }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const ct = res.headers.get('content-type') || '';
+    const text = await res.text();
+    if (ct.includes('json') || text.trim().startsWith('{')) {
       const data = JSON.parse(text);
-      const token = data.token;
-      if (!token) {
-        lastError = new Error('No token in PesaPal OAuth response');
-        continue;
+      if (data.token) {
+        cachedToken = data.token;
+        tokenExpiry = Date.now() + 4 * 60 * 1000;
+        console.log('[PesaPal] ✅ OAuth token (JSON body)');
+        return cachedToken;
       }
-
-      cachedToken = token;
-      tokenExpiry = Date.now() + 4 * 60 * 1000;
-      console.log('[PesaPal] ✅ OAuth token obtained from', ep);
-      return token;
-    } catch (err) {
-      lastError = err;
-      console.warn('[PesaPal] Endpoint failed:', ep, err.message);
     }
-  }
+  } catch (e) { console.warn('[PesaPal] JSON auth failed:', e.message); }
 
-  throw lastError || new Error('PesaPal API unreachable. Check your credentials and network.');
+  // Method 2: Basic auth header
+  try {
+    const creds = base64(PESAPAL_CONSUMER_KEY + ':' + PESAPAL_CONSUMER_SECRET);
+    const res = await fetch(authUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + creds },
+      body: '{}',
+      signal: AbortSignal.timeout(15000),
+    });
+    const ct = res.headers.get('content-type') || '';
+    const text = await res.text();
+    if (ct.includes('json') || text.trim().startsWith('{')) {
+      const data = JSON.parse(text);
+      if (data.token) {
+        cachedToken = data.token;
+        tokenExpiry = Date.now() + 4 * 60 * 1000;
+        console.log('[PesaPal] ✅ OAuth token (Basic auth)');
+        return cachedToken;
+      }
+    }
+  } catch (e) { console.warn('[PesaPal] Basic auth failed:', e.message); }
+
+  // Method 3: OAuth 1.0a signed request
+  try {
+    const nonce = require('node:crypto').randomBytes(16).toString('hex');
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const params = {
+      oauth_consumer_key: PESAPAL_CONSUMER_KEY,
+      oauth_nonce: nonce,
+      oauth_signature_method: 'HMAC-SHA1',
+      oauth_timestamp: timestamp,
+      oauth_version: '1.0',
+    };
+    params.oauth_signature = oauth1Sign('POST', authUrl, params, PESAPAL_CONSUMER_SECRET);
+    const authHeader = 'OAuth ' + Object.entries(params).map(([k,v]) => k + '="' + encodeURIComponent(v) + '"').join(', ');
+    
+    const res = await fetch(authUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
+      body: '{}',
+      signal: AbortSignal.timeout(15000),
+    });
+    const ct = res.headers.get('content-type') || '';
+    const text = await res.text();
+    if (ct.includes('json') || text.trim().startsWith('{')) {
+      const data = JSON.parse(text);
+      if (data.token) {
+        cachedToken = data.token;
+        tokenExpiry = Date.now() + 4 * 60 * 1000;
+        console.log('[PesaPal] ✅ OAuth token (OAuth 1.0a)');
+        return cachedToken;
+      }
+    }
+  } catch (e) { console.warn('[PesaPal] OAuth 1.0a failed:', e.message); }
+
+  throw new Error('PesaPal authentication failed with all methods. Verify your credentials at pesapal.com/dashboard.');
 }
 
 // ─── POST /api/pesapal/order ───────────────────────────────────────
