@@ -1,0 +1,318 @@
+'use strict';
+
+// ─── PesaPal API v3 Integration ──────────────────────────────────────
+// Flow: Client calls POST /api/pesapal/order → server gets OAuth token →
+// submits order → returns redirect_url → user pays on PesaPal hosted page →
+// PesaPal calls POST /api/pesapal/ipn → server verifies transaction.
+
+const PESAPAL_CONSUMER_KEY = process.env.PESAPAL_CONSUMER_KEY || 'AFgF1I7qmrZ+Celn/J1eJuaBBoitmZQK';
+const PESAPAL_CONSUMER_SECRET = process.env.PESAPAL_CONSUMER_SECRET || 'ypkqWl6p2tgyajQ2g8+wsXMBvxQ=';
+
+// PesaPal base URLs (sandbox vs production)
+function getPesapalBase() {
+  const env = (process.env.PESAPAL_ENV || 'production').toLowerCase();
+  return env === 'sandbox'
+    ? 'https://sandbox.pesapal.com/v3'
+    : 'https://api.pesapal.com/v3';
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────
+function json(res, status, payload) {
+  res.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'Access-Control-Allow-Origin': '*',
+  });
+  res.end(JSON.stringify(payload));
+}
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    let size = 0;
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > 1024 * 1024) { resolve(null); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
+      catch (e) { resolve(null); }
+    });
+    req.on('error', () => resolve(null));
+  });
+}
+
+function generateOrderRef() {
+  const ts = Date.now().toString(36).slice(-6).toUpperCase();
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `GLT-PP-${ts}-${rand}`;
+}
+
+// ─── OAuth 1.0 Token ───────────────────────────────────────────────
+let cachedToken = null;
+let tokenExpiry = 0;
+
+async function getOAuthToken() {
+  if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
+
+  const base = getPesapalBase();
+  const res = await fetch(`${base}/api/Auth/GetToken`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ConsumerKey: PESAPAL_CONSUMER_KEY,
+      ConsumerSecret: PESAPAL_CONSUMER_SECRET,
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`PesaPal OAuth failed (${res.status}): ${text.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  const token = data.token;
+  if (!token) throw new Error('No token in PesaPal OAuth response');
+
+  cachedToken = token;
+  // Token typically expires in 5 minutes; refresh at 4 minutes
+  tokenExpiry = Date.now() + 4 * 60 * 1000;
+  console.log('[PesaPal] ✅ OAuth token obtained');
+  return token;
+}
+
+// ─── POST /api/pesapal/order ───────────────────────────────────────
+// Creates an order on PesaPal and returns the redirect URL for the
+// hosted payment page (cards, M-Pesa, Airtel Money, bank transfer).
+async function handleCreateOrder(req, res) {
+  const body = await readBody(req);
+  if (!body || !body.amount || body.amount <= 0) {
+    return json(res, 400, { ok: false, error: 'Valid amount required' });
+  }
+
+  const amount = Number(body.amount);
+  const description = body.description || 'GlitchIt Payment';
+  const email = body.email || '';
+  const phone = body.phone || '';
+  const firstName = body.firstName || '';
+  const lastName = body.lastName || '';
+  const orderId = body.orderId || generateOrderRef();
+
+  // Build callback URL — PesaPal redirects here after payment
+  const host = req.headers.host || 'glitchit.app';
+  const protocol = req.headers['x-forwarded-proto'] || 'https';
+  const callbackUrl = `${protocol}://${host}/api/pesapal/ipn`;
+
+  try {
+    const token = await getOAuthToken();
+    const base = getPesapalBase();
+
+    const orderPayload = {
+      id: orderId,
+      currency: body.currency || 'KES',
+      amount: amount,
+      description: description,
+      callback_url: callbackUrl,
+      notification_id: '', // IPN notification ID (register separately if needed)
+      billing_address: {
+        email_address: email,
+        phone_number: phone,
+        country_code: body.countryCode || 'KE',
+        first_name: firstName,
+        middle_name: '',
+        last_name: lastName,
+        line_1: '',
+        line_2: '',
+        city: '',
+        state: '',
+        postal_code: '',
+        zip_code: '',
+      },
+    };
+
+    console.log(`[PesaPal] 📤 Creating order: ${orderId} KES ${amount}`);
+
+    const orderRes = await fetch(`${base}/api/SubmitOrderRequest`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderPayload),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    const orderData = await orderRes.json();
+    console.log(`[PesaPal] Order response:`, JSON.stringify(orderData).slice(0, 300));
+
+    if (orderRes.ok && orderData.redirect_url) {
+      return json(res, 200, {
+        ok: true,
+        order_id: orderId,
+        redirect_url: orderData.redirect_url,
+        order_tracking_id: orderData.order_tracking_id || '',
+        message: 'Redirecting to PesaPal checkout...',
+      });
+    }
+
+    // Error from PesaPal
+    const errMsg = orderData.message || orderData.error || JSON.stringify(orderData);
+    console.error(`[PesaPal] ❌ Order failed:`, errMsg);
+    return json(res, 400, { ok: false, error: `Payment provider error: ${errMsg}` });
+
+  } catch (err) {
+    console.error(`[PesaPal] ❌ Order exception:`, err.message);
+    return json(res, 500, { ok: false, error: 'Payment service temporarily unavailable. Please try again.' });
+  }
+}
+
+// ─── POST /api/pesapal/ipn ────────────────────────────────────────
+// PesaPal sends Instant Payment Notification here after payment.
+// We verify the transaction and update the order status.
+async function handleIPN(req, res) {
+  console.log(`[PesaPal] 📥 IPN received`);
+
+  const body = await readBody(req);
+  const { OrderTrackingId, OrderNotificationType, MerchantReference } = body || {};
+
+  if (!OrderTrackingId) {
+    console.log(`[PesaPal] IPN missing OrderTrackingId`);
+    return json(res, 200, { ok: true, message: 'No tracking ID' });
+  }
+
+  console.log(`[PesaPal] IPN: tracking=${OrderTrackingId} ref=${MerchantReference} type=${OrderNotificationType}`);
+
+  try {
+    // Verify the transaction status with PesaPal
+    const token = await getOAuthToken();
+    const base = getPesapalBase();
+
+    const statusRes = await fetch(
+      `${base}/api/GetTransactionStatus?orderTrackingId=${OrderTrackingId}`,
+      {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(15000),
+      }
+    );
+
+    const statusData = await statusRes.json();
+    console.log(`[PesaPal] Status verification:`, JSON.stringify(statusData).slice(0, 300));
+
+    const status = (statusData.status || '').toUpperCase();
+    const paymentMethod = statusData.payment_method || '';
+    const amount = statusData.amount || 0;
+    const currency = statusData.currency || 'KES';
+    const paymentAccount = statusData.payment_account || '';
+    const paymentReference = statusData.payment_reference || '';
+
+    // Log the confirmed payment
+    console.log(`[PesaPal] ${status === 'COMPLETED' ? '✅' : '⏳'} ${OrderTrackingId}: ${status} ${currency} ${amount} via ${paymentMethod}`);
+
+    // In a real app, you'd update the order in your database here
+    // e.g., await db.query('UPDATE orders SET status = $1 WHERE reference = $2', [status, MerchantReference]);
+
+  } catch (err) {
+    console.error(`[PesaPal] IPN verification error:`, err.message);
+  }
+
+  // Always return 200 to PesaPal so it doesn't retry
+  json(res, 200, { ok: true });
+}
+
+// ─── GET /api/pesapal/status?tracking=... ──────────────────────────
+// Client polls this to check if payment completed.
+async function handleStatus(req, res, url) {
+  const trackingId = url.searchParams.get('tracking');
+  const orderId = url.searchParams.get('order_id');
+
+  if (!trackingId && !orderId) {
+    return json(res, 400, { ok: false, error: 'tracking or order_id required' });
+  }
+
+  try {
+    const token = await getOAuthToken();
+    const base = getPesapalBase();
+
+    if (trackingId) {
+      const statusRes = await fetch(
+        `${base}/api/GetTransactionStatus?orderTrackingId=${trackingId}`,
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(15000),
+        }
+      );
+
+      const data = await statusRes.json();
+      const status = (data.status || '').toUpperCase();
+
+      if (status === 'COMPLETED') {
+        return json(res, 200, {
+          ok: true,
+          status: 'completed',
+          amount: data.amount,
+          currency: data.currency || 'KES',
+          payment_method: data.payment_method || '',
+          order_id: data.merchant_reference || orderId || '',
+        });
+      }
+
+      if (status === 'FAILED' || status === 'CANCELLED') {
+        return json(res, 200, {
+          ok: false,
+          status: status.toLowerCase(),
+          error: `Payment ${status.toLowerCase()}`,
+        });
+      }
+
+      // Still pending
+      return json(res, 202, {
+        ok: false,
+        status: 'pending',
+        pending: true,
+        message: 'Waiting for payment...',
+      });
+    }
+  } catch (err) {
+    console.error(`[PesaPal] Status check error:`, err.message);
+  }
+
+  json(res, 202, { ok: false, status: 'pending', pending: true });
+}
+
+// ─── GET /api/pesapal/config ───────────────────────────────────────
+function handleConfig(req, res) {
+  const env = (process.env.PESAPAL_ENV || 'production').toLowerCase();
+  json(res, 200, {
+    ok: true,
+    configured: Boolean(PESAPAL_CONSUMER_KEY && PESAPAL_CONSUMER_SECRET),
+    environment: env,
+    base_url: getPesapalBase(),
+  });
+}
+
+// ─── Router ─────────────────────────────────────────────────────────
+module.exports = async function handler(req, res) {
+  const url = new URL(req.url, 'http://glitchit.local');
+  const method = req.method;
+  const path = url.pathname;
+
+  if (method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    });
+    return res.end();
+  }
+
+  if (method === 'POST' && path === '/api/pesapal/order') return handleCreateOrder(req, res);
+  if (method === 'POST' && path === '/api/pesapal/ipn') return handleIPN(req, res);
+  if (method === 'GET' && path === '/api/pesapal/status') return handleStatus(req, res, url);
+  if (method === 'GET' && path === '/api/pesapal/config') return handleConfig(req, res);
+
+  json(res, 404, { ok: false, error: 'Not found' });
+};

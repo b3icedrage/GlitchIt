@@ -70,7 +70,7 @@ const SHELL_URLS = [
   './src/ai-chat.js?v=3',
   './src/story-camera.css?v=4',
   './src/story-camera.js?v=4',
-  './src/payment-gateway.js?v=3',
+  './src/payment-gateway.js?v=4',
   './src/payment-checkout.css?v=1',
   './src/wallet.js',
   './src/wallet.css',

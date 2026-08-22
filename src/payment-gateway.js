@@ -96,6 +96,9 @@ function ensureOverlay() {
           <button type="button" class="pg-method-tab" data-method="wallet" id="pg-wallet-tab" style="display:none;">
             <span class="pg-mt-icon">💰</span>Wallet
           </button>
+          <button type="button" class="pg-method-tab" data-method="pesapal">
+            <span class="pg-mt-icon">💳</span>Card / M-Pesa
+          </button>
         </div>
         <div class="pg-form" id="pg-form-mpesa">
           <div class="pg-field">
@@ -110,6 +113,18 @@ function ensureOverlay() {
           <div class="pg-info-box" style="text-align:center;">
             <strong>Pay from GlitchIt Wallet</strong><br>
             Balance: <strong id="pg-wallet-bal">KES 0</strong>
+          </div>
+        </div>
+        <div class="pg-form" id="pg-form-pesapal" style="display:none;">
+          <div class="pg-info-box" style="text-align:center;padding:16px;">
+            <div style="font-size:28px;margin-bottom:8px;">💳</div>
+            <strong>Pay via PesaPal</strong>
+            <p style="font-size:12px;color:#8e8e8e;margin:6px 0 0;">Cards, M-Pesa, Airtel Money, Bank Transfer</p>
+            <p style="font-size:11px;color:#666;margin:4px 0 0;">You'll be redirected to PesaPal's secure checkout page.</p>
+          </div>
+          <div class="pg-field" style="margin-top:12px;">
+            <label for="pg-pp-email">Email for receipt</label>
+            <input type="email" id="pg-pp-email" placeholder="you@example.com" />
           </div>
         </div>
         <button type="button" class="pg-pay-btn" id="pg-pay-btn">
@@ -187,11 +202,11 @@ function bindEvents() {
 function selectMethod(method) {
   overlay.querySelectorAll('.pg-method-tab').forEach((t) => t.classList.remove('active'));
   overlay.querySelector(`[data-method="${method}"]`).classList.add('active');
-  ['mpesa', 'wallet'].forEach((m) => {
+  ['mpesa', 'wallet', 'pesapal'].forEach((m) => {
     const form = overlay.querySelector(`#pg-form-${m}`);
     if (form) form.style.display = m === method ? '' : 'none';
   });
-  overlay.querySelector('#pg-pay-btn .pg-pay-btn-text').textContent = method === 'wallet' ? 'Pay from Wallet' : 'Pay Now';
+  overlay.querySelector('#pg-pay-btn .pg-pay-btn-text').textContent = method === 'wallet' ? 'Pay from Wallet' : method === 'pesapal' ? 'Continue to PesaPal' : 'Pay Now';
 }
 
 function fieldError(id, msg) {
@@ -213,6 +228,54 @@ async function handlePay() {
       showSuccess({ ref: txRef, msg: 'Paid from wallet.' });
     } else {
       toast('⚠', 'Insufficient wallet balance');
+    }
+    return;
+  }
+
+  // ── PesaPal redirect flow ──
+  if (method === 'pesapal') {
+    const email = overlay.querySelector('#pg-pp-email')?.value.trim() || '';
+    if (!email) return fieldError('pg-pp-email', 'Enter your email for the receipt');
+
+    isProcessing = true;
+    const btn = overlay.querySelector('#pg-pay-btn');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+      const amount = currentOptions?.amount || 0;
+      const orderId = currentOptions?.api_ref || generateTxRef();
+      const user = window.GLITCHIT_USER || {};
+
+      const result = await apiPost('/api/pesapal/order', {
+        amount: amount,
+        description: currentOptions?.title || 'GlitchIt Payment',
+        email: email,
+        phone: user.phone || '',
+        firstName: (user.user_metadata?.username || '').split(' ')[0] || '',
+        lastName: (user.user_metadata?.username || '').split(' ').slice(1).join(' ') || '',
+        orderId: orderId,
+        currency: currentOptions?.currency || 'KES',
+      });
+
+      if (result.ok && result.redirect_url) {
+        // Store order for status polling after redirect back
+        try { sessionStorage.setItem('glitchit.pesapal.order', JSON.stringify({ orderId, trackingId: result.order_tracking_id, amount })); } catch(e) {}
+        // Redirect to PesaPal hosted checkout
+        window.location.href = result.redirect_url;
+        return;
+      }
+
+      // PesaPal order creation failed — show error
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      isProcessing = false;
+      toast('⚠', result.error || 'Could not start PesaPal checkout. Please try again.');
+    } catch (err) {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      isProcessing = false;
+      toast('⚠', 'Payment service unavailable. Please try again.');
     }
     return;
   }
