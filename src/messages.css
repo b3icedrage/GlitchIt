@@ -416,7 +416,7 @@
   border: 1px solid #e6e6e6;
   border-radius: 999px;
   background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .1);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
   font-size: 12.5px;
   line-height: 1.1;
 }
@@ -443,7 +443,7 @@
   border-radius: 50%;
   background: #fff;
   color: #8a6fe8;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, .14);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
   cursor: pointer;
   flex: 0 0 auto;
   transition: transform .15s ease;
@@ -508,7 +508,7 @@
   align-items: center;
   gap: 6px;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-  border-top: 1px solid #efefef;
+  border-top: 1px solid var(--gi-border, #efefef);
 }
 .chat-cam {
   display: grid;
@@ -635,7 +635,7 @@
 :root[data-theme="dark"] .msg.in { background: #26223a; color: #f6f3ff; }
 :root[data-theme="dark"] .msg-time { color: #9b96b5; }
 :root[data-theme="dark"] .msg-react { background: #1b1929; border-color: #322d45; }
-:root[data-theme="dark"] .voice-play { background: #1b1929; color: #a99cf5; box-shadow: 0 1px 5px rgba(0, 0, 0, .4); }
+:root[data-theme="dark"] .voice-play { background: #1b1929; color: #a99cf5; box-shadow: 0 2px 8px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04); }
 :root[data-theme="dark"] .voice-transcript { border-top-color: rgba(255, 255, 255, .14); }
 :root[data-theme="dark"] .chat-input { background: #1b1929; color: #f6f3ff; }
 :root[data-theme="dark"] .chat-input:focus { background: #26223a; }
@@ -659,7 +659,7 @@
   overflow: hidden;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, .08);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, .08);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
 }
 .msg-loc-map {
   height: 132px;
@@ -726,7 +726,7 @@
   padding: 0 0 2px;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, .35);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
 }
 .loc-close:hover { background: rgba(45, 48, 64, .92); }
 .loc-sheet {
@@ -853,5 +853,5 @@
 .loc-modal .leaflet-control-attribution a { color: #aeb7d4; }
 .loc-modal .leaflet-container { font-family: inherit; }
 
-:root[data-theme="dark"] .msg-loc-card { background: #26223a; border-color: #322d45; box-shadow: 0 2px 12px rgba(0, 0, 0, .35); }
+:root[data-theme="dark"] .msg-loc-card { background: #26223a; border-color: #322d45; box-shadow: 0 2px 8px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04); }
 :root[data-theme="dark"] .msg-loc-meta strong { color: #f6f3ff; }

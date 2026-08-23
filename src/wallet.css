@@ -47,7 +47,7 @@
   padding: 16px 10px; border: 0; border-radius: 16px;
   background: #fff; color: #1a1a2e;
   font-size: 12px; font-weight: 700; cursor: pointer;
-  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  box-shadow: 0 8px 28px rgba(214,41,118,.2), 0 2px 8px rgba(0,0,0,.08);
   transition: transform .15s ease, box-shadow .15s ease;
 }
 .wallet-action-btn:active { transform: scale(.96); }
@@ -76,7 +76,7 @@
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
 }
 .wallet-quick-btn {
-  padding: 14px 8px; border: 2px solid #e0e0e0; border-radius: 14px;
+  padding: 14px 8px; border: 2px solid #e0e0e0; border-radius: 18px;
   background: #fff; font-size: 15px; font-weight: 800; color: #1a1a2e;
   cursor: pointer; transition: all .15s ease;
 }
@@ -92,7 +92,7 @@
   display: flex; gap: 10px; margin-top: 12px;
 }
 .wallet-custom input {
-  flex: 1; padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 14px;
+  flex: 1; padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 18px;
   background: #fff; font-size: 16px; font-weight: 700; color: #1a1a2e;
   outline: none; transition: border-color .15s ease;
 }
@@ -104,7 +104,7 @@
 
 /* ── CTA button ───────────────────────────────────────────── */
 .wallet-cta {
-  width: 100%; padding: 16px; border: 0; border-radius: 14px;
+  width: 100%; padding: 16px; border: 0; border-radius: 18px;
   background: linear-gradient(135deg, #ff2d78, #a24cff);
   color: #fff; font-size: 16px; font-weight: 800; cursor: pointer;
   margin-top: 12px; transition: transform .15s ease, filter .15s ease;
@@ -117,7 +117,7 @@
 .wallet-send-form {
   display: none; flex-direction: column; gap: 12px;
   padding: 20px; border-radius: 16px; background: #fff;
-  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  box-shadow: 0 8px 28px rgba(214,41,118,.2), 0 2px 8px rgba(0,0,0,.08);
 }
 .wallet-send-form.open { display: flex; }
 :root[data-theme="dark"] .wallet-send-form { background: #1a1a2e; }
@@ -182,7 +182,7 @@
 .wallet-tip-overlay.open { display: grid; }
 .wallet-tip-sheet {
   width: min(360px, 90vw); padding: 28px 24px; border-radius: 24px;
-  background: #fff; box-shadow: 0 24px 60px rgba(0,0,0,.25);
+  background: #fff; box-shadow: 0 8px 28px rgba(214,41,118,.2), 0 2px 8px rgba(0,0,0,.08);
   text-align: center;
 }
 :root[data-theme="dark"] .wallet-tip-sheet { background: #1a1a2e; }
@@ -224,7 +224,7 @@
 
 /* ── Footer info ──────────────────────────────────────────── */
 .wallet-footer {
-  margin: 20px 16px; padding: 16px; border-radius: 14px;
+  margin: 20px 16px; padding: 16px; border-radius: 18px;
   background: #fff; font-size: 12px; color: #8e8e8e; line-height: 1.6;
 }
 :root[data-theme="dark"] .wallet-footer { background: #1a1a2e; color: #666; }

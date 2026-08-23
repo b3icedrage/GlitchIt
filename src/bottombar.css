@@ -1,7 +1,11 @@
+/* ============================================================
+   GlitchIt Bottom Bar — Modern Glass Navigation
+   ============================================================ */
 
-/* ============ Instagram-style bottom bar (replaces floating pill) ============ */
+/* Hide old bottom-bar completely */
 .bottom-bar { display: none !important; }
 
+/* ---- IG Bottom Bar: glass-morphism navigation ---- */
 .ig-bottom-bar {
   position: fixed;
   left: 0;
@@ -13,9 +17,16 @@
   justify-content: space-around;
   width: 100%;
   max-width: 100%;
-  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
-  border-top: 1px solid #262626;
-  background: #000;
+  padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(0,0,0,.08);
+  background: rgba(255,255,255,.88);
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+}
+
+:root[data-theme="dark"] .ig-bottom-bar {
+  border-color: rgba(255,255,255,.07);
+  background: rgba(0,0,0,.92);
 }
 
 .ig-tab {
@@ -23,10 +34,15 @@
   align-items: center;
   justify-content: center;
   flex: 1;
-  padding: 4px 0;
+  padding: 6px 0;
   color: #8e8e8e;
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
+  transition: color .2s ease, transform .15s ease;
+}
+
+.ig-tab:active {
+  transform: scale(.88);
 }
 
 .ig-tab-icon {
@@ -39,30 +55,49 @@
   display: block;
   width: 24px;
   height: 24px;
+  transition: transform .2s ease;
 }
 
 .ig-tab.active {
+  color: #111;
+}
+
+:root[data-theme="dark"] .ig-tab.active {
   color: #fff;
 }
 
-.ig-tab.active[data-tab="home"] .ig-tab-icon svg {
-  fill: #fff;
-  stroke: #fff;
-}
-
 .ig-tab.active .ig-tab-icon svg {
-  stroke: #fff;
+  stroke: currentColor;
 }
 
+.ig-tab.active[data-tab="home"] .ig-tab-icon svg {
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+/* Profile avatar */
 .ig-tab .ig-tab-icon img.profile-nav-avatar {
   width: 24px;
   height: 24px;
-  border: 2px solid #8e8e8e;
+  border: 2px solid #d1d1d1;
   border-radius: 50%;
   object-fit: cover;
+  transition: border-color .2s ease, box-shadow .2s ease;
 }
+
 .ig-tab.active .ig-tab-icon img.profile-nav-avatar {
-  border-color: #fff;
+  border-color: #111;
+  box-shadow: 0 0 0 1.5px #111;
 }
+
+:root[data-theme="dark"] .ig-tab .ig-tab-icon img.profile-nav-avatar {
+  border-color: #555;
+}
+
+:root[data-theme="dark"] .ig-tab.active .ig-tab-icon img.profile-nav-avatar {
+  border-color: #fff;
+  box-shadow: 0 0 0 1.5px #fff;
+}
+
 .ig-tab[data-tab="profile"] .ig-tab-icon svg { display: none; }
 .ig-tab[data-tab="profile"] .ig-tab-icon img.profile-nav-avatar { display: block; }

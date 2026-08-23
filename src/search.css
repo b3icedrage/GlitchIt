@@ -4,9 +4,10 @@
 
 .sr-card {
   overflow: hidden;
-  border: 1px solid #dbdbdb;
+  border: 1px solid var(--gi-border, #dbdbdb);
   border-radius: 18px;
-  background: #fff;
+  background: var(--gi-surface, #fff);
+  box-shadow: var(--gi-shadow-sm, 0 1px 3px rgba(0,0,0,.04));
 }
 
 /* Top bar: back chevron + search pill */
@@ -232,7 +233,7 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: 18px;
   color: #fff;
   background: linear-gradient(135deg, #d62976, #4f5bd5);
   font-size: 18px;
