@@ -261,9 +261,9 @@
       function showPremiumSuccess() {
         var sheet = document.getElementById('prem-verify-sheet');
         if (sheet) sheet.remove();
-        show("You're Premium! \uD83C\uDF89 Your verified badge is now active.");
+        show("Get ready to start earning from GlitchIt! \uD83C\uDF1F");
         // Redirect to home after short delay
-        setTimeout(function() { location.href = 'index.html?verified=1'; }, 2000);
+        setTimeout(function() { location.href = 'profile.html?verified=1'; }, 2000);
       }
 
       // Pay with Wallet buttons - use GlitchItWallet module
@@ -280,9 +280,9 @@
           }
           var result = window.GlitchItWallet.payPremium(plan);
           if (result && result.ok) {
-            show("You're Premium! \uD83C\uDF89 Paid from wallet.");
+            show("Get ready to start earning from GlitchIt! \uD83C\uDF1F");
             // Redirect to home with verified badge after short delay
-            setTimeout(function() { location.href = 'index.html?verified=1'; }, 1500);
+            setTimeout(function() { location.href = 'profile.html?verified=1'; }, 1500);
           } else if (result && result.error === 'Insufficient balance') {
             show('Insufficient wallet balance - deposit first at wallet.html');
           } else {
@@ -334,7 +334,7 @@
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
       } else if (location.search.indexOf('success=1') !== -1) {
-        show("You're Premium! \uD83C\uDF89 Your benefits are active.");
+        show("Get ready to start earning from GlitchIt! \uD83C\uDF1F");
       } else if (location.search.indexOf('canceled=1') !== -1) {
         show('Checkout canceled - no charge was made.');
       }
