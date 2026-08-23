@@ -306,50 +306,55 @@
     <script src="src/ai-chat.js?v=3"></script>
     <script>
       // Premium activation + badge after PesaPal redirect
+      // Handles both ?from_pesapal=1 (new flow) and ?verified=1 (legacy)
       (function() {
-        if (location.search.indexOf('verified=1') === -1) return;
+        var isRedirect = location.search.indexOf('from_pesapal=1') !== -1 || location.search.indexOf('verified=1') !== -1;
+        if (!isRedirect) return;
 
-        // Activate premium immediately
-        var user = window.GLITCHIT_USER;
-        if (user && user.id) {
-          var expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
-          var premData = { plan: 'monthly', activatedAt: Date.now(), expiresAt: expiresAt };
+        // premium-gate.js handles activation via the pending flag.
+        // This script just waits for GLITCHIT_USER and ensures badge is applied.
+        var attempts = 0;
+        function activateAndShow() {
+          attempts++;
+          if (attempts > 25) return; // 5 seconds max
 
-          // Store in localStorage
-          try { localStorage.setItem('glitchit.premium.' + user.id, JSON.stringify(premData)); } catch(e) {}
+          var user = window.GLITCHIT_USER;
+          if (!user || !user.id || user.guest) {
+            setTimeout(activateAndShow, 200);
+            return;
+          }
 
-          // Try to update Supabase user_metadata
-          if (window.GLITCHIT_AUTH && window.GLITCHIT_AUTH.updateUserMetadata) {
-            window.GLITCHIT_AUTH.updateUserMetadata({ premium: premData }).then(function() {
-              // Refresh user object and re-apply badge
-              if (window.GLITCHIT_USER) window.GLITCHIT_USER.user_metadata = window.GLITCHIT_USER.user_metadata || {};
-              if (window.GLITCHIT_USER) window.GLITCHIT_USER.user_metadata.premium = premData;
-              if (typeof applyProfileAvatarUi === 'function') applyProfileAvatarUi();
-            }).catch(function() {
-              // Still re-apply badge from localStorage
-              if (typeof applyProfileAvatarUi === 'function') applyProfileAvatarUi();
-            });
-          } else {
-            if (typeof applyProfileAvatarUi === 'function') applyProfileAvatarUi();
+          // Ensure premium data is stored
+          var existing = localStorage.getItem('glitchit.premium.' + user.id);
+          if (!existing) {
+            var expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+            var premData = { plan: 'monthly', activatedAt: Date.now(), expiresAt: expiresAt };
+            var badgeData = { type: 'verified', color: 'blue', granted_at: new Date().toISOString(), reason: 'payment_verified' };
+            try {
+              localStorage.setItem('glitchit.premium.' + user.id, JSON.stringify(premData));
+              localStorage.setItem('glitchit.badge.' + user.id, JSON.stringify(badgeData));
+              localStorage.removeItem('glitchit.premium.pending');
+            } catch(e) {}
+            user.user_metadata = user.user_metadata || {};
+            user.user_metadata.premium = premData;
+            if (window.GLITCHIT_AUTH && window.GLITCHIT_AUTH.updateUserMetadata) {
+              window.GLITCHIT_AUTH.updateUserMetadata({ premium: premData }).catch(function() {});
+            }
+          }
+
+          // Re-apply premium gate (blue badge on names + photo)
+          if (window.GlitchItPremium && window.GlitchItPremium.applyGate) {
+            window.GlitchItPremium.applyGate();
+          }
+          // Also re-apply profile avatar UI
+          if (typeof applyProfileAvatarUi === 'function') {
+            applyProfileAvatarUi();
           }
         }
 
-        // Show success toast
-        var toast = document.createElement('div');
-        toast.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);z-index:9999;padding:14px 22px;border-radius:999px;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;font-size:14px;font-weight:800;box-shadow:0 8px 30px rgba(162,76,255,.4);opacity:0;transition:opacity .3s ease,transform .3s ease;white-space:nowrap;';
-        toast.innerHTML = '\u2728 Get ready to start earning from GlitchIt!';
-        document.body.appendChild(toast);
-        requestAnimationFrame(function() {
-          toast.style.opacity = '1';
-          toast.style.transform = 'translateX(-50%) translateY(0)';
-        });
-        setTimeout(function() {
-          toast.style.opacity = '0';
-          toast.style.transform = 'translateX(-50%) translateY(20px)';
-          setTimeout(function() { toast.remove(); }, 400);
-        }, 4000);
+        activateAndShow();
 
-        // Clean up URL
+        // Clean up URL params
         window.history.replaceState({}, document.title, window.location.pathname);
       })();
     </script>

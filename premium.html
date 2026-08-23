@@ -374,7 +374,7 @@
         }
 
         // Redirect to profile after 3 seconds to see the badge
-        setTimeout(function() { location.href = 'profile.html?verified=1'; }, 3000);
+        setTimeout(function() { location.href = 'profile.html?from_pesapal=1'; }, 3000);
       }
 
       // Pay with Wallet buttons - use GlitchItWallet module
@@ -393,7 +393,7 @@
           if (result && result.ok) {
             show("Get ready to start earning from GlitchIt! \uD83C\uDF1F");
             // Redirect to home with verified badge after short delay
-            setTimeout(function() { location.href = 'profile.html?verified=1'; }, 1500);
+            setTimeout(function() { location.href = 'profile.html?from_pesapal=1'; }, 1500);
           } else if (result && result.error === 'Insufficient balance') {
             show('Insufficient wallet balance - deposit first at wallet.html');
           } else {
@@ -408,26 +408,28 @@
       if (location.search.indexOf('from_pesapal=1') !== -1 || location.search.indexOf('pesapal_success') !== -1) {
         var pendingTx = localStorage.getItem('pesapal_pending_tx');
         var u = window.GLITCHIT_USER;
-        var email = (u && u.email) ? u.email : '';
 
-        // Activate premium immediately — PesaPal redirect = payment confirmed
-        if (email) {
-          activatePremium(email);
-        } else {
-          // No email available — still activate locally
+        // PesaPal redirect = payment confirmed. Store pending flag so main.js
+        // on any page can activate premium once GLITCHIT_USER is available.
+        var expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+        var premData = { plan: 'monthly', activatedAt: Date.now(), expiresAt: expiresAt };
+        var badgeData = { type: 'verified', color: 'blue', granted_at: new Date().toISOString(), reason: 'payment_verified' };
+
+        // Store as 'pending' so main.js can apply once auth resolves
+        localStorage.setItem('glitchit.premium.pending', JSON.stringify({ premData: premData, badgeData: badgeData }));
+
+        // If GLITCHIT_USER is available, activate immediately too
+        if (u && u.id && !u.guest) {
+          localStorage.setItem('glitchit.premium.' + u.id, JSON.stringify(premData));
+          localStorage.setItem('glitchit.badge.' + u.id, JSON.stringify(badgeData));
           try {
-            if (u && u.id) {
-              var expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
-              var premData = { plan: 'monthly', activatedAt: Date.now(), expiresAt: expiresAt };
-              localStorage.setItem('glitchit.premium.' + u.id, JSON.stringify(premData));
-              localStorage.setItem('glitchit.badge.' + u.id, JSON.stringify({
-                type: 'verified', color: 'blue',
-                granted_at: new Date().toISOString(), reason: 'payment_verified'
-              }));
+            if (window.GLITCHIT_AUTH && window.GLITCHIT_AUTH.updateUserMetadata) {
+              window.GLITCHIT_AUTH.updateUserMetadata({ premium: premData });
             }
           } catch (e) { /* ignore */ }
-          show('\u2714 Payment successful! You are now Premium. \uD83C\uDF89');
         }
+
+        show('\u2714 Payment successful! You are now Premium! Redirecting to your profile...');
 
         // Clean up
         localStorage.removeItem('pesapal_pending_tx');
@@ -435,10 +437,8 @@
         localStorage.removeItem('pesapal_payment_title');
         window.history.replaceState({}, document.title, window.location.pathname);
 
-        // Re-apply premium gate immediately so UI updates without page reload
-        if (window.GlitchItPremium && window.GlitchItPremium.applyGate) {
-          setTimeout(function() { window.GlitchItPremium.applyGate(); }, 200);
-        }
+        // Redirect to profile page (premium version with blue badge)
+        setTimeout(function() { window.location.href = 'profile.html?from_pesapal=1'; }, 1500);
       } else if (location.search.indexOf('success=1') !== -1) {
         show('\u2714 Premium activated! Welcome to GlitchIt Premium. \uD83C\uDF1F');
         if (window.GlitchItPremium && window.GlitchItPremium.applyGate) {

@@ -6,11 +6,77 @@
 (function () {
   'use strict';
 
+  // ─── Pending Premium Pickup ───────────────────────────────────────
+  // When a user pays on PesaPal, premium.html stores a "pending" flag
+  // in localStorage because GLITCHIT_USER isn't available there.
+  // This section picks it up once main.js resolves the user.
+  function activatePendingPremium() {
+    try {
+      var raw = localStorage.getItem('glitchit.premium.pending');
+      if (!raw) return false;
+      var pending = JSON.parse(raw);
+      if (!pending || !pending.premData || !pending.badgeData) return false;
+
+      var u = window.GLITCHIT_USER;
+      if (!u || !u.id || u.guest) return false;
+
+      // Activate premium + badge for this user
+      localStorage.setItem('glitchit.premium.' + u.id, JSON.stringify(pending.premData));
+      localStorage.setItem('glitchit.badge.' + u.id, JSON.stringify(pending.badgeData));
+      localStorage.removeItem('glitchit.premium.pending');
+
+      // Update in-memory user metadata
+      u.user_metadata = u.user_metadata || {};
+      u.user_metadata.premium = pending.premData;
+      window.GLITCHIT_USER = u;
+
+      // Try to persist to Supabase
+      try {
+        var auth = window.GLITCHIT_AUTH;
+        if (auth && auth.updateUserMetadata) {
+          auth.updateUserMetadata({ premium: pending.premData }).catch(function () {});
+        }
+      } catch (e) { /* ignore */ }
+
+      return true;
+    } catch (e) { /* ignore */ }
+    return false;
+  }
+
+  // Wait for GLITCHIT_USER to be available, then activate pending premium.
+  // main.js sets it asynchronously after auth resolves — may take up to a few seconds.
+  var pendingAttempts = 0;
+  var PENDING_MAX_ATTEMPTS = 25; // 25 × 200ms = 5 seconds
+  function waitAndActivatePending() {
+    if (pendingAttempts >= PENDING_MAX_ATTEMPTS) return;
+    pendingAttempts++;
+
+    var raw = localStorage.getItem('glitchit.premium.pending');
+    if (!raw) return; // No pending premium, nothing to do
+
+    var u = window.GLITCHIT_USER;
+    if (!u || !u.id || u.guest) {
+      // Auth not ready yet — retry
+      setTimeout(waitAndActivatePending, 200);
+      return;
+    }
+
+    // User is ready — activate pending premium
+    activatePendingPremium();
+    // Re-apply gate immediately
+    setTimeout(applyPremiumGate, 50);
+  }
+
   // ─── Premium Detection ─────────────────────────────────────────────
   function isPremium() {
     try {
       var u = window.GLITCHIT_USER;
-      if (!u || !u.id || u.guest) return false;
+      if (!u || !u.id || u.guest) {
+        // Check if we have pending premium (redirect from PesaPal)
+        var pendingRaw = localStorage.getItem('glitchit.premium.pending');
+        if (pendingRaw) return true; // Will activate once user is available
+        return false;
+      }
 
       // 1. Check Supabase user_metadata first (authoritative)
       var cp = u.user_metadata && u.user_metadata.premium;
@@ -178,6 +244,25 @@
     });
   }
 
+  // ─── Show Premium Welcome Toast (on PesaPal redirect) ─────────────
+  function showPremiumWelcome() {
+    if (document.querySelector('.premium-welcome-toast')) return;
+    var toast = document.createElement('div');
+    toast.className = 'premium-welcome-toast';
+    toast.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);z-index:9999;padding:14px 22px;border-radius:999px;background:linear-gradient(135deg,#0095f6,#00d4ff);color:#fff;font-size:14px;font-weight:800;box-shadow:0 8px 30px rgba(0,149,246,.4);opacity:0;transition:opacity .3s ease,transform .3s ease;white-space:nowrap;pointer-events:none;';
+    toast.innerHTML = '\u2728 You are now Premium! Blue badge active for 30 days.';
+    document.body.appendChild(toast);
+    requestAnimationFrame(function () {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    setTimeout(function () {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(20px)';
+      setTimeout(function () { toast.remove(); }, 400);
+    }, 4000);
+  }
+
   // ─── Main Gate Function ────────────────────────────────────────────
   function applyPremiumGate() {
     var active = isPremium();
@@ -225,16 +310,31 @@
         updateCountdown();
       }
     }
+
+    // 8. Show welcome toast if redirected from PesaPal
+    var isRedirect = location.search.indexOf('from_pesapal=1') !== -1 ||
+                     location.search.indexOf('verified=1') !== -1;
+    if (isRedirect) {
+      showPremiumWelcome();
+      // Clean up URL params
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }
 
   // ─── Auto-run on page load ─────────────────────────────────────────
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
-      // Wait a tick for GLITCHIT_USER to be set by auth module
-      setTimeout(applyPremiumGate, 100);
+      // First try to activate pending premium immediately
+      activatePendingPremium();
+      // Apply gate — GLITCHIT_USER may or may not be set yet
+      applyPremiumGate();
+      // If pending premium existed but user wasn't ready, wait and retry
+      waitAndActivatePending();
     });
   } else {
-    setTimeout(applyPremiumGate, 100);
+    activatePendingPremium();
+    applyPremiumGate();
+    waitAndActivatePending();
   }
 
   // ─── Re-apply when auth state changes ──────────────────────────────
@@ -242,11 +342,31 @@
     setTimeout(applyPremiumGate, 50);
   });
 
+  // ─── Watch for GLITCHIT_USER becoming available ────────────────────
+  // If the user is set after this script runs (async auth), re-apply
+  var _lastUser = null;
+  var _watchInterval = setInterval(function () {
+    var cur = window.GLITCHIT_USER;
+    if (cur && cur !== _lastUser) {
+      _lastUser = cur;
+      // Try pending activation
+      activatePendingPremium();
+      // Re-apply gate
+      applyPremiumGate();
+    }
+    // Stop watching after 10 seconds
+    if (Date.now() > (window.__premiumGateStart || Date.now()) + 10000) {
+      clearInterval(_watchInterval);
+    }
+  }, 500);
+  window.__premiumGateStart = Date.now();
+
   // ─── Public API ────────────────────────────────────────────────────
   window.GlitchItPremium = {
     isPremium: isPremium,
     applyGate: applyPremiumGate,
     getExpiry: getPremiumExpiry,
     formatTimeLeft: formatTimeLeft,
+    activatePending: activatePendingPremium,
   };
 })();
