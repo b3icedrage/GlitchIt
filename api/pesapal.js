@@ -165,7 +165,7 @@ async function handleCreateOrder(req, res) {
   const orderId = body.orderId || generateOrderRef();
 
   // Build callback URL — must match the domain where this app is deployed
-  const host = process.env.PESAPAL_CALLBACK_DOMAIN || req.headers.host || 'glitch-it-two.vercel.app';
+  const host = process.env.PESAPAL_CALLBACK_DOMAIN || req.headers.host || 'glitch-itr.vercel.app';
   const protocol = req.headers['x-forwarded-proto'] || 'https';
   const callbackUrl = `${protocol}://${host}/api/pesapal/ipn`;
   console.log('[PesaPal] Callback URL:', callbackUrl);
