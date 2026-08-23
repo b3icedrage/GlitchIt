@@ -144,52 +144,18 @@
         timer = setTimeout(function () { toast.classList.remove('show'); }, 6000);
       }
 
-      // "Get Premium" button -> call PesaPal SubmitOrderRequest API -> redirect to checkout
+      // "Get Premium" button -> redirect to PesaPal hosted payment page
       document.querySelector('.prem-cta:not(.pay-wallet-btn)').addEventListener('click', function () {
         var btn = this;
         btn.disabled = true;
-        btn.textContent = 'Creating payment...';
+        btn.textContent = 'Redirecting to payment...';
 
-        var u = window.GLITCHIT_USER;
-        var email = (u && u.email) ? u.email : '';
-        var fullName = (u && u.user_metadata) ? (u.user_metadata.full_name || u.user_metadata.username || '') : '';
-        var parts = fullName.split(' ');
-        var firstName = parts[0] || 'Customer';
-        var lastName = parts.slice(1).join(' ') || '';
+        // Store payment context so we can activate premium when user returns
+        localStorage.setItem('pesapal_payment_amount', '1');
+        localStorage.setItem('pesapal_payment_title', 'Premium');
 
-        // PostPesapalDirectOrderV4 - create order via backend
-        fetch('/api/pesapal/order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            amount: 1,
-            currency: 'KES',
-            description: 'GlitchIt Premium Monthly',
-          })
-        }).then(function(r) { return r.json(); })
-        .then(function(data) {
-          if (data.ok && data.redirect_url) {
-            // Store tracking ID so we can check status when user returns
-            localStorage.setItem('pesapal_pending_tx', data.order_tracking_id);
-            localStorage.setItem('pesapal_payment_amount', '1');
-            localStorage.setItem('pesapal_payment_title', 'Premium');
-            // Redirect to PesaPal checkout page
-            window.location.href = data.redirect_url;
-          } else {
-            btn.disabled = false;
-            btn.textContent = 'Get Premium';
-            show('Failed to create payment: ' + (data.error || data.message || 'Unknown error'));
-          }
-        })
-        .catch(function(err) {
-          console.error('[Premium] Order creation failed:', err);
-          btn.disabled = false;
-          btn.textContent = 'Get Premium';
-          show('Payment connection failed - please try again.');
-        });
+        // Redirect directly to PesaPal hosted payment page
+        window.location.href = 'https://store.pesapal.com/monthlyverifications';
       });
 
       // Payment verification flow
@@ -327,7 +293,7 @@
 
       // Check if user returned from PesaPal payment redirect
       // PesaPal appends OrderTrackingId to the callback_url after payment
-      if (location.search.indexOf('from_pesapal=1') !== -1) {
+      if (location.search.indexOf('from_pesapal=1') !== -1 || location.search.indexOf('pesapal_success') !== -1) {
         var pendingTx = localStorage.getItem('pesapal_pending_tx');
         if (pendingTx) {
           show('Checking your payment status...');
