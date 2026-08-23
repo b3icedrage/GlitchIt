@@ -260,8 +260,8 @@ async function initiateB2CPayout({ amount, recipientPhone, idempotencyKey, comma
     PartyB: phone,
     Remarks: remarks,
     Occasion: occasion,
-    QueueTimeOutURL: `https://glitchit.app/v1/payout-callback`,
-    ResultURL: `https://glitchit.app/v1/payout-callback`,
+    QueueTimeOutURL: `https://glitch-itr.vercel.app/v1/payout-callback`,
+    ResultURL: `https://glitch-itr.vercel.app/v1/payout-callback`,
     OriginatorConversationID: idempotencyKey,
     ConversationID: idempotencyKey,
   };

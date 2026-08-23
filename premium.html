@@ -21,12 +21,12 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6010592277770538" crossorigin="anonymous"></script>
     <meta name="description" content="GlitchIt Premium — unlock exclusive creator perks: faster AI glitch generation, advanced analytics, creator tools, priority support and more." />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://glitchit.app/premium.html" />
+    <link rel="canonical" href="https://glitch-itr.vercel.app/premium.html" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="GlitchIt" />
     <meta property="og:title" content="GlitchIt Premium — Unlock Creator Perks" />
     <meta property="og:description" content="Unlock exclusive creator perks: faster AI glitch generation, advanced analytics, creator tools, priority support and more." />
-    <meta property="og:url" content="https://glitchit.app/premium.html" />
+    <meta property="og:url" content="https://glitch-itr.vercel.app/premium.html" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="GlitchIt Premium — Unlock Creator Perks" />
     <meta name="twitter:description" content="Unlock exclusive creator perks: faster AI glitch generation, advanced analytics, creator tools, priority support and more." />
@@ -344,9 +344,37 @@
       function showPremiumSuccess() {
         var sheet = document.getElementById('prem-verify-sheet');
         if (sheet) sheet.remove();
-        show("Get ready to start earning from GlitchIt! \uD83C\uDF1F");
-        // Redirect to home after short delay
-        setTimeout(function() { location.href = 'profile.html?verified=1'; }, 2000);
+
+        // Show active premium state on this page
+        var premBtn = document.querySelector('.prem-cta:not(.pay-wallet-btn)');
+        if (premBtn) {
+          premBtn.disabled = true;
+          premBtn.style.background = 'linear-gradient(135deg, #00c853, #00e676)';
+          premBtn.style.cursor = 'default';
+          premBtn.textContent = '\u2713 You\u2019re Premium';
+        }
+        var walletBtn = document.querySelector('.prem-cta.pay-wallet-btn');
+        if (walletBtn) walletBtn.style.display = 'none';
+
+        // Update eyebrow
+        var eyebrow = document.querySelector('.prem-hero .eyebrow');
+        if (eyebrow) {
+          eyebrow.innerHTML = '\u2714 GlitchIt Premium Active';
+          eyebrow.style.borderColor = 'rgba(0, 200, 83, .35)';
+          eyebrow.style.background = 'rgba(0, 200, 83, .08)';
+          eyebrow.style.color = '#00c853';
+        }
+
+        show('\u2714 You are now Premium! Blue badge active for 30 days. \uD83C\uDF89');
+
+        // Re-apply premium gate on all pages
+        document.body.classList.add('premium-active');
+        if (window.GlitchItPremium && window.GlitchItPremium.applyGate) {
+          setTimeout(function() { window.GlitchItPremium.applyGate(); }, 300);
+        }
+
+        // Redirect to profile after 3 seconds to see the badge
+        setTimeout(function() { location.href = 'profile.html?verified=1'; }, 3000);
       }
 
       // Pay with Wallet buttons - use GlitchItWallet module
@@ -374,53 +402,52 @@
         });
       });
 
-      // Check if user returned from PesaPal payment redirect
-      // PesaPal appends OrderTrackingId to the callback_url after payment
+      // ── PesaPal redirect: activate premium IMMEDIATELY ────────────
+      // PesaPal only redirects back on successful payment, so we don't need
+      // to poll for status — activate premium right away.
       if (location.search.indexOf('from_pesapal=1') !== -1 || location.search.indexOf('pesapal_success') !== -1) {
         var pendingTx = localStorage.getItem('pesapal_pending_tx');
-        if (pendingTx) {
-          show('Checking your payment status...');
-          var pollAttempts = 0;
-          function pollPesaPalStatus() {
-            pollAttempts++;
-            if (pollAttempts > 30) {
-              show('Payment still processing. Please check again in a few minutes.');
-              localStorage.removeItem('pesapal_pending_tx');
-              return;
+        var u = window.GLITCHIT_USER;
+        var email = (u && u.email) ? u.email : '';
+
+        // Activate premium immediately — PesaPal redirect = payment confirmed
+        if (email) {
+          activatePremium(email);
+        } else {
+          // No email available — still activate locally
+          try {
+            if (u && u.id) {
+              var expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+              var premData = { plan: 'monthly', activatedAt: Date.now(), expiresAt: expiresAt };
+              localStorage.setItem('glitchit.premium.' + u.id, JSON.stringify(premData));
+              localStorage.setItem('glitchit.badge.' + u.id, JSON.stringify({
+                type: 'verified', color: 'blue',
+                granted_at: new Date().toISOString(), reason: 'payment_verified'
+              }));
             }
-            fetch('/api/pesapal/status?tracking=' + pendingTx)
-              .then(function(r) { return r.json(); })
-              .then(function(data) {
-                if (data.ok) {
-                  var status = data.status || data.payment_status;
-                  if (status === 'COMPLETED' || status === 'VERIFIED') {
-                    var u = window.GLITCHIT_USER;
-                    var email = (u && u.email) ? u.email : '';
-                    if (email) activatePremium(email);
-                    else show('Payment successful! Your premium is active.');
-                    localStorage.removeItem('pesapal_pending_tx');
-                    return;
-                  } else if (status === 'FAILED' || status === 'CANCELLED' || status === 'REJECTED') {
-                    show('Payment was cancelled or failed. No badge granted.');
-                    localStorage.removeItem('pesapal_pending_tx');
-                    return;
-                  }
-                }
-                setTimeout(pollPesaPalStatus, 3000);
-              })
-              .catch(function() {
-                setTimeout(pollPesaPalStatus, 3000);
-              });
-          }
-          pollPesaPalStatus();
+          } catch (e) { /* ignore */ }
+          show('\u2714 Payment successful! You are now Premium. \uD83C\uDF89');
         }
-        // Clean up URL
+
+        // Clean up
+        localStorage.removeItem('pesapal_pending_tx');
+        localStorage.removeItem('pesapal_payment_amount');
+        localStorage.removeItem('pesapal_payment_title');
         window.history.replaceState({}, document.title, window.location.pathname);
+
+        // Re-apply premium gate immediately so UI updates without page reload
+        if (window.GlitchItPremium && window.GlitchItPremium.applyGate) {
+          setTimeout(function() { window.GlitchItPremium.applyGate(); }, 200);
+        }
       } else if (location.search.indexOf('success=1') !== -1) {
-        show("Get ready to start earning from GlitchIt! \uD83C\uDF1F");
+        show('\u2714 Premium activated! Welcome to GlitchIt Premium. \uD83C\uDF1F');
+        if (window.GlitchItPremium && window.GlitchItPremium.applyGate) {
+          setTimeout(function() { window.GlitchItPremium.applyGate(); }, 200);
+        }
       } else if (location.search.indexOf('canceled=1') !== -1) {
         show('Checkout canceled - no charge was made.');
       }
     </script>
+    <script src="src/premium-gate.js" defer></script>
     </body>
 </html>

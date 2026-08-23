@@ -156,7 +156,7 @@ async function sendStkPush(phoneNumber, amount, txRef) {
     PartyA: phone,
     PartyB: getDarajaShortcode(),
     PhoneNumber: phone,
-    CallBackURL: 'https://glitchit.app/api/payment/callback',
+    CallBackURL: 'https://glitch-itr.vercel.app/api/payment/callback',
     AccountReference: txRef.slice(0, 12),
     TransactionDesc: `Pay ${getBusinessName()}`,
   };

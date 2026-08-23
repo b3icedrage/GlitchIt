@@ -8,7 +8,7 @@ const htmlPages = [
   'index.html', 'auth.html', 'about.html', 'terms.html', 'privacy.html',
   'search.html', 'glitches.html', 'messages.html', 'chat.html', 'live.html',
   'activity.html', 'channels.html', 'shop.html', 'profile.html', 'user.html',
-  'premium.html', 'wallet.html', 'receipt.html', 'camera.html',
+  'premium.html', 'wallet.html', 'receipt.html', 'camera.html', 'admin.html',
 ];
 
 export default defineConfig({

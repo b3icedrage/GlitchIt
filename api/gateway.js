@@ -44,7 +44,7 @@ async function getIpnNotificationId() {
   if (pesapalIpnId) return pesapalIpnId;
   const token = await getPesaPalToken();
   if (!token) return null;
-  const ipnUrl = PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitchit.app')}/api/gateway/v1/pesapal/callback`;
+  const ipnUrl = PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitch-itr.vercel.app')}/api/gateway/v1/pesapal/callback`;
   try {  const res = await fetch(`${PESAPAL_BASE_URL}/api/URLSetup/RegisterIPN`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -302,7 +302,7 @@ async function authenticateMerchant(req) {
 
 // GET /v1/health
 function handleHealth(req, res) {
-  const ipnUrl = PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitchit.app')}/api/gateway/v1/pesapal/callback`;
+  const ipnUrl = PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitch-itr.vercel.app')}/api/gateway/v1/pesapal/callback`;
   json(res, 200, {
     status: 'ok',
     service: 'glitchit-payment-gateway',
@@ -816,7 +816,7 @@ async function handlePay(req, res) {
   const txRef = body.tx_ref || generateTxRef('glt');
   const currency = body.currency || 'KES';
   const description = body.description || 'GlitchIt Payment';
-  const callbackUrl = body.callback_url || PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitchit.app')}/api/gateway/v1/pesapal/callback`;
+  const callbackUrl = body.callback_url || PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitch-itr.vercel.app')}/api/gateway/v1/pesapal/callback`;
 
   // Get IPN notification_id (required by PesaPal)
   const notificationId = await getIpnNotificationId();
@@ -893,7 +893,7 @@ async function handlePesaPalOrder(req, res) {
   }
 
   const txRef = body.tx_ref || generateTxRef('pesapal');
-  const callbackUrl = body.callback_url || PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitchit.app')}/api/gateway/v1/pesapal/callback`;
+  const callbackUrl = body.callback_url || PESAPAL_IPN_URL || `${cfg('APP_URL', 'https://glitch-itr.vercel.app')}/api/gateway/v1/pesapal/callback`;
 
   try {
     // Get IPN notification_id (required by PesaPal)
@@ -1041,7 +1041,7 @@ async function handleRotateKeys(req, res) {
 // POST /v1/pesapal/setup — Register IPN URL with PesaPal
 async function handlePesaPalSetup(req, res) {
   const body = await readBody(req);
-  const ipnUrl = body?.url || `${cfg('APP_URL', 'https://glitchit.app')}/api/gateway/v1/pesapal/callback`;
+  const ipnUrl = body?.url || `${cfg('APP_URL', 'https://glitch-itr.vercel.app')}/api/gateway/v1/pesapal/callback`;
 
   try {
     const result = await registerPesaPalIPN(ipnUrl);
