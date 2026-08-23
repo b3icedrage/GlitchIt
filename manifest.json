@@ -5,11 +5,16 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#0a0b12",
+  "theme_color": "#0a0b12",
   "icons": [
     {
-      "src": "icon.svg",
+      "src": "src/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "src/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     }
