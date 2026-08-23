@@ -4,7 +4,13 @@
   "webDir": "dist",
   "server": {
     "androidScheme": "https",
-    "allowNavigation": ["glitchit.app", "*.glitchit.app", "socaxjkikrxantwxacqy.supabase.co"]
+    "allowNavigation": [
+      "glitchit.app",
+      "*.glitchit.app",
+      "*.daytonaproxy01.net",
+      "*.daytona.app",
+      "socaxjkikrxantwxacqy.supabase.co"
+    ]
   },
   "android": {
     "backgroundColor": "#000000",
@@ -15,7 +21,9 @@
       "keystoreAliasPassword": "glitchit2024",
       "signingType": "apksigner"
     },
-    "allowMixedContent": true
+    "allowMixedContent": true,
+    "cleartext": true,
+    "networkSecurityConfig": true
   },
   "plugins": {
     "SplashScreen": {

@@ -2964,7 +2964,10 @@ function runPage() {
 
 // ---------- Supabase auth bootstrap ----------
 const GUEST_KEY = 'glitchit.auth.guest.v1'; // guest browsing flag
+const AUTH_SESSION_KEY = 'glitchit.auth.session.v1'; // login backup (localStorage, survives CDN failures)
+const AUTH_SESSION_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 const ACCOUNT_PAGES = ['messages', 'chat', 'profile', 'shop'];
+const PUBLIC_PAGES = ['auth', 'about', 'terms', 'privacy'];
 
 // Interactions guests cannot perform on browsable pages.
 const GUEST_GATED_SELECTOR = [
@@ -3062,150 +3065,150 @@ function finishAuth(user, auth) {
   try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
   window.GLITCHIT_USER = user;
   auth.setHandle(auth.userHandle(user));
+  // Save session backup so boot() can find it even if Supabase CDN is slow
+  try {
+    const backup = { id: user.id, email: user.email, user_metadata: user.user_metadata || {}, ts: Date.now() };
+    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(backup));
+    sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(backup));
+  } catch (err) { /* ignore */ }
+  // Clear redirect loop counter on successful login
+  try { sessionStorage.removeItem('glitchit.auth.attempts'); } catch(e) {}
   import('./db.js?v=7').then((db) => db.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) })).catch(() => {});
+  // Mirror auth event to Firebase alongside Supabase.
+  import('./firebase.js?v=1').then((fb) => {
+    try { fb.trackEvent('login', { method: 'supabase' }); } catch (_) {}
+    if (user?.email) fb.mirrorSignIn(user.email, '').catch(() => {});
+  }).catch(() => {});
   location.href = returnToPage() || 'index.html';
 }
 
-// Guests may browse read-only, but every account action (follow, like,
-// comment, share, post, messages, profile, create, shop) requires sign-in.
-// Signup is a two-step flow: email + password first, then a profile setup
-// step (username, profile picture, and feed interests) before the account is
-// created — everything ships to Supabase in one user_metadata payload.
+// Auth page handler - simplified for clean login/signup flow
 function attachAuthPage(auth) {
   const form = document.getElementById('auth-form');
   if (!form || !auth) return;
-  const tabs = [...document.querySelectorAll('.auth-tab')];
-  const step1 = document.getElementById('auth-step-1');
-  const onboarding = document.getElementById('auth-onboarding');
+
+  const emailInput = document.getElementById('auth-email');
+  const passwordInput = document.getElementById('auth-password');
+  const submitBtn = document.getElementById('auth-submit');
   const errorEl = document.getElementById('auth-error');
-  const onboardingError = document.getElementById('auth-onboarding-error');
-  const submit = document.getElementById('auth-submit');
-  const finish = document.getElementById('auth-finish');
-  const backBtn = document.getElementById('auth-back');
-  const guestRow = document.querySelector('.auth-guest');
-  const usernameInput = document.getElementById('auth-username');
-  const avatarBtn = document.getElementById('auth-avatar-btn');
-  const avatarInput = document.getElementById('auth-avatar-input');
-  const avatarPreview = document.getElementById('auth-avatar-preview');
-  const chips = [...document.querySelectorAll('.auth-chip')];
+  const rememberCb = document.getElementById('auth-remember');
+  const REMEMBER_KEY = 'glitchit.auth.remember';
 
-  let mode = 'login';
-  let pendingEmail = '';
-  let pendingPassword = '';
-  let pendingAvatar = '';
-  const selectedInterests = new Set();
-
-  const showError = (el, msg) => { if (el) { el.textContent = msg; el.hidden = false; } };
-  const hideErrors = () => { if (errorEl) errorEl.hidden = true; if (onboardingError) onboardingError.hidden = true; };
-
-  const setStep = (step) => {
-    if (!step1 || !onboarding) return;
-    step1.hidden = step === 2;
-    onboarding.hidden = step === 1;
-    if (guestRow) guestRow.hidden = step === 2;
-    if (step === 2 && usernameInput && !usernameInput.value) {
-      usernameInput.value = (pendingEmail.split('@')[0] || '').replace(/[^a-z0-9._-]/gi, '').slice(0, 20);
+  // Restore remembered email
+  try {
+    const remembered = localStorage.getItem(REMEMBER_KEY);
+    if (remembered && emailInput && !emailInput.value) {
+      emailInput.value = remembered;
+      if (rememberCb) rememberCb.checked = true;
     }
-    hideErrors();
-  };
+  } catch(e) {}
 
-  const setMode = (m) => {
-    mode = m;
-    tabs.forEach((t) => {
-      const on = t.dataset.authMode === m;
-      t.classList.toggle('active', on);
-      t.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
-    if (submit) submit.textContent = m === 'signup' ? 'Sign up' : 'Log in';
-    setStep(1);
-  };
-  tabs.forEach((t) => t.addEventListener('click', () => setMode(t.dataset.authMode)));
-  // Profile picture: resize locally, preview instantly, then push a durable
-  // CDN copy to Cloudinary when configured (the data URL stays as fallback).
-  avatarBtn?.addEventListener('click', () => avatarInput?.click());
-  avatarInput?.addEventListener('change', async () => {
-    const file = avatarInput.files && avatarInput.files[0];
-    if (!file || !/^image\//.test(file.type)) return;
-    try {
-      const dataUrl = await resizeImage(file, 256);
-      pendingAvatar = dataUrl;
-      if (avatarPreview) { avatarPreview.src = dataUrl; avatarPreview.hidden = false; }
-      try {
-        const db = await import('./db.js?v=7');
-        const up = await db.uploadToCloudinary(dataUrlToBlob(dataUrl), 'avatar');
-        if (up && up.ok) {
-          pendingAvatar = up.url;
-          if (avatarPreview) avatarPreview.src = up.url;
-        }
-      } catch (err) { /* keep the local data URL */ }
-    } catch (err) { /* unreadable image — ignore */ }
-  });
-  document.getElementById('auth-toggle-password')?.addEventListener('click', (e) => {
-    const input = document.getElementById('auth-password');
-    const show = input.type === 'password';
-    input.type = show ? 'text' : 'password';
-    e.currentTarget.textContent = show ? '\u{1F647}' : '\u{1F441}';
-    e.currentTarget.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-  });
+  // Clear auth attempt counter on successful page load
+  try { sessionStorage.removeItem('glitchit.auth.attempts'); } catch(e) {}
 
-  // Interest chips: tap to toggle what the user wants in their feed.
-  chips.forEach((chip) => {
-    chip.addEventListener('click', () => {
-      const key = chip.dataset.interest;
-      if (!key) return;
-      if (selectedInterests.has(key)) {
-        selectedInterests.delete(key);
-        chip.classList.remove('selected');
-        chip.setAttribute('aria-pressed', 'false');
-      } else {
-        selectedInterests.add(key);
-        chip.classList.add('selected');
-        chip.setAttribute('aria-pressed', 'true');
-      }
-    });
-  });
+  function showError(msg) {
+    if (errorEl) { errorEl.textContent = msg; errorEl.hidden = false; }
+  }
 
-  backBtn?.addEventListener('click', () => setStep(1));
-  document.getElementById('auth-guest')?.addEventListener('click', () => {
-    try { localStorage.setItem(GUEST_KEY, '1'); } catch (err) { /* storage unavailable */ }
-    location.href = returnToPage() || 'index.html';
-  });
+  function hideError() {
+    if (errorEl) errorEl.hidden = true;
+  }
 
+  function setLoading(loading) {
+    if (submitBtn) {
+      submitBtn.disabled = loading;
+      submitBtn.textContent = loading ? 'Please wait...' : 'Sign In';
+    }
+  }
+
+  // Handle form submission
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    hideErrors();
-    const email = document.getElementById('auth-email').value.trim();
-    const password = document.getElementById('auth-password').value;
-    if (mode !== 'signup') {
-      if (!email || !password) { showError(errorEl, 'Enter your email and password.'); return; }
-      if (submit) { submit.disabled = true; submit.textContent = 'Please wait…'; }
-      const res = await auth.signIn(email, password);
-      if (submit) { submit.disabled = false; submit.textContent = 'Log in'; }
-      if (!res.ok) { showError(errorEl, res.error || 'Something went wrong.'); return; }
-      finishAuth(res.user, auth);
+    hideError();
+
+    const email = emailInput?.value?.trim();
+    const password = passwordInput?.value;
+
+    if (!email || !password) {
+      showError('Please enter your email and password.');
       return;
     }
 
-    if (onboarding && !onboarding.hidden) {
-      // Step 2 — create the account with the complete profile.
-      const username = (usernameInput?.value || '').trim();
-      if (!username) { showError(onboardingError, 'Choose a username.'); return; }
-      if (finish) { finish.disabled = true; finish.textContent = 'Creating account…'; }
-      const res = await auth.signUp(email, password, username, {
-        avatarUrl: pendingAvatar || '',
-        interests: [...selectedInterests],
-      });
-      if (finish) { finish.disabled = false; finish.textContent = 'Create account'; }
-      if (!res.ok) { showError(onboardingError, res.error || 'Something went wrong.'); return; }
-      finishAuth(res.user, auth);
-      return;
-    }
+    setLoading(true);
 
-    // Step 1 (signup) — collect credentials, then move to profile setup.
-    if (!email || !password) { showError(errorEl, 'Enter your email and password.'); return; }
-    pendingEmail = email;
-    pendingPassword = password;
-    setStep(2);
+    try {
+      const result = await auth.signIn(email, password);
+
+      if (result.ok) {
+        // Save remembered email
+        try {
+          if (rememberCb?.checked) {
+            localStorage.setItem(REMEMBER_KEY, email);
+          } else {
+            localStorage.removeItem(REMEMBER_KEY);
+          }
+        } catch(e) {}
+
+        // Success - redirect to app
+        // Mirror Supabase sign-in to Firebase Auth + Analytics.
+        import('./firebase.js?v=1').then((fb) => fb.mirrorSignIn(email, password).catch(() => {})).catch(() => {});
+        finishAuth(result.user, auth);
+      } else {
+        // Show error
+        showError(result.error || 'Sign-in failed. Please try again.');
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('[GlitchIt] Auth form error:', err);
+      showError('Something went wrong. Please check your connection and try again.');
+      setLoading(false);
+    }
+  });
+
+  // --- Signup form (custom event from auth.html inline script) ---
+  document.addEventListener('glitchit-signup', async (e) => {
+    const { email, password, username } = e.detail || {};
+    if (!email || !password || !username) return;
+    const sErr = document.getElementById('auth-signup-error');
+    const sBtn = document.getElementById('auth-signup-submit');
+    function showSignupError(msg) { if (sErr) { sErr.textContent = msg; sErr.hidden = false; } if (sBtn) { sBtn.disabled = false; sBtn.textContent = 'Create account'; } }
+    try {
+      const result = await auth.signUp(email, password, username, {});
+      if (result.ok) {
+        import('./firebase.js?v=1').then((fb) => fb.mirrorSignUp(email, password).catch(() => {})).catch(() => {});
+        finishAuth(result.user, auth);
+      } else {
+        showSignupError(result.error || 'Sign-up failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('[GlitchIt] Signup error:', err);
+      showSignupError('Something went wrong. Please try again.');
+    }
+  });
+
+  // --- Google sign-in via Firebase Auth (popup flow) ---
+  document.addEventListener('glitchit-google-signin', async () => {
+    const googleBtn = document.getElementById('auth-google');
+    if (googleBtn) { googleBtn.disabled = true; googleBtn.textContent = 'Connecting to Google...'; }
+    try {
+      const result = await auth.signInWithGoogle();
+      if (!result.ok) {
+        const errEl = document.getElementById('auth-error');
+        if (errEl) { errEl.textContent = result.error || 'Google sign-in failed.'; errEl.hidden = false; }
+        if (googleBtn) { googleBtn.disabled = false; googleBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Sign in with Google'; }
+        return;
+      }
+      // Firebase Auth popup succeeded — user is signed in
+      if (result.user) {
+        // Store session and redirect to app
+        finishAuth(result.user, auth);
+      }
+    } catch (err) {
+      console.error('[GlitchIt] Google sign-in error:', err);
+      const errEl = document.getElementById('auth-error');
+      if (errEl) { errEl.textContent = 'Google sign-in failed. Please try again.'; errEl.hidden = false; }
+      if (googleBtn) { googleBtn.disabled = false; googleBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Sign in with Google'; }
+    }
   });
 }
 
@@ -3218,8 +3221,12 @@ function attachProfileAuth() {
     logoutBtn.addEventListener('click', async () => {
       const auth = window.GLITCHIT_AUTH;
       if (auth) await auth.signOut();
+      // Mirror sign-out to Firebase Auth.
+      import('./firebase.js?v=1').then((fb) => fb.mirrorSignOut().catch(() => {})).catch(() => {});
       window.GLITCHIT_USER = null;
       try { localStorage.removeItem(GUEST_KEY); } catch (err) { /* ignore */ }
+      try { localStorage.removeItem(AUTH_SESSION_KEY); } catch (err) { /* ignore */ }
+      try { sessionStorage.removeItem(AUTH_SESSION_KEY); } catch (err) { /* ignore */ }
       location.href = 'auth.html';
     });
   }
@@ -3359,63 +3366,137 @@ function proDashStatsHtml(stats) {
 
 
 // Check whether this device is signed in before showing any app page.
+// Simplified boot function - check auth and route accordingly
 async function boot() {
   const isAuthPage = page === 'auth';
+  
+  // Load auth module
   let auth = null;
-  try { auth = await import('./auth.js?v=4'); } catch (err) { auth = null; }
+  try { auth = await import('./auth.js?v=6'); } catch (err) { auth = null; }
   window.GLITCHIT_AUTH = auth;
+
+  // Check guest status
   let guest = false;
-  try { guest = localStorage.getItem(GUEST_KEY) === '1'; } catch (err) { /* ignore */ }
+  try { guest = localStorage.getItem(GUEST_KEY) === '1'; } catch (err) {}
+
+  // Helper to load database module
   const dbReady = async () => {
     if (DB) return DB;
     try { return await import('./db.js?v=7'); } catch (err) { return null; }
   };
+
+  // Helper to check session backup
+  function getBackupUser() {
+    try {
+      // Check localStorage first
+      const raw = localStorage.getItem(AUTH_SESSION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.id && parsed?.ts && (Date.now() - parsed.ts < AUTH_SESSION_EXPIRY)) {
+          return parsed;
+        }
+        localStorage.removeItem(AUTH_SESSION_KEY);
+      }
+      // Then sessionStorage
+      const raw2 = sessionStorage.getItem(AUTH_SESSION_KEY);
+      if (raw2) {
+        const parsed = JSON.parse(raw2);
+        if (parsed?.id) return parsed;
+        sessionStorage.removeItem(AUTH_SESSION_KEY);
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  // Helper to set user and continue
+  async function setUserAndContinue(user) {
+    window.GLITCHIT_USER = user;
+    if (auth) auth.setHandle(auth.userHandle(user));
+    const db = await dbReady();
+    db?.setCurrentUser?.({ id: user.id, username: auth?.userHandle(user) || '' });
+    applyCurrentUserProfile();
+    // Firebase Analytics: fire a page_view event on every navigation.
+    import('./firebase.js?v=1').then((fb) => fb.trackPageView(typeof page === 'string' ? page : 'app')).catch(() => {});
+    try {
+      const pg = (typeof page === 'string' ? page : '') || 'index';
+      if (pg !== 'camera') sessionStorage.setItem('glitchit.lastPage', pg + '.html');
+    } catch (e) {}
+    runPage();
+  }
+
+  // Helper to redirect to auth page
+  function redirectToAuth() {
+    const returnTo = location.pathname.split('/').pop() || 'index.html';
+    location.replace(`auth.html?returnTo=${encodeURIComponent(returnTo)}`);
+  }
+
+  // Main auth logic
   if (auth && auth.authAvailable()) {
     if (isAuthPage) {
-      // Already signed in? Skip the form and go straight to the app.
+      // On auth page - check if already logged in
       const user = await auth.currentUser();
       if (user) {
-        window.GLITCHIT_USER = user;
-        auth.setHandle(auth.userHandle(user));
-        const db = await dbReady();
-        db?.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) });
+        // Already logged in - redirect to app
+        await setUserAndContinue(user);
         location.replace(returnToPage() || 'index.html');
         return;
       }
+
+      // Check backup session
+      const backup = getBackupUser();
+      if (backup) {
+        await setUserAndContinue(backup);
+        location.replace(returnToPage() || 'index.html');
+        return;
+      }
+
+      // Not logged in - show auth form
       attachAuthPage(auth);
     } else {
+      // Not on auth page - check if logged in
+      
+      // Quick check backup first (fast, no CDN needed)
+      const backup = getBackupUser();
+      if (backup) {
+        await setUserAndContinue(backup);
+        return;
+      }
+
+      // Try Supabase session
       const user = await auth.currentUser();
       if (user) {
-        // Signed in — full access.
-        window.GLITCHIT_USER = user;
-        auth.setHandle(auth.userHandle(user));
-        const db = await dbReady();
-        db?.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) });
-      } else if (guest) {
-        // Guest browsing: view-only. Account-only pages redirect to sign-in.
+        await setUserAndContinue(user);
+        return;
+      }
+
+      // Not logged in
+      if (guest) {
+        // Guest mode
         window.GLITCHIT_USER = { guest: true };
         if (ACCOUNT_PAGES.includes(page)) {
-          location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
+          redirectToAuth();
           return;
         }
         const db = await dbReady();
         db?.setCurrentUser?.('');
+        applyCurrentUserProfile();
+        runPage();
       } else {
-        location.replace(`auth.html?returnTo=${encodeURIComponent(location.pathname.split('/').pop() || 'index.html')}`);
-        return;
+        // Need to log in
+        redirectToAuth();
       }
     }
+  } else if (!isAuthPage && !PUBLIC_PAGES.includes(page)) {
+    // Auth module failed to load - check backup
+    const backup = getBackupUser();
+    if (backup) {
+      window.GLITCHIT_USER = backup;
+      applyCurrentUserProfile();
+      runPage();
+    } else {
+      redirectToAuth();
+    }
   }
-  // Sync profile.avatar from the signed-in user (localStorage override +
-  // account metadata) before any page hydrates, so the story shelf, upload
-  // cards, notes and rails show the real profile picture — not the fallback.
-  applyCurrentUserProfile();
-  // Remember this page so camera.html can navigate back to it on exit
-  try {
-    const pg = (typeof page === 'string' ? page : '') || 'index';
-    if (pg !== 'camera') sessionStorage.setItem('glitchit.lastPage', pg + '.html');
-  } catch (e) { /* storage unavailable */ }
-  runPage();
 }
 
 boot();

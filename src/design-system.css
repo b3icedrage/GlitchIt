@@ -1,0 +1,544 @@
+/* ============================================================
+   GlitchIt Design System v2 — Modern Layout Upgrade
+   Loaded AFTER styles.css on every page. Overrides tokens,
+   refines components, adds glass-morphism, better spacing,
+   and a cohesive modern feel across all screens.
+   ============================================================ */
+
+/* ---- Design Tokens ---- */
+:root {
+  /* Refined color palette */
+  --gi-bg: #fafafa;
+  --gi-surface: #ffffff;
+  --gi-surface-hover: #f8f8f8;
+  --gi-border: #e5e5e5;
+  --gi-border-light: #f0f0f0;
+  --gi-text: #111111;
+  --gi-text-secondary: #737373;
+  --gi-text-muted: #a3a3a3;
+  --gi-accent: #d62976;
+  --gi-accent-secondary: #4f5bd5;
+  --gi-accent-gradient: linear-gradient(135deg, #d62976, #4f5bd5);
+  --gi-success: #00c853;
+  --gi-error: #ff3040;
+  --gi-shadow-sm: 0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06);
+  --gi-shadow-md: 0 4px 12px rgba(0,0,0,.06), 0 2px 4px rgba(0,0,0,.04);
+  --gi-shadow-lg: 0 12px 40px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
+  --gi-shadow-xl: 0 20px 60px rgba(0,0,0,.12), 0 8px 20px rgba(0,0,0,.06);
+  --gi-radius-sm: 10px;
+  --gi-radius-md: 16px;
+  --gi-radius-lg: 22px;
+  --gi-radius-xl: 28px;
+  --gi-radius-full: 9999px;
+  --gi-glass: rgba(255,255,255,.72);
+  --gi-glass-border: rgba(255,255,255,.3);
+  --gi-glass-blur: blur(20px) saturate(1.8);
+  --gi-spacing-xs: 4px;
+  --gi-spacing-sm: 8px;
+  --gi-spacing-md: 16px;
+  --gi-spacing-lg: 24px;
+  --gi-spacing-xl: 32px;
+  --gi-spacing-2xl: 48px;
+}
+
+:root[data-theme="dark"] {
+  --gi-bg: #090912;
+  --gi-surface: #141321;
+  --gi-surface-hover: #1c1a2e;
+  --gi-border: #29253a;
+  --gi-border-light: #1e1c30;
+  --gi-text: #f6f3ff;
+  --gi-text-secondary: #b9b3ce;
+  --gi-text-muted: #7a7490;
+  --gi-shadow-sm: 0 1px 3px rgba(0,0,0,.2);
+  --gi-shadow-md: 0 4px 12px rgba(0,0,0,.25);
+  --gi-shadow-lg: 0 12px 40px rgba(0,0,0,.35);
+  --gi-shadow-xl: 0 20px 60px rgba(0,0,0,.45);
+  --gi-glass: rgba(20,19,33,.72);
+  --gi-glass-border: rgba(255,255,255,.08);
+}
+
+/* ---- Global Refinements ---- */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- Refined Cards ---- */
+.stories,
+.post,
+.shop,
+.profile-panel,
+.settings-panel,
+.page-intro,
+.empty-state,
+.message-card,
+.activity-card,
+.product,
+.store-card,
+.video-card {
+  border-color: var(--gi-border);
+  border-radius: var(--gi-radius-lg);
+  box-shadow: var(--gi-shadow-sm);
+  transition: box-shadow .28s cubic-bezier(.22,.61,.36,1),
+              transform .28s cubic-bezier(.22,.61,.36,1),
+              border-color .28s ease,
+              background .28s ease;
+}
+
+.post:hover,
+.message-card:hover,
+.activity-card:hover,
+.product:hover,
+.store-card:hover,
+.page-intro:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--gi-shadow-lg);
+}
+
+.post:active,
+.product:active,
+.store-card:active {
+  transform: translateY(0) scale(.997);
+}
+
+/* ---- Refined Sidebar ---- */
+.sidebar {
+  background: var(--gi-surface);
+  border-color: var(--gi-border);
+  backdrop-filter: var(--gi-glass-blur);
+}
+
+.sidebar nav a {
+  border-radius: var(--gi-radius-sm);
+  font-size: 15px;
+  font-weight: 500;
+  padding: 11px 14px;
+  transition: background .2s ease, color .2s ease, transform .15s ease;
+}
+
+.sidebar nav a:hover {
+  background: var(--gi-surface-hover);
+  transform: translateX(2px);
+}
+
+.sidebar nav a.active {
+  background: var(--gi-accent-gradient);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(214,41,118,.25);
+  font-weight: 700;
+}
+
+.sidebar nav a.active:hover {
+  box-shadow: 0 6px 20px rgba(214,41,118,.35);
+}
+
+/* ---- Brand Refinement ---- */
+.brand {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  letter-spacing: -1.5px;
+}
+
+.sidebar .brand {
+  font-size: 28px;
+}
+
+.sidebar .brand .icon {
+  filter: drop-shadow(2px 1px 0 #4f5bd5) drop-shadow(0 0 8px rgba(214,41,118,.3));
+}
+
+/* ---- Story Rings Refinement ---- */
+.story-ring {
+  border: 3px solid var(--gi-accent);
+  box-shadow: 0 2px 12px rgba(214,41,118,.15);
+}
+
+.story:hover .story-ring {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 6px 20px rgba(214,41,118,.3);
+}
+
+.story:active .story-ring {
+  transform: scale(.92);
+}
+
+/* ---- Post Header Refinement ---- */
+.post header .profile img {
+  box-shadow: var(--gi-shadow-sm);
+}
+
+.post header .profile strong {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+/* ---- Action Buttons ---- */
+.actions svg,
+.reel-action,
+.sound-toggle,
+.video-toggle {
+  transition: transform .18s cubic-bezier(.22,.61,.36,1),
+              opacity .18s ease,
+              filter .2s ease;
+}
+
+.actions svg:active,
+.reel-action:active {
+  transform: scale(.82);
+}
+
+/* ---- Primary Action Button ---- */
+.primary-action {
+  background: var(--gi-accent-gradient);
+  box-shadow: 0 4px 16px rgba(214,41,118,.3);
+  font-weight: 800;
+  letter-spacing: .02em;
+  transition: transform .18s ease, box-shadow .25s ease, filter .25s ease;
+}
+
+.primary-action:hover {
+  box-shadow: 0 8px 24px rgba(214,41,118,.4);
+  transform: translateY(-1px);
+}
+
+.primary-action:active {
+  transform: scale(.96);
+  box-shadow: 0 2px 8px rgba(214,41,118,.3);
+}
+
+/* ---- Search Box ---- */
+.search-box input {
+  border-color: var(--gi-border);
+  border-radius: var(--gi-radius-md);
+  background: var(--gi-surface);
+  color: var(--gi-text);
+  box-shadow: var(--gi-shadow-sm);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.search-box input:focus {
+  border-color: var(--gi-accent);
+  box-shadow: 0 0 0 3px rgba(214,41,118,.12), var(--gi-shadow-sm);
+}
+
+/* ---- Page Intro Cards ---- */
+.page-intro {
+  background: var(--gi-surface);
+  border-color: var(--gi-border);
+  box-shadow: var(--gi-shadow-md);
+}
+
+.page-intro h1 {
+  letter-spacing: -.03em;
+  font-weight: 900;
+}
+
+/* ---- Empty States ---- */
+.empty-state {
+  background: var(--gi-surface);
+  border-color: var(--gi-border);
+  box-shadow: var(--gi-shadow-md);
+  border-radius: var(--gi-radius-xl);
+}
+
+.empty-state .icon {
+  box-shadow: 0 12px 32px rgba(79,91,213,.2);
+}
+
+.empty-state h2 {
+  letter-spacing: -.02em;
+  font-weight: 900;
+}
+
+/* ---- Message & Activity Cards ---- */
+.message-card,
+.activity-card {
+  background: var(--gi-surface);
+  border-color: var(--gi-border);
+  box-shadow: var(--gi-shadow-sm);
+}
+
+.message-card:hover,
+.activity-card:hover {
+  box-shadow: var(--gi-shadow-md);
+  transform: translateY(-1px);
+}
+
+/* ---- Products ---- */
+.product {
+  border-color: var(--gi-border);
+  box-shadow: var(--gi-shadow-md);
+}
+
+.product h3 {
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+
+.product button {
+  background: var(--gi-accent-gradient);
+  box-shadow: 0 4px 12px rgba(214,41,118,.25);
+}
+
+.product button:hover {
+  box-shadow: 0 6px 16px rgba(214,41,118,.35);
+}
+
+/* ---- Profile Panel ---- */
+.profile-panel {
+  background: var(--gi-surface);
+  border-color: var(--gi-border);
+}
+
+.profile-topbar {
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+
+.profile-photo-wrap img {
+  box-shadow: var(--gi-shadow-lg);
+}
+
+/* ---- Stats Cards ---- */
+.stats span {
+  background: var(--gi-surface);
+  border-color: var(--gi-border);
+  border-radius: var(--gi-radius-md);
+}
+
+.stats b {
+  font-weight: 900;
+  letter-spacing: -.02em;
+}
+
+/* ---- Settings Panel ---- */
+.settings-panel {
+  background: var(--gi-surface);
+  border-color: var(--gi-border);
+}
+
+.setting-item {
+  background: var(--gi-surface-hover);
+  border-color: var(--gi-border-light);
+}
+
+/* ---- Bottom Bar (non-home pages) ---- */
+.bottom-bar {
+  background: var(--gi-glass);
+  backdrop-filter: var(--gi-glass-blur);
+  border-color: var(--gi-border);
+}
+
+.bottom-bar a {
+  border-radius: var(--gi-radius-sm);
+  transition: background .2s ease, color .2s ease;
+}
+
+.bottom-bar a.active {
+  color: var(--gi-accent);
+}
+
+/* ---- Mobile Top Bar ---- */
+.mobile-top {
+  background: var(--gi-glass);
+  backdrop-filter: var(--gi-glass-blur);
+  border-color: var(--gi-border);
+}
+
+.mobile-top .brand {
+  font-weight: 900;
+  letter-spacing: -1.2px;
+}
+
+/* ---- Toast Notifications ---- */
+.end-toast {
+  background: var(--gi-text);
+  box-shadow: 0 16px 48px rgba(0,0,0,.25);
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+
+/* ---- Verified Badge Glow ---- */
+.verified-bolt {
+  filter: drop-shadow(0 0 6px rgba(79,91,213,.4));
+}
+
+/* ---- Scrollbar Refinement ---- */
+main {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gi-border) transparent;
+}
+
+/* ---- Focus States ---- */
+:focus-visible {
+  outline: 3px solid rgba(79,91,213,.45);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ---- Button Base Refinement ---- */
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---- Link Refinement ---- */
+a {
+  transition: color .15s ease, opacity .15s ease;
+}
+
+/* ---- Responsive Polish ---- */
+@media (max-width: 1050px) {
+  .sidebar nav a {
+    padding: 11px 10px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 760px) {
+  .bottom-bar {
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ---- Reduced Motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---- Ad Cards on dark feed ---- */
+.home-shell .ad-feed-card {
+  background: #111;
+  border-color: rgba(255,255,255,.06);
+  border-radius: 0;
+}
+
+/* ---- Home page refinements ---- */
+.home-shell .post {
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.home-shell .stories {
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+/* ---- Refined Story Tray on Home ---- */
+.home-shell .story-ring {
+  border-width: 2.5px;
+  border-color: #d62976;
+}
+
+.home-shell .story-ring.live {
+  border-color: transparent;
+}
+
+/* ---- Home Header Glow ---- */
+.home-shell .mobile-top {
+  box-shadow: 0 1px 0 rgba(255,255,255,.06);
+}
+
+/* ---- IG Bottom Bar Refinement ---- */
+.ig-bottom-bar {
+  background: rgba(0,0,0,.95);
+  backdrop-filter: blur(20px) saturate(1.8);
+  border-color: rgba(255,255,255,.08);
+}
+
+.ig-tab {
+  transition: color .2s ease;
+}
+
+.ig-tab:active {
+  transform: scale(.9);
+}
+
+/* ---- Profile Page Refinement ---- */
+.profile-cover {
+  background: linear-gradient(135deg, rgba(214,41,118,.85), rgba(79,91,213,.85)), var(--profile-cover) center/cover;
+}
+
+.profile-metrics span {
+  border-color: var(--gi-border-light);
+  background: var(--gi-surface-hover);
+  border-radius: var(--gi-radius-md);
+}
+
+/* ---- Shop Refinement ---- */
+.shop {
+  background: var(--gi-surface);
+  border-color: var(--gi-border);
+}
+
+.shop h2 {
+  font-weight: 900;
+  letter-spacing: -.03em;
+}
+
+/* ---- Settings Button ---- */
+.settings-button {
+  background: var(--gi-accent-gradient);
+  box-shadow: 0 4px 16px rgba(214,41,118,.25);
+}
+
+.settings-button:hover {
+  box-shadow: 0 6px 20px rgba(214,41,118,.35);
+}
+
+/* ---- Story Viewer Refinements ---- */
+.sv-backdrop {
+  filter: blur(30px) brightness(.4) saturate(1.3);
+}
+
+.sv-polaroid {
+  box-shadow: 0 28px 70px rgba(0,0,0,.55), 0 4px 16px rgba(0,0,0,.35);
+}
+
+/* ---- Premium Page Refinement ---- */
+.prem-card,
+.prem-plan {
+  border-color: var(--gi-border);
+  background: var(--gi-surface);
+  box-shadow: var(--gi-shadow-md);
+}
+
+.prem-card:hover,
+.prem-plan:hover {
+  box-shadow: var(--gi-shadow-lg);
+  transform: translateY(-2px);
+}
+
+.prem-plan.popular {
+  border-color: var(--gi-accent);
+  box-shadow: 0 16px 48px rgba(162,76,255,.15);
+}
+
+/* ---- Wallet Refinement ---- */
+.wallet-balance {
+  background: var(--gi-accent-gradient);
+  box-shadow: 0 12px 36px rgba(214,41,118,.25);
+}
+
+/* ---- Auth Page Glass Refinement ---- */
+.auth-card {
+  background: var(--gi-glass);
+  backdrop-filter: var(--gi-glass-blur);
+  border-color: var(--gi-glass-border);
+  box-shadow: var(--gi-shadow-xl);
+}
+
+:root[data-theme="dark"] .auth-card {
+  background: rgba(20,19,33,.85);
+  border-color: rgba(255,255,255,.08);
+}
+
+/* ---- Loading States ---- */
+.video-spinner {
+  border-color: rgba(255,255,255,.15);
+  border-top-color: var(--gi-accent);
+  border-right-color: var(--gi-accent-secondary);
+}

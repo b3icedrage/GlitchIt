@@ -1,6 +1,16 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- Firebase Analytics + Auth (alongside Supabase) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-75V7YGZ9C5"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag("js", new Date());
+      gtag("config", "G-75V7YGZ9C5", { app_name: "GlitchIt", send_page_view: false });
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/11.8.1/firebase-app-compat.js" async></script>
+    <script src="https://www.gstatic.com/firebasejs/11.8.1/firebase-auth-compat.js" async></script>
     <script>document.documentElement.setAttribute("data-theme","dark");</script>
 
     <meta charset="UTF-8" />
@@ -21,9 +31,10 @@
     <meta name="twitter:title" content="GlitchIt Premium — Unlock Creator Perks" />
     <meta name="twitter:description" content="Unlock exclusive creator perks: faster AI glitch generation, advanced analytics, creator tools, priority support and more." />
     <title>GlitchIt Premium — Unlock Creator Perks</title>
-    <link rel="stylesheet" href="src/styles.css?v=9" />
+    <link rel="stylesheet" href="src/styles.css?v=10" />
+    <link rel="stylesheet" href="src/design-system.css?v=1" />
     <link rel="stylesheet" href="src/story-extras.css?v=2" />
-    <link rel="stylesheet" href="src/bottombar.css?v=2" />
+    <link rel="stylesheet" href="src/bottombar.css?v=3" />
     <style>
       .prem-page { min-height: 100vh; padding: 40px 16px 64px; }
       .prem-inner { width: min(920px, 100%); margin: 0 auto; }
@@ -134,86 +145,87 @@
         timer = setTimeout(function () { toast.classList.remove('show'); }, 6000);
       }
 
-      // ─── Check if user already has Premium ─────────────────────────
-      (function checkExistingPremium() {
-        var u = window.GLITCHIT_USER;
-        if (!u || !u.id || u.guest) return;
+
+      // ── Premium lock: check if user already has active premium ────────
+      (function checkPremiumLock() {
+        var premBtn = document.querySelector('.prem-cta:not(.pay-wallet-btn)');
+        var walletBtn = document.querySelector('.pay-wallet-btn');
+        if (!premBtn) return;
+
+        // Check premium status from localStorage or Supabase user_metadata
+        var isActive = false;
+        var expiresAt = 0;
         try {
-          var premRaw = localStorage.getItem('glitchit.premium.' + u.id);
-          if (!premRaw) return;
-          var prem = JSON.parse(premRaw);
-          if (prem && prem.expiresAt && prem.expiresAt > Date.now()) {
-            // User has active premium — disable Get Premium button, show badge
-            var ctaBtn = document.querySelector('.prem-cta:not(.pay-wallet-btn)');
-            if (ctaBtn) {
-              ctaBtn.disabled = true;
-              ctaBtn.textContent = '\u2713 You\u2019re Premium';
-              ctaBtn.style.background = 'linear-gradient(135deg, #00c853, #00e676)';
-              ctaBtn.style.cursor = 'default';
+          var u = window.GLITCHIT_USER;
+          if (u && u.id) {
+            // Check Supabase user_metadata first
+            var cp = u.user_metadata && u.user_metadata.premium;
+            if (cp && cp.expiresAt && Date.now() < cp.expiresAt) {
+              isActive = true;
+              expiresAt = cp.expiresAt;
+            } else {
+              // Check localStorage cache
+              var raw = localStorage.getItem('glitchit.premium.' + u.id);
+              if (raw) {
+                var d = JSON.parse(raw);
+                if (d && d.expiresAt && Date.now() < d.expiresAt) {
+                  isActive = true;
+                  expiresAt = d.expiresAt;
+                }
+              }
             }
-            var walletBtn = document.querySelector('.prem-cta.pay-wallet-btn');
-            if (walletBtn) walletBtn.style.display = 'none';
-            // Show blue badge in the hero area
-            var eyebrow = document.querySelector('.prem-hero .eyebrow');
-            if (eyebrow) {
-              eyebrow.innerHTML = '\u2713 \u2714 GlitchIt Premium Active';
-              eyebrow.style.borderColor = 'rgba(0, 200, 83, .35)';
-              eyebrow.style.background = 'rgba(0, 200, 83, .08)';
-              eyebrow.style.color = '#00c853';
-            }
-            show('You\u2019re already Premium! \uD83C\uDF89');
           }
         } catch (e) { /* ignore */ }
+
+        if (!isActive) return;
+
+        // User has active premium — lock the buttons and show countdown
+        premBtn.disabled = true;
+        premBtn.style.background = '#555';
+        premBtn.style.cursor = 'not-allowed';
+        if (walletBtn) {
+          walletBtn.disabled = true;
+          walletBtn.style.background = '#555';
+          walletBtn.style.cursor = 'not-allowed';
+        }
+
+        function updateCountdown() {
+          var now = Date.now();
+          if (now >= expiresAt) {
+            // Premium expired — unlock buttons
+            premBtn.disabled = false;
+            premBtn.style.background = '';
+            premBtn.style.cursor = '';
+            premBtn.textContent = 'Get Premium';
+            if (walletBtn) {
+              walletBtn.disabled = false;
+              walletBtn.style.background = '';
+              walletBtn.style.cursor = '';
+            }
+            return;
+          }
+          var remaining = expiresAt - now;
+          var days = Math.floor(remaining / (24 * 60 * 60 * 1000));
+          var hours = Math.floor((remaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+          var mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+          premBtn.textContent = '\u2713 Active \u2014 ' + days + 'd ' + hours + 'h ' + mins + 'm left';
+          setTimeout(updateCountdown, 60000);
+        }
+        updateCountdown();
       })();
 
-      // "Get Premium" button -> call PesaPal SubmitOrderRequest API -> redirect to checkout
+      // "Get Premium" button -> redirect to PesaPal hosted payment page
       document.querySelector('.prem-cta:not(.pay-wallet-btn)').addEventListener('click', function () {
         var btn = this;
         btn.disabled = true;
-        btn.textContent = 'Creating payment...';
+        btn.textContent = 'Redirecting to payment...';
 
-        var u = window.GLITCHIT_USER;
-        var email = (u && u.email) ? u.email : '';
-        var fullName = (u && u.user_metadata) ? (u.user_metadata.full_name || u.user_metadata.username || '') : '';
-        var parts = fullName.split(' ');
-        var firstName = parts[0] || 'Customer';
-        var lastName = parts.slice(1).join(' ') || '';
+        // Store payment context so we can activate premium when user returns
+        localStorage.setItem('pesapal_payment_amount', '1');
+        localStorage.setItem('pesapal_payment_title', 'Premium');
 
-        // PostPesapalDirectOrderV4 - create order via backend
-        fetch('/api/gateway/v1/pay', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            first_name: firstName,
-            last_name: lastName,
-            email: email,
-            amount: 1,
-            currency: 'KES',
-            description: 'GlitchIt Premium Monthly',
-            callback_url: window.location.origin + '/premium.html?from_pesapal=1'
-          })
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          if (data.success && data.data && data.data.redirect_url) {
-            // Store tracking ID so we can check status when user returns
-            localStorage.setItem('pesapal_pending_tx', data.data.order_tracking_id);
-            localStorage.setItem('pesapal_payment_amount', '1');
-            localStorage.setItem('pesapal_payment_title', 'Premium');
-            // Redirect to PesaPal checkout page
-            window.location.href = data.data.redirect_url;
-          } else {
-            btn.disabled = false;
-            btn.textContent = 'Get Premium';
-            show('Failed to create payment: ' + (data.message || 'Unknown error'));
-          }
-        })
-        .catch(function(err) {
-          console.error('[Premium] Order creation failed:', err);
-          btn.disabled = false;
-          btn.textContent = 'Get Premium';
-          show('Payment connection failed - please try again.');
-        });
+        // Redirect directly to PesaPal hosted payment page
+        window.location.href = 'https://store.pesapal.com/monthlyverifications';
       });
 
       // Payment verification flow
@@ -256,11 +268,11 @@
         // Check payment status via PesaPal tracking ID
         var pendingTx = localStorage.getItem('pesapal_pending_tx');
         if (pendingTx) {
-          fetch('/api/gateway/v1/pesapal/status/' + pendingTx)
+          fetch('/api/pesapal/status?tracking=' + pendingTx)
             .then(function(r) { return r.json(); })
             .then(function(data) {
-              if (data.success && data.data) {
-                var status = data.data.status || data.data.payment_status;
+              if (data.ok) {
+                var status = data.status || data.payment_status;
                 if (status === 'COMPLETED' || status === 'VERIFIED') {
                   activatePremium(email);
                 } else if (status === 'FAILED' || status === 'CANCELLED') {
@@ -332,9 +344,9 @@
       function showPremiumSuccess() {
         var sheet = document.getElementById('prem-verify-sheet');
         if (sheet) sheet.remove();
-        show("You're Premium! \uD83C\uDF89 Your verified badge is now active.");
+        show("Get ready to start earning from GlitchIt! \uD83C\uDF1F");
         // Redirect to home after short delay
-        setTimeout(function() { location.href = 'index.html?verified=1'; }, 2000);
+        setTimeout(function() { location.href = 'profile.html?verified=1'; }, 2000);
       }
 
       // Pay with Wallet buttons - use GlitchItWallet module
@@ -351,9 +363,9 @@
           }
           var result = window.GlitchItWallet.payPremium(plan);
           if (result && result.ok) {
-            show("You're Premium! \uD83C\uDF89 Paid from wallet.");
+            show("Get ready to start earning from GlitchIt! \uD83C\uDF1F");
             // Redirect to home with verified badge after short delay
-            setTimeout(function() { location.href = 'index.html?verified=1'; }, 1500);
+            setTimeout(function() { location.href = 'profile.html?verified=1'; }, 1500);
           } else if (result && result.error === 'Insufficient balance') {
             show('Insufficient wallet balance - deposit first at wallet.html');
           } else {
@@ -364,7 +376,7 @@
 
       // Check if user returned from PesaPal payment redirect
       // PesaPal appends OrderTrackingId to the callback_url after payment
-      if (location.search.indexOf('from_pesapal=1') !== -1) {
+      if (location.search.indexOf('from_pesapal=1') !== -1 || location.search.indexOf('pesapal_success') !== -1) {
         var pendingTx = localStorage.getItem('pesapal_pending_tx');
         if (pendingTx) {
           show('Checking your payment status...');
@@ -376,11 +388,11 @@
               localStorage.removeItem('pesapal_pending_tx');
               return;
             }
-            fetch('/api/gateway/v1/pesapal/status/' + pendingTx)
+            fetch('/api/pesapal/status?tracking=' + pendingTx)
               .then(function(r) { return r.json(); })
               .then(function(data) {
-                if (data.success && data.data) {
-                  var status = data.data.status || data.data.payment_status;
+                if (data.ok) {
+                  var status = data.status || data.payment_status;
                   if (status === 'COMPLETED' || status === 'VERIFIED') {
                     var u = window.GLITCHIT_USER;
                     var email = (u && u.email) ? u.email : '';
@@ -405,7 +417,7 @@
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
       } else if (location.search.indexOf('success=1') !== -1) {
-        show("You're Premium! \uD83C\uDF89 Your benefits are active.");
+        show("Get ready to start earning from GlitchIt! \uD83C\uDF1F");
       } else if (location.search.indexOf('canceled=1') !== -1) {
         show('Checkout canceled - no charge was made.');
       }

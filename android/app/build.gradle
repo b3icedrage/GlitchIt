@@ -24,6 +24,7 @@ android {
                 keyAlias 'glitchit'
                 keyPassword 'glitchit2024'
             }
+            // v1 and v2 signing enabled by default in AGP 8.x — sufficient for Android 12+
         }
     }
 
@@ -54,6 +55,7 @@ android {
             signingConfig signingConfigs.release
         }
     }
+
 }
 
 repositories {

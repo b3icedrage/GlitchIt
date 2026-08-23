@@ -24,6 +24,7 @@ const accountsHandler = require('./api/accounts.js');
 // LiveKit Cloud access-token minting (real WebRTC calls on chat.html).
 const livekitTokenHandler = require('./api/livekit-token.js');
 const paymentHandler = require('./api/payment.js');
+const pesapalHandler = require('./api/pesapal.js');
 const gatewayHandler = require('./api/gateway.js');
 const settlementHandler = require('./api/settlement.js');
 const { creditVault } = require('./api/settlement.js');
@@ -548,6 +549,12 @@ res.writeHead = function (status, headers) {
   // Payment gateway: all /api/payment/* routes
   if (new URL(req.url, 'http://glitchit.local').pathname.startsWith('/api/payment')) {
     await paymentHandler(req, res);
+    return;
+  }
+
+  // PesaPal payment: all /api/pesapal/* routes
+  if (new URL(req.url, 'http://glitchit.local').pathname.startsWith('/api/pesapal')) {
+    await pesapalHandler(req, res);
     return;
   }
   // Settlement & B2C payout routes (/v1/admin/*, /v1/payout-callback)

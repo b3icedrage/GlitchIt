@@ -19,6 +19,7 @@
   "routes": [
     { "src": "/api/gateway/(.*)", "dest": "/api/gateway.js" },
     { "src": "/api/payment/(.*)", "dest": "/api/payment.js" },
+    { "src": "/api/pesapal/(.*)", "dest": "/api/pesapal.js" },
     { "src": "/v1/(.*)", "dest": "/api/gateway.js" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*)", "dest": "/$1" }
