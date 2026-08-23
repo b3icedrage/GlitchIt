@@ -134,6 +134,38 @@
         timer = setTimeout(function () { toast.classList.remove('show'); }, 6000);
       }
 
+      // ─── Check if user already has Premium ─────────────────────────
+      (function checkExistingPremium() {
+        var u = window.GLITCHIT_USER;
+        if (!u || !u.id || u.guest) return;
+        try {
+          var premRaw = localStorage.getItem('glitchit.premium.' + u.id);
+          if (!premRaw) return;
+          var prem = JSON.parse(premRaw);
+          if (prem && prem.expiresAt && prem.expiresAt > Date.now()) {
+            // User has active premium — disable Get Premium button, show badge
+            var ctaBtn = document.querySelector('.prem-cta:not(.pay-wallet-btn)');
+            if (ctaBtn) {
+              ctaBtn.disabled = true;
+              ctaBtn.textContent = '\u2713 You\u2019re Premium';
+              ctaBtn.style.background = 'linear-gradient(135deg, #00c853, #00e676)';
+              ctaBtn.style.cursor = 'default';
+            }
+            var walletBtn = document.querySelector('.prem-cta.pay-wallet-btn');
+            if (walletBtn) walletBtn.style.display = 'none';
+            // Show blue badge in the hero area
+            var eyebrow = document.querySelector('.prem-hero .eyebrow');
+            if (eyebrow) {
+              eyebrow.innerHTML = '\u2713 \u2714 GlitchIt Premium Active';
+              eyebrow.style.borderColor = 'rgba(0, 200, 83, .35)';
+              eyebrow.style.background = 'rgba(0, 200, 83, .08)';
+              eyebrow.style.color = '#00c853';
+            }
+            show('You\u2019re already Premium! \uD83C\uDF89');
+          }
+        } catch (e) { /* ignore */ }
+      })();
+
       // "Get Premium" button -> call PesaPal SubmitOrderRequest API -> redirect to checkout
       document.querySelector('.prem-cta:not(.pay-wallet-btn)').addEventListener('click', function () {
         var btn = this;
@@ -255,6 +287,19 @@
       function activatePremium(email) {
         var expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
         var premData = { plan: 'monthly', activatedAt: Date.now(), expiresAt: expiresAt };
+
+        // Store blue badge in localStorage (matches src/payment-gateway.js format)
+        try {
+          var badgeUser = window.GLITCHIT_USER;
+          if (badgeUser && badgeUser.id) {
+            localStorage.setItem('glitchit.badge.' + badgeUser.id, JSON.stringify({
+              type: 'verified',
+              color: 'blue',
+              granted_at: new Date().toISOString(),
+              reason: 'payment_verified'
+            }));
+          }
+        } catch (e) { /* ignore */ }
 
         // Try to update Supabase user_metadata
         if (window.GLITCHIT_AUTH && window.GLITCHIT_AUTH.updateUserMetadata) {
