@@ -79,6 +79,53 @@ export async function mirrorSignIn(email, password) {
   }
 }
 
+
+
+// ---------- Google Sign-In (Firebase Auth) ----------
+
+/**
+ * Sign in with Google using Firebase Auth's popup flow.
+ * Returns { ok: true, user: firebaseUser } or { ok: false, error: string }.
+ */
+export async function signInWithGoogle() {
+  if (!firebaseReady()) return { ok: false, error: 'Firebase not loaded.' };
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('profile');
+    provider.addScope('email');
+    const result = await firebase.auth().signInWithPopup(provider);
+    const firebaseUser = result.user;
+    const email = firebaseUser.email || '';
+    const displayName = firebaseUser.displayName || '';
+    const photoURL = firebaseUser.photoURL || '';
+    const uid = firebaseUser.uid;
+
+    // Set GA4 user ID
+    if (typeof gtag === 'function') gtag('set', { user_id: uid });
+    trackEvent('login', { method: 'google', user_id: uid });
+
+    // Return the Firebase user info so the caller can create a Supabase-compatible session
+    return {
+      ok: true,
+      user: {
+        id: uid,
+        email: email,
+        user_metadata: {
+          username: displayName || email.split('@')[0],
+          full_name: displayName,
+          avatar_url: photoURL,
+        },
+      },
+    };
+  } catch (err) {
+    console.error('[GlitchIt] Firebase Google sign-in error:', err);
+    if (err.code === 'auth/popup-closed-by-user') {
+      return { ok: false, error: 'Sign-in cancelled.' };
+    }
+    return { ok: false, error: err.message || 'Google sign-in failed.' };
+  }
+}
+
 /** Mirror a Supabase sign-out to Firebase Auth. */
 export async function mirrorSignOut() {
   if (!firebaseReady()) return;

@@ -145,6 +145,75 @@
         timer = setTimeout(function () { toast.classList.remove('show'); }, 6000);
       }
 
+
+      // ── Premium lock: check if user already has active premium ────────
+      (function checkPremiumLock() {
+        var premBtn = document.querySelector('.prem-cta:not(.pay-wallet-btn)');
+        var walletBtn = document.querySelector('.pay-wallet-btn');
+        if (!premBtn) return;
+
+        // Check premium status from localStorage or Supabase user_metadata
+        var isActive = false;
+        var expiresAt = 0;
+        try {
+          var u = window.GLITCHIT_USER;
+          if (u && u.id) {
+            // Check Supabase user_metadata first
+            var cp = u.user_metadata && u.user_metadata.premium;
+            if (cp && cp.expiresAt && Date.now() < cp.expiresAt) {
+              isActive = true;
+              expiresAt = cp.expiresAt;
+            } else {
+              // Check localStorage cache
+              var raw = localStorage.getItem('glitchit.premium.' + u.id);
+              if (raw) {
+                var d = JSON.parse(raw);
+                if (d && d.expiresAt && Date.now() < d.expiresAt) {
+                  isActive = true;
+                  expiresAt = d.expiresAt;
+                }
+              }
+            }
+          }
+        } catch (e) { /* ignore */ }
+
+        if (!isActive) return;
+
+        // User has active premium — lock the buttons and show countdown
+        premBtn.disabled = true;
+        premBtn.style.background = '#555';
+        premBtn.style.cursor = 'not-allowed';
+        if (walletBtn) {
+          walletBtn.disabled = true;
+          walletBtn.style.background = '#555';
+          walletBtn.style.cursor = 'not-allowed';
+        }
+
+        function updateCountdown() {
+          var now = Date.now();
+          if (now >= expiresAt) {
+            // Premium expired — unlock buttons
+            premBtn.disabled = false;
+            premBtn.style.background = '';
+            premBtn.style.cursor = '';
+            premBtn.textContent = 'Get Premium';
+            if (walletBtn) {
+              walletBtn.disabled = false;
+              walletBtn.style.background = '';
+              walletBtn.style.cursor = '';
+            }
+            return;
+          }
+          var remaining = expiresAt - now;
+          var days = Math.floor(remaining / (24 * 60 * 60 * 1000));
+          var hours = Math.floor((remaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+          var mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+          premBtn.textContent = '✓ Active — ' + days + 'd ' + hours + 'h ' + mins + 'm left';
+          setTimeout(updateCountdown, 60000);
+        }
+        updateCountdown();
+      })();
+
       // "Get Premium" button -> redirect to PesaPal hosted payment page
       document.querySelector('.prem-cta:not(.pay-wallet-btn)').addEventListener('click', function () {
         var btn = this;
