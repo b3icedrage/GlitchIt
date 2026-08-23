@@ -3372,7 +3372,7 @@ async function boot() {
   
   // Load auth module
   let auth = null;
-  try { auth = await import('./auth.js?v=5'); } catch (err) { auth = null; }
+  try { auth = await import('./auth.js?v=6'); } catch (err) { auth = null; }
   window.GLITCHIT_AUTH = auth;
 
   // Check guest status
