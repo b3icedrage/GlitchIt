@@ -134,43 +134,6 @@ export async function signUp(email, password, username, profile = {}) {
   }
 }
 
-export async function signInWithGoogle() {
-  // Ensure Firebase is initialized before use (CDN scripts load async)
-  try {
-    if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-      if (!firebase.apps || !firebase.apps.length) {
-        const { FIREBASE_CONFIG } = await import('./config.js?v=6');
-        firebase.initializeApp(FIREBASE_CONFIG);
-      }
-    }
-  } catch (_) { /* already initialized */ }
-
-  // Wait for firebase.auth to become available (async CDN load)
-  for (let i = 0; i < 30; i++) {
-    if (typeof firebase !== 'undefined' && firebase.auth) break;
-    await new Promise(r => setTimeout(r, 100));
-  }
-
-  const auth = getAuth();
-  if (!auth) return { ok: false, error: 'Firebase not loaded. Please refresh the page.' };
-
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.addScope('profile');
-    provider.addScope('email');
-
-    // Use redirect instead of popup — popups are blocked in APK WebViews
-    // and many mobile browsers. Redirect works everywhere.
-    await auth.signInWithRedirect(provider);
-    // After redirect, Firebase will call getRedirectResult on the next page load.
-    // The auth state listener in main.js will pick up the signed-in user.
-    return { ok: true, pending: true };
-  } catch (err) {
-    console.error('[GlitchIt] Google sign-in error:', err);
-    return { ok: false, error: err.message || 'Google sign-in failed.' };
-  }
-}
-
 export async function signOut() {
   const auth = getAuth();
   if (auth) {
@@ -206,32 +169,6 @@ export async function updateUserMetadata(data) {
 export function currentHandle() { return handle; }
 export function setHandle(value) { handle = value || ''; }
 
-// Handle redirect result from Google sign-in (called on page load after redirect)
-export async function handleRedirectResult() {
-  const auth = getAuth();
-  if (!auth) return null;
-  try {
-    const result = await auth.getRedirectResult();
-    if (result && result.user) {
-      const fbUser = result.user;
-      // Create/update Firestore profile from Google data
-      const profData = {
-        username: fbUser.displayName || fbUser.email?.split('@')[0] || '',
-        full_name: fbUser.displayName || '',
-        avatar_url: fbUser.photoURL || '',
-      };
-      await setProfile(fbUser.uid, profData);
-
-      const user = await buildUserObj(fbUser);
-      handle = user?.user_metadata?.username || '';
-      console.log('[GlitchIt] Google redirect sign-in successful');
-      return user;
-    }
-  } catch (err) {
-    console.error('[GlitchIt] getRedirectResult error:', err);
-  }
-  return null;
-}
 
 export function userHandle(user) {
   if (!user) return '';
