@@ -158,25 +158,15 @@ export async function signInWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.addScope('profile');
     provider.addScope('email');
-    const result = await auth.signInWithPopup(provider);
-    const fbUser = result.user;
 
-    // Create/update Firestore profile from Google data
-    const profData = {
-      username: fbUser.displayName || fbUser.email?.split('@')[0] || '',
-      full_name: fbUser.displayName || '',
-      avatar_url: fbUser.photoURL || '',
-    };
-    await setProfile(fbUser.uid, profData);
-
-    const user = await buildUserObj(fbUser);
-    handle = user?.user_metadata?.username || '';
-    return { ok: true, user };
+    // Use redirect instead of popup — popups are blocked in APK WebViews
+    // and many mobile browsers. Redirect works everywhere.
+    await auth.signInWithRedirect(provider);
+    // After redirect, Firebase will call getRedirectResult on the next page load.
+    // The auth state listener in main.js will pick up the signed-in user.
+    return { ok: true, pending: true };
   } catch (err) {
     console.error('[GlitchIt] Google sign-in error:', err);
-    if (err.code === 'auth/popup-closed-by-user') {
-      return { ok: false, error: 'Sign-in cancelled.' };
-    }
     return { ok: false, error: err.message || 'Google sign-in failed.' };
   }
 }
@@ -215,6 +205,33 @@ export async function updateUserMetadata(data) {
 
 export function currentHandle() { return handle; }
 export function setHandle(value) { handle = value || ''; }
+
+// Handle redirect result from Google sign-in (called on page load after redirect)
+export async function handleRedirectResult() {
+  const auth = getAuth();
+  if (!auth) return null;
+  try {
+    const result = await auth.getRedirectResult();
+    if (result && result.user) {
+      const fbUser = result.user;
+      // Create/update Firestore profile from Google data
+      const profData = {
+        username: fbUser.displayName || fbUser.email?.split('@')[0] || '',
+        full_name: fbUser.displayName || '',
+        avatar_url: fbUser.photoURL || '',
+      };
+      await setProfile(fbUser.uid, profData);
+
+      const user = await buildUserObj(fbUser);
+      handle = user?.user_metadata?.username || '';
+      console.log('[GlitchIt] Google redirect sign-in successful');
+      return user;
+    }
+  } catch (err) {
+    console.error('[GlitchIt] getRedirectResult error:', err);
+  }
+  return null;
+}
 
 export function userHandle(user) {
   if (!user) return '';

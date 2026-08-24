@@ -3423,8 +3423,19 @@ async function boot() {
   
   // Load auth module
   let auth = null;
-  try { auth = await import('./auth.js?v=6'); } catch (err) { auth = null; }
+  try { auth = await import('./auth.js?v=7'); } catch (err) { auth = null; }
   window.GLITCHIT_AUTH = auth;
+
+  // Handle Google sign-in redirect result (after returning from Google sign-in)
+  if (auth && auth.handleRedirectResult) {
+    try {
+      const redirectUser = await auth.handleRedirectResult();
+      if (redirectUser) {
+        finishAuth(redirectUser, auth);
+        return;
+      }
+    } catch (e) { console.warn('[GlitchIt] redirect result error:', e); }
+  }
 
   // Check guest status
   let guest = false;
