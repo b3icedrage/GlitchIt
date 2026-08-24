@@ -243,104 +243,136 @@
       <span>→</span>
     </a>
 
-    <script type="module">
-      import { GLITCHIT_USER } from './src/auth.js';
-      import { payPremium, isPremiumActive } from './src/wallet.js';
-
-      const user = window.GLITCHIT_USER;
-      let email = '';
-
-      // Get user info
-      if (user && !user.guest) {
-        email = user.email || '';
-        const handle = user.user_metadata?.username || email.split('@')[0] || 'You';
-        const avatar = user.user_metadata?.avatar_url || user.user_metadata?.avatar || user.user_metadata?.picture || '';
-
-        document.getElementById('badge-name-text').textContent = handle;
-        document.getElementById('badge-handle').textContent = '@' + handle;
-        if (avatar) {
-          document.getElementById('badge-avatar-img').src = avatar;
-        }
+    <script src="src/main.js?v=41" defer></script>
+    <script>
+      // Wait for main.js to set window.GLITCHIT_USER (loaded by other pages)
+      function getUser() {
+        return window.GLITCHIT_USER || null;
       }
 
-      // Check if already premium — if not, poll check-premium
-      const userId = user?.id;
-      if (userId && !isPremiumActive(userId)) {
-        // Poll check-premium until verified
-        let attempts = 0;
-        const maxAttempts = 40; // 40 × 3s = 2 minutes
-
-        const pollInterval = setInterval(async function() {
-          attempts++;
-          if (attempts > maxAttempts || !email) {
-            clearInterval(pollInterval);
-            if (!email) {
-              document.getElementById('expiry-info').textContent = 'Sign in to activate your badge';
-            } else {
-              document.getElementById('expiry-info').textContent = 'Payment verification pending — check again in a few minutes';
-            }
-            return;
+      function isPremiumActive(userId) {
+        if (!userId) return false;
+        try {
+          var raw = localStorage.getItem('glitchit.premium.' + userId);
+          if (raw) {
+            var data = JSON.parse(raw);
+            if (data && data.expiresAt && Date.now() < data.expiresAt) return true;
           }
-
-          try {
-            const resp = await fetch('/api/payment/check-premium?email=' + encodeURIComponent(email));
-            const data = await resp.json();
-            if (data.ok && data.active) {
-              clearInterval(pollInterval);
-              activatePremium(data.expiresAt);
-            }
-          } catch (e) { /* retry */ }
-        }, 3000);
-      } else if (userId && isPremiumActive(userId)) {
-        // Already active (wallet payment or IPN already confirmed)
-        document.getElementById('expiry-info').textContent = 'Your verified badge is active 🎉';
-      } else {
-        document.getElementById('expiry-info').textContent = 'Sign in to see your verified badge';
+        } catch (e) {}
+        var user = getUser();
+        if (user && user.user_metadata && user.user_metadata.premium) {
+          var p = user.user_metadata.premium;
+          if (p.expiresAt && Date.now() < p.expiresAt) return true;
+        }
+        return false;
       }
 
       function activatePremium(expiresAtIso) {
-        const expiresAt = expiresAtIso ? new Date(expiresAtIso).getTime() : Date.now() + 30 * 24 * 60 * 60 * 1000;
-        const premData = { plan: 'monthly', activatedAt: Date.now(), expiresAt };
+        var expiresAt = expiresAtIso ? new Date(expiresAtIso).getTime() : Date.now() + 30 * 24 * 60 * 60 * 1000;
+        var premData = { plan: 'monthly', activatedAt: Date.now(), expiresAt: expiresAt };
+        var user = getUser();
+        var userId = user && user.id ? user.id : null;
 
-        // Store in localStorage cache
+        // 1. ALWAYS store in localStorage (works immediately on next page load)
         if (userId) {
           try { localStorage.setItem('glitchit.premium.' + userId, JSON.stringify(premData)); } catch(e) {}
         }
 
-        // Update Supabase user_metadata
+        // 2. Try Supabase user_metadata (persists across devices)
         if (window.GLITCHIT_AUTH && window.GLITCHIT_AUTH.updateUserMetadata) {
           window.GLITCHIT_AUTH.updateUserMetadata({ premium: premData })
-            .then(() => { showActivated(expiresAt); })
-            .catch(() => { showActivated(expiresAt); });
+            .then(function() { showActivated(expiresAt); })
+            .catch(function() { showActivated(expiresAt); });
         } else {
           showActivated(expiresAt);
         }
       }
 
       function showActivated(expiresAt) {
-        const expiryDate = new Date(expiresAt);
-        const daysLeft = Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
-        document.getElementById('expiry-info').textContent = `Your verified badge is active for ${daysLeft} days (until ${expiryDate.toLocaleDateString()})`;
+        var expiryDate = new Date(expiresAt);
+        var daysLeft = Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
+        document.getElementById('expiry-info').textContent = 'Your verified badge is active for ' + daysLeft + ' days (until ' + expiryDate.toLocaleDateString() + ')';
       }
 
-      // Confetti animation
-      function spawnConfetti() {
-        const colors = ['#d62976', '#4f5bd5', '#00d4ff', '#ff2d78', '#a24cff', '#00e676', '#ffd600'];
-        for (let i = 0; i < 50; i++) {
-          const el = document.createElement('div');
-          el.className = 'confetti';
-          el.style.left = Math.random() * 100 + 'vw';
-          el.style.background = colors[Math.floor(Math.random() * colors.length)];
-          el.style.animationDuration = (2 + Math.random() * 3) + 's';
-          el.style.animationDelay = (Math.random() * 1.5) + 's';
-          el.style.width = (6 + Math.random() * 6) + 'px';
-          el.style.height = (6 + Math.random() * 6) + 'px';
-          el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
-          document.body.appendChild(el);
-          setTimeout(() => el.remove(), 5000);
+      function init() {
+        var user = getUser();
+        var email = '';
+        var userId = null;
+
+        if (user && !user.guest) {
+          email = user.email || '';
+          userId = user.id;
+          var handle = (user.user_metadata && user.user_metadata.username) || email.split('@')[0] || 'You';
+          var avatar = (user.user_metadata && (user.user_metadata.avatar_url || user.user_metadata.avatar || user.user_metadata.picture)) || '';
+
+          document.getElementById('badge-name-text').textContent = handle;
+          document.getElementById('badge-handle').textContent = '@' + handle;
+          if (avatar) {
+            document.getElementById('badge-avatar-img').src = avatar;
+          }
         }
+
+        if (userId && isPremiumActive(userId)) {
+          document.getElementById('expiry-info').textContent = 'Your verified badge is active!';
+          return;
+        }
+
+        if (!email) {
+          document.getElementById('expiry-info').textContent = 'Sign in to activate your badge';
+          return;
+        }
+
+        // Poll check-premium until verified
+        var attempts = 0;
+        var maxAttempts = 40;
+        var pollInterval = setInterval(function() {
+          attempts++;
+          if (attempts > maxAttempts) {
+            clearInterval(pollInterval);
+            document.getElementById('expiry-info').textContent = 'Payment verification pending - check again in a few minutes';
+            return;
+          }
+          fetch('/api/payment/check-premium?email=' + encodeURIComponent(email))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              if (data.ok && data.active) {
+                clearInterval(pollInterval);
+                activatePremium(data.expiresAt);
+              }
+            })
+            .catch(function() {});
+        }, 3000);
       }
-      spawnConfetti();
-    </script>
+
+      // Try immediately or wait for GLITCHIT_USER
+      if (window.GLITCHIT_USER) {
+        init();
+      } else {
+        var waitCount = 0;
+        var waitInterval = setInterval(function() {
+          waitCount++;
+          if (window.GLITCHIT_USER || waitCount > 30) {
+            clearInterval(waitInterval);
+            init();
+          }
+        }, 200);
+      }
+
+      // Confetti
+      var colors = ['#d62976', '#4f5bd5', '#00d4ff', '#ff2d78', '#a24cff', '#00e676', '#ffd600'];
+      for (var i = 0; i < 50; i++) {
+        var el = document.createElement('div');
+        el.className = 'confetti';
+        el.style.left = Math.random() * 100 + 'vw';
+        el.style.background = colors[Math.floor(Math.random() * colors.length)];
+        el.style.animationDuration = (2 + Math.random() * 3) + 's';
+        el.style.animationDelay = (Math.random() * 1.5) + 's';
+        el.style.width = (6 + Math.random() * 6) + 'px';
+        el.style.height = (6 + Math.random() * 6) + 'px';
+        el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+        document.body.appendChild(el);
+        setTimeout(function(e) { e.remove(); }.bind(null, el), 5000);
+      }
+    </script></script>
   </body>
 </html>
