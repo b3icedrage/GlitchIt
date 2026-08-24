@@ -8,7 +8,7 @@
 //      the settings-drawer class in main.js, so this script intercepts its
 //      click (capture phase, before the drawer toggles) and opens a real
 //      Instagram-style sheet: display name, @username, pronouns, and bio.
-//      Saves to Supabase user_metadata when signed in (the same keys the
+//      Saves to Firebase when signed in (the same keys the
 //      account registry reads, so edits appear on public profiles and in
 //      search immediately) and mirrors to localStorage for instant UI.
 //

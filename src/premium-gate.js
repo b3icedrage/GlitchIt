@@ -30,7 +30,7 @@
       u.user_metadata.premium = pending.premData;
       window.GLITCHIT_USER = u;
 
-      // Try to persist to Supabase
+      // Try to persist to Firebase
       try {
         var auth = window.GLITCHIT_AUTH;
         if (auth && auth.updateUserMetadata) {
@@ -78,7 +78,7 @@
         return false;
       }
 
-      // 1. Check Supabase user_metadata first (authoritative)
+      // 1. Check Firebase user profile first (authoritative)
       var cp = u.user_metadata && u.user_metadata.premium;
       if (cp && cp.expiresAt && Date.now() < cp.expiresAt) return true;
 

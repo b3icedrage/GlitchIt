@@ -1,262 +1,234 @@
-// GlitchIt — Supabase authentication module
-// Clean, simple auth with robust CDN loading and error handling.
+// GlitchIt — Firebase Authentication module
+// Uses Firebase Auth (compat SDK loaded via CDN in HTML pages) + Firestore for profiles.
+// Maintains the same export interface as the old Supabase module so main.js and
+// other consumers don't need changes.
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=6';
+/* global firebase */
 
-let client = null;
-let clientPromise = null;
-let clientFailed = false;
 let handle = '';
+let profileCache = {}; // Firestore profile data cache per uid
 
-// CDN fallbacks for supabase-js - try each in order
-const CDN_URLS = [
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm',
-  'https://esm.sh/@supabase/supabase-js@2',
-  'https://unpkg.com/@supabase/supabase-js@2?module',
-];
+// ─── Firebase helpers ──────────────────────────────────────────────
 
-// Load supabase-js from one of the CDNs
-async function loadSupabase() {
-  for (const url of CDN_URLS) {
-    try {
-      console.log('[GlitchIt] Trying Supabase CDN:', url);
-      const mod = await import(url);
-      console.log('[GlitchIt] Supabase loaded from:', url);
-      return mod;
-    } catch (err) {
-      console.warn('[GlitchIt] CDN failed:', url, err.message);
-    }
-  }
-  throw new Error('Could not load Supabase from any CDN');
+function getAuth() {
+  try { return firebase && firebase.auth ? firebase.auth() : null; }
+  catch (_) { return null; }
 }
 
-// Get or create the Supabase client
-async function getClient() {
-  if (!authAvailable()) return null;
-  
-  // Return existing client if available
-  if (client) return client;
-  
-  // Wait for existing initialization if in progress
-  if (clientPromise) return clientPromise;
-  
-  // Start new initialization
-  clientPromise = (async () => {
-    try {
-      const mod = await loadSupabase();
-      client = mod.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-        },
-      });
-      return client;
-    } catch (err) {
-      console.error('[GlitchIt] Failed to initialize Supabase:', err);
-      clientFailed = true;
-      clientPromise = null;
-      return null;
-    }
-  })();
-  
-  return clientPromise;
+function getFirestore() {
+  try { return firebase && firebase.firestore ? firebase.firestore() : null; }
+  catch (_) { return null; }
 }
 
-// Check if auth is configured
+// ─── Profile (Firestore) ───────────────────────────────────────────
+// User profiles live in Firestore collection 'users', doc ID = Firebase UID.
+// Fields: username, full_name, avatar_url, bio, interests, premium, created_at
+
+async function getProfile(uid) {
+  if (profileCache[uid]) return profileCache[uid];
+  const db = getFirestore();
+  if (!db) return null;
+  try {
+    const doc = await db.collection('users').doc(uid).get();
+    if (doc.exists) {
+      profileCache[uid] = doc.data();
+      return profileCache[uid];
+    }
+  } catch (e) { console.warn('[GlitchIt] getProfile error:', e.message); }
+  return null;
+}
+
+async function setProfile(uid, data) {
+  const db = getFirestore();
+  if (!db) return;
+  try {
+    await db.collection('users').doc(uid).set(data, { merge: true });
+    profileCache[uid] = { ...(profileCache[uid] || {}), ...data };
+  } catch (e) { console.warn('[GlitchIt] setProfile error:', e.message); }
+}
+
+// Build a Supabase-compatible user object from Firebase auth + Firestore profile
+async function buildUserObj(fbUser) {
+  if (!fbUser) return null;
+  const uid = fbUser.uid;
+  const email = fbUser.email || '';
+  const displayName = fbUser.displayName || '';
+
+  // Get profile from Firestore
+  const prof = await getProfile(uid);
+
+  const username = (prof && prof.username) || displayName || email.split('@')[0] || '';
+  const avatarUrl = (prof && prof.avatar_url) || fbUser.photoURL || '';
+
+  return {
+    id: uid,
+    email: email,
+    user_metadata: {
+      username: username,
+      full_name: (prof && prof.full_name) || displayName || '',
+      avatar_url: avatarUrl,
+      bio: (prof && prof.bio) || '',
+      interests: (prof && prof.interests) || [],
+      premium: (prof && prof.premium) || null,
+    },
+  };
+}
+
+// ─── Exported interface (same as old Supabase module) ──────────────
+
 export function authAvailable() {
-  return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+  return !!getAuth();
 }
 
-// Get the current user or null
 export async function currentUser() {
-  try {
-    const sb = await getClient();
-    if (!sb) return null;
-    
-    const { data: { session }, error } = await sb.auth.getSession();
-    if (error) {
-      console.warn('[GlitchIt] getSession error:', error);
-      return null;
-    }
-    
-    if (session?.user) {
-      handle = userHandle(session.user);
-      return session.user;
-    }
-    return null;
-  } catch (err) {
-    console.error('[GlitchIt] currentUser error:', err);
-    return null;
-  }
+  const auth = getAuth();
+  if (!auth) return null;
+  const fbUser = auth.currentUser;
+  if (!fbUser) return null;
+  handle = fbUser.displayName || fbUser.email?.split('@')[0] || '';
+  return buildUserObj(fbUser);
 }
 
-// Sign in with email and password
 export async function signIn(email, password) {
+  const auth = getAuth();
+  if (!auth) return { ok: false, error: 'Could not connect to authentication service.' };
+
   try {
-    const sb = await getClient();
-    if (!sb) {
-      return { ok: false, error: 'Could not connect to authentication service. Please check your internet connection and try again.' };
-    }
-    
     console.log('[GlitchIt] Signing in:', email);
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    
-    if (error) {
-      console.error('[GlitchIt] Sign in error:', error);
-      return { ok: false, error: formatError(error) };
-    }
-    
+    const cred = await auth.signInWithEmailAndPassword(email, password);
+    const user = await buildUserObj(cred.user);
+    handle = user?.user_metadata?.username || '';
     console.log('[GlitchIt] Sign in successful');
-    handle = userHandle(data.user);
-    return { ok: true, user: data.user };
+    return { ok: true, user };
   } catch (err) {
-    console.error('[GlitchIt] Sign in exception:', err);
-    return { ok: false, error: 'Sign-in failed. Please check your internet connection and try again.' };
+    console.error('[GlitchIt] Sign in error:', err);
+    return { ok: false, error: formatError(err) };
   }
 }
 
-// Sign up with email, password, and optional profile data
 export async function signUp(email, password, username, profile = {}) {
+  const auth = getAuth();
+  if (!auth) return { ok: false, error: 'Could not connect to authentication service.' };
+
   try {
-    const sb = await getClient();
-    if (!sb) {
-      return { ok: false, error: 'Could not connect to authentication service. Please check your internet connection and try again.' };
-    }
-    
     console.log('[GlitchIt] Signing up:', email);
-    
-    // Prepare user metadata
-    const metadata = {
-      username: username || email.split('@')[0],
-    };
-    if (profile.avatarUrl) metadata.avatar_url = profile.avatarUrl;
-    if (profile.interests?.length) metadata.interests = profile.interests;
-    
-    const { data, error } = await sb.auth.signUp({
-      email,
-      password,
-      options: { data: metadata },
-    });
-    
-    if (error) {
-      console.error('[GlitchIt] Sign up error:', error);
-      return { ok: false, error: formatError(error) };
-    }
-    
-    // Check if email confirmation is required
-    if (data.user && !data.session) {
-      console.log('[GlitchIt] Email confirmation required');
-      return { 
-        ok: false, 
-        error: 'Please check your email for a confirmation link, then try signing in.' 
-      };
-    }
-    
+    const cred = await auth.createUserWithEmailAndPassword(email, password);
+
+    // Set displayName on Firebase Auth
+    const displayName = username || email.split('@')[0];
+    await cred.user.updateProfile({ displayName });
+
+    // Create profile in Firestore
+    const profData = { username: displayName, created_at: new Date().toISOString() };
+    if (profile.avatarUrl) profData.avatar_url = profile.avatarUrl;
+    if (profile.interests?.length) profData.interests = profile.interests;
+    await setProfile(cred.user.uid, profData);
+
+    const user = await buildUserObj(cred.user);
+    handle = user?.user_metadata?.username || '';
     console.log('[GlitchIt] Sign up successful');
-    handle = userHandle(data.user);
-    return { ok: true, user: data.user };
+    return { ok: true, user };
   } catch (err) {
-    console.error('[GlitchIt] Sign up exception:', err);
-    return { ok: false, error: 'Sign-up failed. Please check your internet connection and try again.' };
+    console.error('[GlitchIt] Sign up error:', err);
+    return { ok: false, error: formatError(err) };
   }
 }
 
-// Sign in with Google via Firebase Auth
 export async function signInWithGoogle() {
+  const auth = getAuth();
+  if (!auth) return { ok: false, error: 'Firebase not loaded.' };
+
   try {
-    const fb = await import('./firebase.js?v=1');
-    if (!fb.firebaseReady()) {
-      return { ok: false, error: 'Firebase not loaded. Please refresh and try again.' };
-    }
-    const result = await fb.signInWithGoogle();
-    return result;
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('profile');
+    provider.addScope('email');
+    const result = await auth.signInWithPopup(provider);
+    const fbUser = result.user;
+
+    // Create/update Firestore profile from Google data
+    const profData = {
+      username: fbUser.displayName || fbUser.email?.split('@')[0] || '',
+      full_name: fbUser.displayName || '',
+      avatar_url: fbUser.photoURL || '',
+    };
+    await setProfile(fbUser.uid, profData);
+
+    const user = await buildUserObj(fbUser);
+    handle = user?.user_metadata?.username || '';
+    return { ok: true, user };
   } catch (err) {
-    console.error('[GlitchIt] Google sign-in exception:', err);
-    return { ok: false, error: 'Google sign-in failed. Please try again.' };
+    console.error('[GlitchIt] Google sign-in error:', err);
+    if (err.code === 'auth/popup-closed-by-user') {
+      return { ok: false, error: 'Sign-in cancelled.' };
+    }
+    return { ok: false, error: err.message || 'Google sign-in failed.' };
   }
 }
 
-// Sign out
 export async function signOut() {
-  try {
-    const sb = await getClient();
-    if (sb) {
-      await sb.auth.signOut();
-    }
-    handle = '';
-  } catch (err) {
-    console.error('[GlitchIt] Sign out error:', err);
+  const auth = getAuth();
+  if (auth) {
+    try { await auth.signOut(); } catch (_) { /* ignore */ }
   }
+  handle = '';
+  profileCache = {};
 }
 
-// Update user metadata (profile)
 export async function updateUserMetadata(data) {
-  try {
-    const sb = await getClient();
-    if (!sb) return { ok: false, error: 'Not connected' };
-    
-    const { data: updated, error } = await sb.auth.updateUser({ data });
-    if (error) return { ok: false, error: error.message };
-    
-    if (updated?.user) handle = userHandle(updated.user);
-    return { ok: true, user: updated?.user };
-  } catch (err) {
-    console.error('[GlitchIt] Update metadata error:', err);
-    return { ok: false, error: 'Update failed' };
+  const auth = getAuth();
+  if (!auth || !auth.currentUser) return { ok: false, error: 'Not signed in' };
+
+  const uid = auth.currentUser.uid;
+
+  // Update Firebase Auth displayName/photoURL if provided
+  const authUpdate = {};
+  if (data.username) authUpdate.displayName = data.username;
+  if (data.avatar_url) authUpdate.photoURL = data.avatar_url;
+  if (Object.keys(authUpdate).length > 0) {
+    try { await auth.currentUser.updateProfile(authUpdate); } catch (_) { /* ignore */ }
   }
+
+  // Update Firestore profile
+  await setProfile(uid, data);
+
+  // Rebuild user object
+  const user = await buildUserObj(auth.currentUser);
+  if (user) handle = user.user_metadata?.username || '';
+  return { ok: true, user };
 }
 
-// Get current handle
-export function currentHandle() {
-  return handle;
-}
+export function currentHandle() { return handle; }
+export function setHandle(value) { handle = value || ''; }
 
-// Set handle
-export function setHandle(value) {
-  handle = value || '';
-}
-
-// Extract display handle from user object
 export function userHandle(user) {
   if (!user) return '';
   return user.user_metadata?.username || user.email?.split('@')[0] || user.id || '';
 }
 
-// Format Supabase errors into user-friendly messages
+// ─── Error formatting ──────────────────────────────────────────────
+
 function formatError(error) {
-  const msg = String(error?.message || error || '');
-  
-  // Rate limiting
-  if (/rate limit|over_email_send_rate_limit/i.test(msg)) {
-    return 'Too many attempts. Please wait a few minutes and try again.';
-  }
-  
-  // Invalid credentials
-  if (/invalid.*login.*credentials|invalid.*grant/i.test(msg)) {
-    return 'Invalid email or password. Please try again.';
-  }
-  
-  // User not found
-  if (/user.*not.*found|no.*user/i.test(msg)) {
+  const code = error?.code || '';
+  const msg = error?.message || '';
+
+  if (code === 'auth/user-not-found' || /user.*not.*found/i.test(msg)) {
     return 'No account found with this email. Please sign up first.';
   }
-  
-  // Email already registered
-  if (/already.*registered|user.*already.*exists/i.test(msg)) {
+  if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || /invalid.*login.*credentials/i.test(msg)) {
+    return 'Invalid email or password. Please try again.';
+  }
+  if (code === 'auth/email-already-in-use' || /already.*registered|already.*exists/i.test(msg)) {
     return 'This email is already registered. Please sign in.';
   }
-  
-  // Weak password
-  if (/password.*length|password.*short/i.test(msg)) {
+  if (code === 'auth/weak-password' || /password.*length|password.*short/i.test(msg)) {
     return 'Password must be at least 6 characters.';
   }
-  
-  // Network errors
+  if (code === 'auth/too-many-requests' || /rate.*limit/i.test(msg)) {
+    return 'Too many attempts. Please wait a few minutes and try again.';
+  }
   if (/network|fetch|timeout|cors/i.test(msg)) {
     return 'Network error. Please check your internet connection and try again.';
   }
-  
-  // Return original message for other errors
+
   return msg || 'An unexpected error occurred. Please try again.';
 }

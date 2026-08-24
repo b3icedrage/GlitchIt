@@ -1,24 +1,39 @@
-// GlitchIt — Firebase Analytics + Auth (alongside Supabase).
-// Requires two <script> tags in <head> before main.js loads:
-//   1. gtag.js (Google Analytics 4) — measurementId: G-75V7YGZ9C5
-//   2. Firebase compat SDK (firebase-app-compat + firebase-auth-compat)
-//
-// This module is loaded via dynamic import() from main.js, the same
-// pattern as auth.js and db.js.
+// GlitchIt — Firebase initialization + Analytics + Google Auth
+// Loads Firebase compat SDK from CDN (already in HTML pages) and initializes it
+// with the config from config.js. This module is loaded via dynamic import() from main.js.
 
 /* global gtag, firebase */
+import { FIREBASE_CONFIG } from './config.js?v=6';
 
-const FIREBASE_measurementId = 'G-75V7YGZ9C5';
-const FIREBASE_projectId = 'glitchit-749c0';
+const FIREBASE_measurementId = FIREBASE_CONFIG.measurementId;
+let initialized = false;
 
-// ---------- helpers ----------
+// ─── Initialize Firebase ───────────────────────────────────────────
 
-/** True if both gtag (Analytics) and firebase.auth (Auth) are available. */
-export function firebaseReady() {
-  return !!(typeof gtag === 'function' && typeof firebase !== 'undefined' && firebase.auth);
+function ensureInit() {
+  if (initialized) return true;
+  if (typeof firebase === 'undefined' || !firebase.initializeApp) return false;
+  try {
+    // Only initialize if not already initialized
+    if (!firebase.apps || !firebase.apps.length) {
+      firebase.initializeApp(FIREBASE_CONFIG);
+    }
+    initialized = true;
+    return true;
+  } catch (e) {
+    console.warn('[GlitchIt] Firebase init error:', e.message);
+    return false;
+  }
 }
 
-// ---------- Analytics ----------
+// ─── Helpers ───────────────────────────────────────────────────────
+
+/** True if Firebase Auth is available. */
+export function firebaseReady() {
+  return ensureInit() && !!firebase.auth;
+}
+
+// ─── Analytics ─────────────────────────────────────────────────────
 
 /** Fire a GA4 page_view event (called once per navigation). */
 export function trackPageView(pageName) {
@@ -32,7 +47,7 @@ export function trackPageView(pageName) {
   } catch (_) { /* gtag not loaded or blocked — ignore */ }
 }
 
-/** Fire a custom GA4 event (login, sign_up, post_created, etc.). */
+/** Fire a custom GA4 event. */
 export function trackEvent(eventName, params) {
   if (typeof gtag !== 'function') return;
   try {
@@ -40,52 +55,11 @@ export function trackEvent(eventName, params) {
   } catch (_) { /* ignore */ }
 }
 
-// ---------- Auth (mirror to Firebase alongside Supabase) ----------
-
-/**
- * Mirror a Supabase sign-up to Firebase Auth so the user also exists
- * in Firebase for future analytics user-ID tagging or push notifications.
- * Silently succeeds — never blocks or replaces Supabase auth.
- */
-export async function mirrorSignUp(email, password) {
-  if (!firebaseReady()) return;
-  try {
-    await firebase.auth().createUserWithEmailAndPassword(email, password);
-    const uid = firebase.auth().currentUser?.uid;
-    if (uid) trackEvent('sign_up', { method: 'email', user_id: uid });
-  } catch (err) {
-    // Firebase may reject if the user already exists — that's fine,
-    // just fall through to mirrorSignIn so the session is available.
-    console.debug('GlitchIt: Firebase mirrorSignUp skipped —', err?.code);
-  }
-}
-
-/**
- * Mirror a Supabase sign-in to Firebase Auth so GA4 can attribute
- * events to the same user. Silently succeeds on any Firebase error.
- */
-export async function mirrorSignIn(email, password) {
-  if (!firebaseReady()) return;
-  try {
-    await firebase.auth().signInWithEmailAndPassword(email, password);
-    const uid = firebase.auth().currentUser?.uid;
-    if (uid) {
-      // Set GA4 user ID for cross-session attribution
-      if (typeof gtag === 'function') gtag('set', { user_id: uid });
-      trackEvent('login', { method: 'email', user_id: uid });
-    }
-  } catch (err) {
-    console.debug('GlitchIt: Firebase mirrorSignIn skipped —', err?.code);
-  }
-}
-
-
-
-// ---------- Google Sign-In (Firebase Auth) ----------
+// ─── Google Sign-In (Firebase Auth) ───────────────────────────────
 
 /**
  * Sign in with Google using Firebase Auth's popup flow.
- * Returns { ok: true, user: firebaseUser } or { ok: false, error: string }.
+ * Returns { ok: true, user } or { ok: false, error: string }.
  */
 export async function signInWithGoogle() {
   if (!firebaseReady()) return { ok: false, error: 'Firebase not loaded.' };
@@ -94,26 +68,21 @@ export async function signInWithGoogle() {
     provider.addScope('profile');
     provider.addScope('email');
     const result = await firebase.auth().signInWithPopup(provider);
-    const firebaseUser = result.user;
-    const email = firebaseUser.email || '';
-    const displayName = firebaseUser.displayName || '';
-    const photoURL = firebaseUser.photoURL || '';
-    const uid = firebaseUser.uid;
+    const fbUser = result.user;
 
     // Set GA4 user ID
-    if (typeof gtag === 'function') gtag('set', { user_id: uid });
-    trackEvent('login', { method: 'google', user_id: uid });
+    if (typeof gtag === 'function') gtag('set', { user_id: fbUser.uid });
+    trackEvent('login', { method: 'google', user_id: fbUser.uid });
 
-    // Return the Firebase user info so the caller can create a Supabase-compatible session
     return {
       ok: true,
       user: {
-        id: uid,
-        email: email,
+        id: fbUser.uid,
+        email: fbUser.email || '',
         user_metadata: {
-          username: displayName || email.split('@')[0],
-          full_name: displayName,
-          avatar_url: photoURL,
+          username: fbUser.displayName || (fbUser.email || '').split('@')[0],
+          full_name: fbUser.displayName || '',
+          avatar_url: fbUser.photoURL || '',
         },
       },
     };
@@ -124,13 +93,4 @@ export async function signInWithGoogle() {
     }
     return { ok: false, error: err.message || 'Google sign-in failed.' };
   }
-}
-
-/** Mirror a Supabase sign-out to Firebase Auth. */
-export async function mirrorSignOut() {
-  if (!firebaseReady()) return;
-  try {
-    await firebase.auth().signOut();
-    if (typeof gtag === 'function') gtag('set', { user_id: null });
-  } catch (_) { /* ignore */ }
 }

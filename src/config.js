@@ -1,9 +1,19 @@
-// GlitchIt — Supabase connection config (client-safe public keys).
-// The anon key is designed to be public (it ships in every client app).
-// Fill these two values in and refresh — the app will then store media
-// and saved videos in your Supabase project instead of just localStorage.
-export const SUPABASE_URL = 'https://socaxjkikrxantwxacqy.supabase.co';
-export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY2F4amtpa3J4YW50d3hhY3F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MTMzNzEsImV4cCI6MjEwMTA4OTM3MX0.wBhxPka_CsqSVTQHjr3DS2ddvw_ezht4NToqTbzGzb4';
+// GlitchIt — Firebase config (client-safe public keys).
+// Firebase is used for auth + Firestore for user profiles.
+// These values are safe to ship in the client bundle.
+export const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyBVjt-uis7rUfh4LSHnQxwA8otA13Oj_-M',
+  authDomain: 'glitchit-749c0.firebaseapp.com',
+  databaseURL: 'https://glitchit-749c0-default-rtdb.firebaseio.com',
+  projectId: 'glitchit-749c0',
+  storageBucket: 'glitchit-749c0.firebasestorage.app',
+  messagingSenderId: '528294753215',
+  appId: '1:528294753215:web:bc433d9d173c0b95b4670a',
+  measurementId: 'G-75V7YGZ9C5',
+};
+// Legacy Supabase exports (empty — no longer used)
+export const SUPABASE_URL = '';
+export const SUPABASE_ANON_KEY = '';
 
 // GlitchIt — media storage (Cloudinary, free tier). Browser-direct uploads use
 // an *unsigned* upload preset, so these two values are NOT secrets — they ship

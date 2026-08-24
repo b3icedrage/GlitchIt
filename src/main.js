@@ -3127,7 +3127,7 @@ function finishAuth(user, auth) {
   import('./db.js?v=7').then((db) => db.setCurrentUser?.({ id: user.id, username: auth.userHandle(user) })).catch(() => {});
   // Mirror auth event to Firebase alongside Supabase.
   import('./firebase.js?v=1').then((fb) => {
-    try { fb.trackEvent('login', { method: 'supabase' }); } catch (_) {}
+    try { fb.trackEvent('login', { method: 'firebase' }); } catch (_) {}
     if (user?.email) fb.mirrorSignIn(user.email, '').catch(() => {});
   }).catch(() => {});
   location.href = returnToPage() || 'index.html';
