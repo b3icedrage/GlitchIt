@@ -63,6 +63,13 @@ export function trackEvent(eventName, params) {
  */
 export async function signInWithGoogle() {
   if (!firebaseReady()) return { ok: false, error: 'Firebase not loaded.' };
+
+  // Wait for firebase.auth to be fully available (async CDN load)
+  for (let i = 0; i < 30; i++) {
+    if (typeof firebase !== 'undefined' && firebase.auth) break;
+    await new Promise(r => setTimeout(r, 100));
+  }
+
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.addScope('profile');

@@ -135,8 +135,24 @@ export async function signUp(email, password, username, profile = {}) {
 }
 
 export async function signInWithGoogle() {
+  // Ensure Firebase is initialized before use (CDN scripts load async)
+  try {
+    if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+      if (!firebase.apps || !firebase.apps.length) {
+        const { FIREBASE_CONFIG } = await import('./config.js?v=6');
+        firebase.initializeApp(FIREBASE_CONFIG);
+      }
+    }
+  } catch (_) { /* already initialized */ }
+
+  // Wait for firebase.auth to become available (async CDN load)
+  for (let i = 0; i < 30; i++) {
+    if (typeof firebase !== 'undefined' && firebase.auth) break;
+    await new Promise(r => setTimeout(r, 100));
+  }
+
   const auth = getAuth();
-  if (!auth) return { ok: false, error: 'Firebase not loaded.' };
+  if (!auth) return { ok: false, error: 'Firebase not loaded. Please refresh the page.' };
 
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
