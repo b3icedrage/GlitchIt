@@ -35,6 +35,7 @@ const ENTRIES = [
   'premium.html',
   'wallet.html',
   'receipt.html',
+  'payment-success.html',
   'camera.html',
   'admin.html',
   'server.js',

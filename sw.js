@@ -39,6 +39,7 @@ const SHELL_URLS = [
   './camera.html',
   './wallet.html',
   './premium.html',
+  './payment-success.html',
   './terms.html',
   './receipt.html',
   './about.html',
