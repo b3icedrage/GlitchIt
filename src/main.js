@@ -243,6 +243,40 @@ function verifiedBolt(extraClass = '') {
   return `<span class="verified-bolt ${extraClass}" aria-label="GlitchIt Verified" title="GlitchIt Verified">⚡</span>`;
 }
 
+// Global cache of verified user IDs — populated from /api/accounts
+// so that feed posts, reels, and any content card can check verified status
+// for ANY user (not just the current user).
+const _verifiedUsers = new Set();
+function isUserIdVerified(userId) {
+  if (!userId) return false;
+  if (_verifiedUsers.has(userId)) return true;
+  // Also check current user's own premium (fast path)
+  const me = window.GLITCHIT_USER;
+  if (me && !me.guest && me.id === userId) {
+    try {
+      const prem = me?.user_metadata?.premium;
+      if (prem && prem.expiresAt && Date.now() < prem.expiresAt) return true;
+    } catch (e) { /* ignore */ }
+    try {
+      const raw = localStorage.getItem('glitchit.premium.' + userId);
+      if (raw) { const d = JSON.parse(raw); if (d && d.expiresAt && Date.now() < d.expiresAt) return true; }
+    } catch (e) { /* ignore */ }
+  }
+  return false;
+}
+// Fetch accounts and populate verified cache (call once on boot)
+function loadVerifiedUsers() {
+  return fetch((window.GLITCHIT_API_BASE || '') + '/api/accounts', { cache: 'no-store' })
+    .then((res) => res.json().catch(() => null))
+    .then((data) => {
+      if (data && data.ok && Array.isArray(data.accounts)) {
+        _verifiedUsers.clear();
+        data.accounts.forEach((a) => { if (a.verified && a.id) _verifiedUsers.add(a.id); });
+      }
+    })
+    .catch(() => {});
+}
+
 function syncProfileFromUser(user) {
   if (!user || user.guest) return;
   const metadata = user.user_metadata || {};
@@ -497,13 +531,14 @@ async function hydrateSearchAccounts() {
     const res = await fetch((window.GLITCHIT_API_BASE || '') + '/api/accounts', { cache: 'no-store' });
     const data = await res.json().catch(() => null);
     if (data && data.ok && Array.isArray(data.accounts) && data.accounts.length) {
+      // Use verified status from accounts API (reads user_metadata.premium for all users)
       creators = data.accounts.map((a) => ({
         id: a.id,
         handle: a.username || '',
         avatar: a.avatar || '',
-        verified: false,
+        verified: Boolean(a.verified),
       }));
-      // Check if current user has active premium (from Supabase user_metadata)
+      // Also check current user's localStorage cache as fallback
       const cu = window.GLITCHIT_USER;
       if (cu && !cu.guest && cu.id) {
         try {
@@ -592,7 +627,6 @@ window.attachProfileBio = function attachProfileBio() {
 // Fills the viewed creator's bio from the account registry when available.
 window.attachUserBio = function attachUserBio() {
   const textEl = document.getElementById('user-bio-text');
-  if (!textEl) return;
   const params = new URLSearchParams(location.search);
   const targetId = String(params.get('id') || '').trim();
   if (!targetId) return;
@@ -600,7 +634,23 @@ window.attachUserBio = function attachUserBio() {
     .then((res) => res.json().catch(() => null))
     .then((data) => {
       const acct = data && data.ok && Array.isArray(data.accounts) ? data.accounts.find((a) => a.id === targetId) : null;
-      if (acct && acct.bio) textEl.textContent = acct.bio;
+      if (acct && acct.bio && textEl) textEl.textContent = acct.bio;
+      // Show verified badge on this user's profile if they have active premium
+      if (acct && acct.verified) {
+        const nameEl = document.getElementById('user-name');
+        const avatarWrap = document.querySelector('.profile-photo-wrap');
+        if (nameEl && !nameEl.querySelector('.verified-bolt')) {
+          nameEl.innerHTML += ' ' + verifiedBolt('verified-bolt-inline');
+        }
+        if (avatarWrap && !avatarWrap.querySelector('.verified-bolt')) {
+          const bolt = document.createElement('span');
+          bolt.className = 'verified-bolt';
+          bolt.setAttribute('aria-label', 'GlitchIt Verified');
+          bolt.title = 'GlitchIt Verified';
+          bolt.textContent = '\u26A1';
+          avatarWrap.appendChild(bolt);
+        }
+      }
     })
     .catch(() => { /* registry unavailable — keep default text */ });
 };
@@ -970,7 +1020,7 @@ async function hydrateShopGlitches() {
     reel.innerHTML = '<div class="feed-empty"><span class="feed-empty-mark">▣</span><h3>No shop glitches yet</h3><p>Videos shared by creators will appear here.</p></div>';
     return;
   }
-  reel.innerHTML = rows.map((r) => glitchVideoCard({ id: r.id, title: r.title, caption: r.caption, src: r.url, poster: r.poster || r.url, user: displayUser(r.user), avatar: r.avatar, verified: r.verified, owner: r.user, likes: String(r.likes || 0), comments: String(r.comments || 0), shares: String(r.shares || 0) })).join('');
+  reel.innerHTML = rows.map((r) => glitchVideoCard({ id: r.id, title: r.title, caption: r.caption, src: r.url, poster: r.poster || r.url, user: displayUser(r.user), avatar: r.avatar, verified: r.verified || isUserIdVerified(r.owner || r.user), owner: r.user, likes: String(r.likes || 0), comments: String(r.comments || 0), shares: String(r.shares || 0) })).join('');
   attachReelsActions();
   attachGlitchAutoplay();
 }
@@ -1110,7 +1160,7 @@ function saveUploads() {
 // ---------- Upload cards ----------
 function uploadCard(item, type) {
   const isVideo = type === 'videos' || item.type === 'video';
-  if (isVideo) return glitchVideoCard({ ...item, user: profile.username, avatar: profile.avatar, verified: item.verified, owner: item.owner, src: item.src || item.preview, poster: item.preview, caption: item.caption || item.title }, true);
+  if (isVideo) return glitchVideoCard({ ...item, user: profile.username, avatar: profile.avatar, verified: item.verified || isUserIdVerified(item.owner), owner: item.owner, src: item.src || item.preview, poster: item.preview, caption: item.caption || item.title }, true);
   const isBolt = Boolean(item.verified);
   const bolt = isBolt ? verifiedBolt('verified-bolt-inline') : '';
   // Real social actions (like / comment / share / save) backed by src/social.js.
@@ -1311,7 +1361,7 @@ function canViewStory(story, creator) {
 // creator's profile (user.html?id=...). Own posts link to profile.html.
 function uploadCard(item, type) {
   const isVideo = type === 'videos' || item.type === 'video';
-  if (isVideo) return glitchVideoCard({ ...item, user: item.user || profile.username, avatar: item.avatar || profile.avatar, verified: item.verified, owner: item.owner, src: item.src || item.preview, poster: item.preview, caption: item.caption || item.title }, true);
+  if (isVideo) return glitchVideoCard({ ...item, user: item.user || profile.username, avatar: item.avatar || profile.avatar, verified: item.verified || isUserIdVerified(item.owner), owner: item.owner, src: item.src || item.preview, poster: item.preview, caption: item.caption || item.title }, true);
   const isBolt = Boolean(item.verified);
   const bolt = isBolt ? verifiedBolt('verified-bolt-inline') : '';
   const key = mediaKeyOf(item);
@@ -2889,7 +2939,7 @@ function hydrateHomeFeed() {
   if (DB) {
     DB.loadMedia('image').then((rows) => {
       if (!rows.length) { feedEmpty(); return; }
-      const cards = rows.map((r) => uploadCard({ preview: r.url, title: r.title, caption: r.caption, type: 'image', user: displayUser(r.user), avatar: r.avatar, verified: r.verified, owner: r.user }, 'feed')).join('');
+      const cards = rows.map((r) => uploadCard({ preview: r.url, title: r.title, caption: r.caption, type: 'image', user: displayUser(r.user), avatar: r.avatar, verified: r.verified || isUserIdVerified(r.owner || r.user), owner: r.user }, 'feed')).join('');
       feedTarget.innerHTML = renderUploads('feed');
       feedTarget.insertAdjacentHTML('afterbegin', cards);
     });
@@ -2903,6 +2953,7 @@ try { window.hydrateHomeFeed = hydrateHomeFeed; } catch (e) { /* ignore */ }
 function runPage() {
   attachThemeToggle();
   attachEndOfPageDetection();
+  loadVerifiedUsers().catch(() => {});
 
   if (page === 'home') hydrateHomeFeed();
   if (page === 'glitches') {
@@ -2917,7 +2968,7 @@ function runPage() {
       DB.loadMedia('video').then((rows) => {
         if (!rows.length) { glitchEmpty(); attachGlitchAutoplay(); attachReelsActions(); return; }
         if (!videoTarget) return;
-        const cards = rows.map((r) => glitchVideoCard({ id: r.id, title: r.title, caption: r.caption, src: r.url, poster: r.poster || r.url, user: displayUser(r.user), avatar: r.avatar, verified: r.verified, owner: r.user, likes: String(r.likes || 0), comments: String(r.comments || 0), shares: String(r.shares || 0) })).join('');
+        const cards = rows.map((r) => glitchVideoCard({ id: r.id, title: r.title, caption: r.caption, src: r.url, poster: r.poster || r.url, user: displayUser(r.user), avatar: r.avatar, verified: r.verified || isUserIdVerified(r.owner || r.user), owner: r.user, likes: String(r.likes || 0), comments: String(r.comments || 0), shares: String(r.shares || 0) })).join('');
         videoTarget.insertAdjacentHTML('afterbegin', cards);
         attachReelsActions();
         attachGlitchAutoplay();

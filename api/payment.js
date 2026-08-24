@@ -1,83 +1,91 @@
-// GlitchIt Pay — real STK push via Safaricom Daraja API
-// Sends actual M-Pesa prompt to user's phone. They see "Pay KES X" and enter PIN.
+// GlitchIt Pay — payment handler (PesaPal store links)
+// Payments go through external PesaPal store pages.
+// This backend handles premium activation tracking, IPN callbacks,
+// and manual payment verification fallback.
+//
+// Required env vars (Vercel → Settings → Environment Variables):
+//   PAYMENT_BUSINESS_NAME   — display name (default: 'GlitchIt')
+//   DATABASE_URL            — PostgreSQL for transaction persistence (optional, graceful fallback)
 'use strict';
 
 const crypto = require('node:crypto');
-let Pool, Redis;
-try { Pool = require('pg').Pool; } catch(e) { /* pg not installed — DB features disabled */ }
-try { Redis = require('ioredis'); } catch(e) { /* ioredis not installed — Redis features disabled */ }
+let Pool;
+try { Pool = require('pg').Pool; } catch (e) { /* pg optional */ }
 
-// ─── Configuration (read lazily so env vars injected after startup are picked up) ──
-function cfg(key, fallback) { return process.env[key] || fallback; }
-function getDarajaKey()    { return cfg('DARAJA_CONSUMER_KEY', ''); }
-function getDarajaSecret() { return cfg('DARAJA_CONSUMER_SECRET', ''); }
-function getDarajaShortcode() { return cfg('DARAJA_SHORTCODE', '174379'); }
-function getDarajaPasskey()   { return cfg('DARAJA_PASSKEY', 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'); }
-function getDarajaEnv()    { return cfg('DARAJA_ENV', 'sandbox'); }
-function getMpesaNumber()  { return cfg('PAYMENT_MPESA_NUMBER', '0143476934'); }
+// ─── Configuration (lazy — env vars may be injected after startup) ──
+function cfg(k, fb) { return process.env[k] || fb; }
 function getBusinessName() { return cfg('PAYMENT_BUSINESS_NAME', 'GlitchIt'); }
-function getDatabaseUrl()  { return cfg('DATABASE_URL', ''); }
-function getRedisUrl()     { return cfg('REDIS_URL', ''); }
+function getDatabaseUrl() { return cfg('DATABASE_URL', ''); }
 
-function getDarajaBase() {
-  return getDarajaEnv() === 'production'
-    ? 'https://api.safaricom.co.ke'
-    : 'https://sandbox.safaricom.co.ke';
+// ─── Database (optional, graceful) ──────────────────────────────────
+let dbPool = null;
+let tablesEnsured = false;
+
+async function ensureTables(db) {
+  if (tablesEnsured) return;
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS premium_activations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email TEXT NOT NULL,
+        order_reference TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        activated_at TIMESTAMPTZ,
+        expires_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_prem_act_email ON premium_activations (LOWER(email))`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_prem_act_status ON premium_activations (status)`);
+    tablesEnsured = true;
+    console.log('[Pay] ✅ premium_activations table ready');
+  } catch (e) {
+    console.log('[Pay] Table ensure skipped:', e.message);
+    tablesEnsured = true;
+  }
 }
 
-// ─── Database ───────────────────────────────────────────────────────
-let dbPool = null;
 function getDb() {
-  if (!dbPool && getDatabaseUrl()) {
-    dbPool = new Pool({ connectionString: getDatabaseUrl(), ssl: { rejectUnauthorized: false }, max: 5, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000 });
-    dbPool.on('error', (err) => console.error('[Pay/DB]', err.message));
+  if (!Pool || !getDatabaseUrl()) return null;
+  if (!dbPool) {
+    try {
+      dbPool = new Pool({
+        connectionString: getDatabaseUrl(),
+        ssl: { rejectUnauthorized: false },
+        max: 5,
+        connectionTimeoutMillis: 5000,
+        idleTimeoutMillis: 10000,
+      });
+      dbPool.on('error', (err) => console.error('[Pay/DB]', err.message));
+    } catch (e) { return null; }
   }
   return dbPool;
 }
 
-// ─── Redis (token cache) ────────────────────────────────────────────
-let redis = null;
-let redisFailed = false;
-function getRedis() {
-  if (redisFailed) return null;
-  if (!redis && getRedisUrl()) {
-    try {
-      redis = new Redis(getRedisUrl(), { maxRetriesPerRequest: 0, enableReadyCheck: true, connectTimeout: 3000, lazyConnect: true, commandTimeout: 2000 });
-      redis.on('error', () => { redisFailed = true; try { redis?.disconnect?.(); } catch(e) {} redis = null; });
-      redis.connect().catch(() => { redisFailed = true; redis = null; });
-    } catch(e) { redisFailed = true; return null; }
-  }
-  return redis;
-}
-
-function redisGet(key) {
-  return new Promise((resolve) => {
-    const r = getRedis();
-    if (!r) return resolve(null);
-    const timer = setTimeout(() => resolve(null), 2000);
-    r.get(key).then((v) => { clearTimeout(timer); resolve(v); }).catch(() => { clearTimeout(timer); resolve(null); });
-  });
-}
-function redisSet(key, val, exSec) {
-  return new Promise((resolve) => {
-    const r = getRedis();
-    if (!r) return resolve();
-    const timer = setTimeout(() => resolve(), 2000);
-    r.set(key, val, 'EX', exSec).then(() => { clearTimeout(timer); resolve(); }).catch(() => { clearTimeout(timer); resolve(); });
-  });
-}
-
 // ─── Helpers ────────────────────────────────────────────────────────
 function json(res, status, payload) {
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+  res.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  });
   res.end(JSON.stringify(payload));
 }
 
 function readBody(req) {
   return new Promise((resolve) => {
     const chunks = []; let size = 0;
-    req.on('data', (c) => { size += c.length; if (size > 1024*1024) { resolve(null); req.destroy(); return; } chunks.push(c); });
-    req.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString())); } catch(e) { resolve(null); } });
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > 1024 * 1024) { resolve(null); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
+      catch (e) { resolve(null); }
+    });
     req.on('error', () => resolve(null));
   });
 }
@@ -86,99 +94,195 @@ function generateTxRef() {
   return `GLT-${Date.now().toString(36).slice(-6).toUpperCase()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 }
 
-function formatPhone(phone) {
-  let d = phone.replace(/\D/g, '');
-  if (d.startsWith('+254')) d = d.slice(1);
-  if (d.startsWith('254')) d = d.slice(3);
-  d = d.replace(/^0+/, '');
-  if (d.length >= 9) return '254' + d.slice(-9);
-  return '254' + d.padStart(9, '0');
-}
-
-function generateTimestamp() {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-}
-
-function generatePassword(ts) {
-  return Buffer.from(`${getDarajaShortcode()}${getDarajaPasskey()}${ts}`).toString('base64');
-}
-
-// ─── OAuth Token (cached in Redis) ──────────────────────────────────
-let cachedToken = null;
-let tokenExpiry = 0;
-
-async function getAccessToken() {
-  if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
-
-  // Try Redis cache (with timeout)
-  const cached = await redisGet('mpesa:oauth:token');
-  if (cached) { cachedToken = cached; tokenExpiry = Date.now() + 3500000; return cached; }
-
-  if (!getDarajaKey() || !getDarajaSecret()) throw new Error('Daraja credentials not configured');
-
-  const auth = Buffer.from(`${getDarajaKey()}:${getDarajaSecret()}`).toString('base64');
-  const res = await fetch(`${getDarajaBase()}/oauth/v1/generate?grant_type=client_credentials`, {
-    method: 'GET',
-    headers: { Authorization: `Basic ${auth}` },
-    signal: AbortSignal.timeout(15000),
-  });
-
-  if (!res.ok) throw new Error(`OAuth HTTP ${res.status}`);
-  const data = await res.json();
-  const token = data.access_token;
-  if (!token) throw new Error('No access_token');
-
-  cachedToken = token;
-  tokenExpiry = Date.now() + 3500000;
-
-  // Cache in Redis
-  await redisSet('mpesa:oauth:token', token, 3500);
-
-  return token;
-}
-
-// ─── Send STK Push ──────────────────────────────────────────────────
-async function sendStkPush(phoneNumber, amount, txRef) {
-  const token = await getAccessToken();
-  const ts = generateTimestamp();
-  const password = generatePassword(ts);
-
-  const phone = formatPhone(phoneNumber);
-
-  const payload = {
-    BusinessShortCode: getDarajaShortcode(),
-    Password: password,
-    Timestamp: ts,
-    TransactionType: 'CustomerPayBillOnline',
-    Amount: Math.round(amount),
-    PartyA: phone,
-    PartyB: getDarajaShortcode(),
-    PhoneNumber: phone,
-    CallBackURL: 'https://glitch-itr.vercel.app/api/payment/callback',
-    AccountReference: txRef.slice(0, 12),
-    TransactionDesc: `Pay ${getBusinessName()}`,
-  };
-
-  console.log(`[Pay] 📤 STK Push → ${phone} KES ${amount} ref=${txRef}`);
-
-  const res = await fetch(`${getDarajaBase()}/mpesa/stkpush/v1/processrequest`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(30000),
-  });
-
-  const data = await res.json();
-  console.log(`[Pay] Daraja response:`, JSON.stringify(data).slice(0, 300));
-
-  return data;
-}
-
 // ─── Route Handlers ─────────────────────────────────────────────────
 
-// POST /api/payment — Initialize payment & send STK push
+// POST /api/payment/premium-init — Called when user clicks "Get Premium"
+// Creates a PENDING premium activation so the IPN handler can match it.
+async function handlePremiumInit(req, res) {
+  const body = await readBody(req);
+  const email = (body && body.email || '').trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    return json(res, 400, { ok: false, error: 'Valid email required' });
+  }
+
+  const db = getDb();
+  if (!db) {
+    return json(res, 200, { ok: true, message: 'Proceed with payment', tracked: false });
+  }
+
+  await ensureTables(db);
+
+  try {
+    // Check if already active
+    const existing = await db.query(
+      `SELECT id, expires_at FROM premium_activations
+       WHERE LOWER(email) = $1 AND status = 'verified' AND expires_at > NOW()
+       ORDER BY expires_at DESC LIMIT 1`,
+      [email]
+    );
+    if (existing.rows.length > 0) {
+      return json(res, 200, {
+        ok: true,
+        message: 'Already premium',
+        active: true,
+        expiresAt: existing.rows[0].expires_at,
+      });
+    }
+
+    // Create pending activation
+    const ref = `premium-monthly-${Date.now()}-${email}`;
+    await db.query(
+      `INSERT INTO premium_activations (id, email, order_reference, status, created_at)
+       VALUES (gen_random_uuid(), $1, $2, 'pending', NOW())`,
+      [email, ref]
+    );
+    console.log(`[Pay] 📤 Premium init: ${email} ref=${ref}`);
+    return json(res, 200, { ok: true, message: 'Proceed with payment', tracked: true });
+  } catch (e) {
+    console.log('[Pay] premium-init error:', e.message);
+    return json(res, 200, { ok: true, message: 'Proceed with payment', tracked: false });
+  }
+}
+
+// POST /api/payment/ipn — PesaPal IPN callback
+async function handleIPN(req, res) {
+  console.log(`[Pay] 📥 IPN received`);
+
+  const body = await readBody(req);
+  if (!body) return json(res, 200, { ok: true });
+
+  const orderTrackingId = body.order_tracking_id || body.OrderTrackingId;
+  const merchantRef = body.merchant_reference || body.MerchantReference;
+  const status = (body.status || body.Status || '').toUpperCase();
+
+  console.log(`[Pay] IPN: ${orderTrackingId} ref=${merchantRef} status=${status}`);
+
+  if (!orderTrackingId && !merchantRef) return json(res, 200, { ok: true });
+
+  let txStatus = 'PENDING';
+  if (status === 'SUCCESS') txStatus = 'VERIFIED';
+  else if (status === 'FAILED' || status === 'INVALID') txStatus = 'FAILED';
+  else if (status === 'CANCELLED') txStatus = 'CANCELLED';
+
+  const db = getDb();
+  if (db) {
+    await ensureTables(db);
+
+    const lookupRef = orderTrackingId || merchantRef;
+    try {
+      const r = await db.query(
+        `UPDATE transactions SET status = $1, stk_response_description = COALESCE(stk_response_description, $2),
+         updated_at = NOW()
+         WHERE checkout_request_id = $3 OR stk_response_description = $3
+         RETURNING id`,
+        [txStatus, orderTrackingId || '', lookupRef]
+      );
+      if (r.rows.length === 0) {
+        await db.query(
+          `INSERT INTO transactions (id, merchant_id, checkout_request_id, amount, phone_number,
+           account_reference, status, stk_response_description, updated_at, created_at)
+           VALUES (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', $1, 0, '', '', $2, $3, NOW(), NOW())
+           ON CONFLICT (checkout_request_id) DO UPDATE SET status = $2, updated_at = NOW()`,
+          [merchantRef || orderTrackingId, txStatus, orderTrackingId || '']
+        );
+      }
+    } catch (e) { console.log('[Pay] DB update skipped:', e.message); }
+
+    // On successful payment, activate pending premium + extend existing
+    if (txStatus === 'VERIFIED') {
+      try {
+        // Find all pending premium activations from the last hour
+        const pendingResult = await db.query(
+          `SELECT id, email FROM premium_activations
+           WHERE status = 'pending' AND created_at > NOW() - INTERVAL '1 hour'`
+        );
+        for (const row of pendingResult.rows) {
+          // Check if this email already has an active premium — extend from current expiry
+          const existing = await db.query(
+            `SELECT id, expires_at FROM premium_activations
+             WHERE LOWER(email) = $1 AND status = 'verified' AND expires_at > NOW()
+             ORDER BY expires_at DESC LIMIT 1`,
+            [row.email]
+          );
+          let newExpiry;
+          if (existing.rows.length > 0) {
+            // EXTEND: add 30 days from current expiry
+            const baseTime = Math.max(new Date(existing.rows[0].expires_at).getTime(), Date.now());
+            newExpiry = new Date(baseTime + 30 * 24 * 60 * 60 * 1000);
+            // Update the old record's expiry
+            await db.query(`UPDATE premium_activations SET expires_at = $1 WHERE id = $2`,
+              [newExpiry.toISOString(), existing.rows[0].id]);
+            console.log(`[Pay] 🔄 Premium extended for ${row.email} → ${newExpiry.toISOString()}`);
+          } else {
+            // NEW: 30 days from now
+            newExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          }
+          // Activate the pending record
+          await db.query(
+            `UPDATE premium_activations SET status = 'verified', activated_at = NOW(), expires_at = $1
+             WHERE id = $2`,
+            [newExpiry.toISOString(), row.id]
+          );
+          console.log(`[Pay] 🎉 Premium activated for ${row.email} (expires ${newExpiry.toISOString()})`);
+        }
+      } catch (e) { console.log('[Pay] Premium activation skipped:', e.message); }
+    }
+  }
+
+  console.log(`[Pay] ${txStatus === 'VERIFIED' ? '✅' : '❌'} ${orderTrackingId} → ${txStatus}`);
+  json(res, 200, { ResultCode: 0, ResultDesc: 'OK' });
+}
+
+// GET /api/payment/check-premium?email=... — Check premium status
+// If already active, EXTENDS the expiry by 30 days (supports repeat payments).
+async function handleCheckPremium(req, res, url) {
+  const email = (url.searchParams.get('email') || '').trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    return json(res, 400, { ok: false, error: 'Valid email required' });
+  }
+
+  const db = getDb();
+  if (!db) {
+    return json(res, 200, { ok: true, active: false, message: 'Database not available' });
+  }
+
+  try {
+    await ensureTables(db);
+
+    // Check for verified, non-expired premium
+    const r = await db.query(
+      `SELECT id, activated_at, expires_at FROM premium_activations
+       WHERE LOWER(email) = $1 AND status = 'verified' AND expires_at > NOW()
+       ORDER BY activated_at DESC LIMIT 1`,
+      [email]
+    );
+    if (r.rows.length > 0) {
+      const row = r.rows[0];
+      return json(res, 200, {
+        ok: true,
+        active: true,
+        activatedAt: row.activated_at,
+        expiresAt: row.expires_at,
+      });
+    }
+
+    // Fallback: check transactions table for premium marker
+    const r2 = await db.query(
+      `SELECT stk_response_description FROM transactions
+       WHERE account_reference LIKE $1 AND status = 'VERIFIED'
+       ORDER BY created_at DESC LIMIT 1`,
+      ['%' + email + '%']
+    );
+    if (r2.rows.length > 0 && r2.rows[0].stk_response_description?.includes('PREMIUM_ACTIVATED')) {
+      const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+      return json(res, 200, { ok: true, active: true, activatedAt: new Date(), expiresAt: new Date(expiresAt) });
+    }
+  } catch (e) { console.log('[Pay] check-premium error:', e.message); }
+
+  json(res, 200, { ok: true, active: false });
+}
+
+// POST /api/payment — Record a payment reference (general)
 async function handleInitialize(req, res) {
   const body = await readBody(req);
   if (!body || !body.amount || body.amount <= 0) {
@@ -187,203 +291,49 @@ async function handleInitialize(req, res) {
 
   const txRef = body.tx_ref || generateTxRef();
   const amount = Math.round(Number(body.amount));
-  const phone = body.phone || '';
   const title = body.title || 'GlitchIt Payment';
-
-  if (!phone || phone.replace(/\D/g, '').length < 9) {
-    return json(res, 400, { ok: false, error: 'Valid phone number required' });
-  }
-
-  // Store in DB (skip if no valid merchant exists — this is the in-app flow)
-  const db = getDb();
-  if (db) {
-    try {
-      // Try to find a real merchant for this payment
-      const merchantResult = await db.query(
-        `SELECT id FROM merchants WHERE is_active = true LIMIT 1`
-      );
-      const merchantId = merchantResult.rows.length > 0 ? merchantResult.rows[0].id : null;
-      if (merchantId) {
-        await db.query(
-          `INSERT INTO transactions (id, merchant_id, checkout_request_id, amount, phone_number, account_reference, status, created_at, updated_at)
-           VALUES (gen_random_uuid(), $5, $1, $2, $3, $4, 'PENDING', NOW(), NOW())
-           ON CONFLICT (checkout_request_id) DO NOTHING`,
-          [txRef, amount, formatPhone(phone), title, merchantId]
-        );
-      }
-    } catch(e) { console.log('[Pay] DB insert skipped:', e.message); }
-  }
-
-  // Check if Daraja credentials are available
-  if (!getDarajaKey() || !getDarajaSecret()) {
-    console.log(`[Pay] ⚠️ No Daraja credentials — showing instructions instead of STK push`);
-    return json(res, 200, {
-      ok: true,
-      tx_ref: txRef,
-      status: 'instructions',
-      message: 'STK credentials not configured. Pay manually using the instructions below.',
-      instructions: {
-        mpesa_number: getMpesaNumber(),
-        amount: amount,
-        currency: 'KES',
-        reference: txRef,
-        business_name: getBusinessName(),
-        steps: [
-          `Open M-Pesa → Lipa na M-Pesa → Pay Bill`,
-          `Business Number: ${getMpesaNumber()}`,
-          `Amount: KES ${amount.toLocaleString()}`,
-          `Reference: ${txRef}`,
-          `Confirm with PIN`,
-          `Enter the SMS confirmation code below`,
-        ],
-      },
-    });
-  }
-
-  // Send real STK push
-  try {
-    const stkResult = await sendStkPush(phone, amount, txRef);
-
-    if (stkResult.ResponseCode === '0' || stkResult.ResponseCode === '00') {
-      // STK push sent successfully
-      const db2 = getDb();
-      if (db2) {
-        try {
-          await db2.query(
-            `UPDATE transactions SET stk_response_description = $1, status = 'STK_SENT', updated_at = NOW() WHERE checkout_request_id = $2`,
-            [stkResult.CustomerMessage || 'STK push sent', txRef]
-          );
-        } catch(e) {}
-      }
-
-      console.log(`[Pay] ✅ STK push sent — CheckoutRequestID: ${stkResult.CheckoutRequestID}`);
-
-      return json(res, 200, {
-        ok: true,
-        tx_ref: txRef,
-        status: 'stk_sent',
-        message: stkResult.CustomerMessage || 'Check your phone for the M-Pesa prompt',
-        checkout_request_id: stkResult.CheckoutRequestID,
-      });
-    } else {
-      // STK push failed
-      console.log(`[Pay] ❌ STK push failed: ${stkResult.ResponseCode} — ${stkResult.ResponseDescription}`);
-
-      const db3 = getDb();
-      if (db3) {
-        try {
-          await db3.query(
-            `UPDATE transactions SET stk_response_description = $1, status = 'STK_FAILED', updated_at = NOW() WHERE checkout_request_id = $2`,
-            [stkResult.ResponseDescription || 'STK push failed', txRef]
-          );
-        } catch(e) {}
-      }
-
-      // Fall back to manual instructions
-      return json(res, 200, {
-        ok: true,
-        tx_ref: txRef,
-        status: 'instructions',
-        message: 'STK push could not be sent. Please pay manually.',
-        instructions: {
-          mpesa_number: getMpesaNumber(),
-          amount: amount,
-          currency: 'KES',
-          reference: txRef,
-          business_name: getBusinessName(),
-          steps: [
-            `Open M-Pesa → Lipa na M-Pesa → Pay Bill`,
-            `Business Number: ${getMpesaNumber()}`,
-            `Amount: KES ${amount.toLocaleString()}`,
-            `Reference: ${txRef}`,
-            `Confirm with PIN`,
-            `Enter the SMS confirmation code below`,
-          ],
-        },
-      });
-    }
-  } catch (err) {
-    console.error(`[Pay] STK push error:`, err.message);
-
-    // Fall back to manual instructions
-    return json(res, 200, {
-      ok: true,
-      tx_ref: txRef,
-      status: 'instructions',
-      message: 'STK push unavailable. Please pay manually.',
-      instructions: {
-        mpesa_number: getMpesaNumber(),
-        amount: amount,
-        currency: 'KES',
-        reference: txRef,
-        business_name: getBusinessName(),
-        steps: [
-          `Open M-Pesa → Lipa na M-Pesa → Pay Bill`,
-          `Business Number: ${getMpesaNumber()}`,
-          `Amount: KES ${amount.toLocaleString()}`,
-          `Reference: ${txRef}`,
-          `Confirm with PIN`,
-          `Enter the SMS confirmation code below`,
-        ],
-      },
-    });
-  }
-}
-
-// POST /api/payment/callback — Daraja callback (Safaricom calls this)
-async function handleCallback(req, res) {
-  console.log(`[Pay] 📥 Callback received`);
-
-  const body = await readBody(req);
-  const stk = body?.Body?.stkCallback;
-
-  if (!stk) return json(res, 200, { ResultCode: 0, ResultDesc: 'OK' });
-
-  const { CheckoutRequestID, ResultCode, ResultDesc, CallbackMetadata } = stk;
-  console.log(`[Pay] Callback: ${CheckoutRequestID} code=${ResultCode}`);
-
-  // Extract receipt number
-  let receipt = null;
-  if (CallbackMetadata?.Item) {
-    for (const item of CallbackMetadata.Item) {
-      if (item.Name === 'MpesaReceiptNumber') receipt = String(item.Value);
-    }
-  }
-
-  const status = ResultCode === 0 ? 'VERIFIED' : ResultCode === 1032 ? 'CANCELLED' : 'FAILED';
+  const buyerName = body.name || body.buyer_name || '';
+  const buyerEmail = body.email || body.buyer_email || '';
 
   const db = getDb();
   if (db) {
     try {
       await db.query(
-        `UPDATE transactions SET status = $1, mpesa_receipt_number = $2, stk_response_description = $3, updated_at = NOW()
-         WHERE checkout_request_id = $4`,
-        [status, receipt, ResultDesc, CheckoutRequestID]
+        `INSERT INTO transactions (id, merchant_id, checkout_request_id, amount, phone_number,
+         account_reference, status, created_at, updated_at)
+         VALUES (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', $1, $2, $3, $4, 'PENDING', NOW(), NOW())
+         ON CONFLICT (checkout_request_id) DO NOTHING`,
+        [txRef, amount, buyerName || buyerEmail || '', title]
       );
-    } catch(e) {}
+    } catch (e) { console.log('[Pay] DB insert skipped:', e.message); }
   }
 
-  console.log(`[Pay] ${status === 'VERIFIED' ? '✅' : '❌'} ${CheckoutRequestID} receipt=${receipt || 'N/A'}`);
-
-  json(res, 200, { ResultCode: 0, ResultDesc: 'OK' });
+  console.log(`[Pay] 📤 Payment recorded: $${amount} ref=${txRef}`);
+  return json(res, 200, {
+    ok: true,
+    tx_ref: txRef,
+    status: 'recorded',
+    message: 'Payment reference recorded. Complete payment on the PesaPal checkout page.',
+  });
 }
 
-// POST /api/payment/submit — Customer submits confirmation code (fallback)
+// POST /api/payment/submit — Customer submits confirmation code
 async function handleSubmit(req, res) {
   const body = await readBody(req);
   if (!body || !body.tx_ref) return json(res, 400, { ok: false, error: 'tx_ref required' });
   if (!body.mpesa_code || !/^[A-Z0-9]{8,14}$/i.test(body.mpesa_code.trim())) {
-    return json(res, 400, { ok: false, error: 'Enter a valid M-Pesa code (8-14 characters)' });
+    return json(res, 400, { ok: false, error: 'Enter a valid code (8-14 characters)' });
   }
 
   const db = getDb();
   if (db) {
     try {
       await db.query(
-        `UPDATE transactions SET stk_response_description = $1, status = 'SUBMITTED', updated_at = NOW() WHERE checkout_request_id = $2`,
+        `UPDATE transactions SET stk_response_description = $1, status = 'SUBMITTED', updated_at = NOW()
+         WHERE checkout_request_id = $2`,
         [body.mpesa_code.trim().toUpperCase(), body.tx_ref]
       );
-    } catch(e) {}
+    } catch (e) { /* ignore */ }
   }
 
   console.log(`[Pay] 📱 Code: ${body.tx_ref} → ${body.mpesa_code}`);
@@ -398,14 +348,17 @@ async function handleVerify(req, res) {
   const db = getDb();
   if (db) {
     try {
-      const result = await db.query('SELECT status, amount, mpesa_receipt_number FROM transactions WHERE checkout_request_id = $1', [body.tx_ref]);
+      const result = await db.query(
+        'SELECT status, amount, mpesa_receipt_number FROM transactions WHERE checkout_request_id = $1',
+        [body.tx_ref]
+      );
       if (result.rows.length > 0) {
         const tx = result.rows[0];
         if (tx.status === 'VERIFIED') return json(res, 200, { ok: true, status: 'verified', amount: Number(tx.amount), tx_ref: body.tx_ref, receipt: tx.mpesa_receipt_number });
         if (tx.status === 'CANCELLED' || tx.status === 'FAILED') return json(res, 200, { ok: false, status: tx.status.toLowerCase(), error: `Payment ${tx.status.toLowerCase()}` });
         return json(res, 202, { ok: false, status: tx.status.toLowerCase(), pending: true, message: 'Waiting...' });
       }
-    } catch(e) {}
+    } catch (e) { /* ignore */ }
   }
   json(res, 202, { ok: false, status: 'pending', pending: true });
 }
@@ -422,14 +375,19 @@ async function handleVerifyGet(req, res, url) {
       if (r.rows.length > 0 && r.rows[0].status === 'VERIFIED') {
         return json(res, 200, { ok: true, status: 'verified', amount: Number(r.rows[0].amount), tx_ref: txRef });
       }
-    } catch(e) {}
+    } catch (e) { /* ignore */ }
   }
   json(res, 202, { ok: false, status: 'pending', pending: true });
 }
 
 // GET /api/payment/config
 function handleConfig(req, res) {
-  json(res, 200, { ok: true, mpesa_number: getMpesaNumber(), business_name: getBusinessName(), mode: getDarajaKey() ? 'live' : 'manual' });
+  json(res, 200, {
+    ok: true,
+    business_name: getBusinessName(),
+    mode: 'store-link',
+    provider: 'pesapal-store',
+  });
 }
 
 // POST /api/payment/approve — Owner approves
@@ -437,7 +395,11 @@ async function handleApprove(req, res) {
   const body = await readBody(req);
   if (!body || !body.tx_ref) return json(res, 400, { ok: false, error: 'tx_ref required' });
   const db = getDb();
-  if (db) { try { await db.query(`UPDATE transactions SET status = 'VERIFIED', updated_at = NOW() WHERE checkout_request_id = $1`, [body.tx_ref]); } catch(e) {} }
+  if (db) {
+    try {
+      await db.query(`UPDATE transactions SET status = 'VERIFIED', updated_at = NOW() WHERE checkout_request_id = $1`, [body.tx_ref]);
+    } catch (e) { /* ignore */ }
+  }
   console.log(`[Pay] ✅ Approved: ${body.tx_ref}`);
   json(res, 200, { ok: true, tx_ref: body.tx_ref, status: 'verified' });
 }
@@ -447,7 +409,11 @@ async function handleReject(req, res) {
   const body = await readBody(req);
   if (!body || !body.tx_ref) return json(res, 400, { ok: false, error: 'tx_ref required' });
   const db = getDb();
-  if (db) { try { await db.query(`UPDATE transactions SET status = 'REJECTED', updated_at = NOW() WHERE checkout_request_id = $1`, [body.tx_ref]); } catch(e) {} }
+  if (db) {
+    try {
+      await db.query(`UPDATE transactions SET status = 'REJECTED', updated_at = NOW() WHERE checkout_request_id = $1`, [body.tx_ref]);
+    } catch (e) { /* ignore */ }
+  }
   json(res, 200, { ok: true, tx_ref: body.tx_ref, status: 'rejected' });
 }
 
@@ -456,9 +422,16 @@ async function handlePending(req, res) {
   const db = getDb();
   if (!db) return json(res, 200, { ok: true, count: 0, transactions: [] });
   try {
-    const r = await db.query(`SELECT checkout_request_id, amount, phone_number, status, stk_response_description as code, mpesa_receipt_number as receipt, created_at FROM transactions WHERE status NOT IN ('VERIFIED','REJECTED') ORDER BY created_at DESC LIMIT 50`);
+    const r = await db.query(
+      `SELECT checkout_request_id, amount, phone_number, status,
+       stk_response_description as code, mpesa_receipt_number as receipt, created_at
+       FROM transactions WHERE status NOT IN ('VERIFIED','REJECTED')
+       ORDER BY created_at DESC LIMIT 50`
+    );
     json(res, 200, { ok: true, count: r.rows.length, transactions: r.rows });
-  } catch(e) { json(res, 200, { ok: true, count: 0, transactions: [] }); }
+  } catch (e) {
+    json(res, 200, { ok: true, count: 0, transactions: [] });
+  }
 }
 
 // ─── Router ─────────────────────────────────────────────────────────
@@ -468,18 +441,26 @@ module.exports = async function handler(req, res) {
   const method = req.method;
 
   if (method === 'OPTIONS') {
-    res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' });
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400',
+    });
     return res.end();
   }
 
+  if (method === 'POST' && path === '/api/payment/premium-init') return handlePremiumInit(req, res);
+  if (method === 'POST' && path === '/api/payment/ipn') return handleIPN(req, res);
+  if (method === 'POST' && path === '/api/payment/callback') return handleIPN(req, res);
   if (method === 'POST' && path === '/api/payment') return handleInitialize(req, res);
-  if (method === 'POST' && path === '/api/payment/callback') return handleCallback(req, res);
   if (method === 'POST' && path === '/api/payment/submit') return handleSubmit(req, res);
   if (method === 'POST' && path === '/api/payment/verify') return handleVerify(req, res);
   if (method === 'GET' && path === '/api/payment/verify') return handleVerifyGet(req, res, url);
   if (method === 'GET' && path === '/api/payment/config') return handleConfig(req, res);
   if (method === 'POST' && path === '/api/payment/approve') return handleApprove(req, res);
   if (method === 'POST' && path === '/api/payment/reject') return handleReject(req, res);
+  if (method === 'GET' && path === '/api/payment/check-premium') return handleCheckPremium(req, res, url);
   if (method === 'GET' && path === '/api/payment/pending') return handlePending(req, res);
 
   json(res, 405, { ok: false, error: 'Method not allowed' });

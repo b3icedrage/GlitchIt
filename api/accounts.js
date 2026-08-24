@@ -22,7 +22,15 @@ function sanitize(user) {
   const avatar = [meta.avatar_url, meta.picture, meta.avatar, meta.image, identity.avatar_url, identity.picture]
     .find((v) => typeof v === 'string' && /^(?:https?:|data:image\/)/i.test(v)) || '';
   const bio = String(meta.bio || '').trim();
-  return { id: String(user.id || ''), username, avatar, bio, created_at: String(user.created_at || '') };
+  // Check if user has active premium (verified badge)
+  let verified = false;
+  try {
+    const prem = meta.premium;
+    if (prem && prem.expiresAt && Date.now() < prem.expiresAt) {
+      verified = true;
+    }
+  } catch (e) { /* ignore */ }
+  return { id: String(user.id || ''), username, avatar, bio, verified, created_at: String(user.created_at || '') };
 }
 
 function json(res, status, payload) {
