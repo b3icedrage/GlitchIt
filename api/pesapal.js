@@ -164,11 +164,24 @@ async function handleCreateOrder(req, res) {
   const lastName = body.lastName || '';
   const orderId = body.orderId || generateOrderRef();
 
-  // Build callback URL — must match the domain where this app is deployed
+  // Build the base URL — must match the domain where this app is deployed
   const host = process.env.PESAPAL_CALLBACK_DOMAIN || req.headers.host || 'glitch-itr.vercel.app';
   const protocol = req.headers['x-forwarded-proto'] || 'https';
-  const callbackUrl = `${protocol}://${host}/api/pesapal/ipn`;
-  console.log('[PesaPal] Callback URL:', callbackUrl);
+  const baseUrl = `${protocol}://${host}`;
+
+  // `callback_url` is where PesaPal redirects the customer's BROWSER after
+  // hosted checkout. It must land on the premium page so our ?from_pesapal=1
+  // logic activates the badge. (PesaPal appends OrderTrackingId /
+  // OrderMerchantReference / OrderNotificationType, which this page tolerates.)
+  const callbackUrl = `${baseUrl}/premium.html?from_pesapal=1`;
+
+  // The IPN endpoint (/api/pesapal/ipn) is a SEPARATE server-to-server
+  // notification, registered once via PesaPal's RegisterIPNURL / dashboard
+  // (its returned ipn_id would go in notification_id below). It is NOT the
+  // browser return target, so it is intentionally not used as callback_url.
+  const ipnUrl = `${baseUrl}/api/pesapal/ipn`;
+  console.log('[PesaPal] Browser callback URL:', callbackUrl);
+  console.log('[PesaPal] IPN URL (register in dashboard):', ipnUrl);
 
   try {
     const token = await getOAuthToken();
