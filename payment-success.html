@@ -15,7 +15,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: #0d0b1a;
+        background: #0a0a0a;
         color: #fff;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         padding: 32px 20px;
@@ -33,15 +33,15 @@
         inset: 0;
         border-radius: 50%;
         border: 4px solid transparent;
-        border-top-color: #4f5bd5;
-        border-right-color: #d62976;
+        border-top-color: #007d33;
+        border-right-color: #00a743;
         animation: spin 1.4s linear infinite;
       }
       .success-ring .ring-inner {
         position: absolute;
         inset: 8px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #d62976, #4f5bd5);
+        background: linear-gradient(135deg, #00a743, #007d33);
         display: grid;
         place-items: center;
         animation: pulse-glow 2s ease-in-out infinite;
@@ -49,7 +49,7 @@
       .success-ring .bolt {
         font-size: 44px;
         line-height: 1;
-        filter: drop-shadow(0 0 12px rgba(79, 91, 213, 0.6));
+        filter: drop-shadow(0 0 12px rgba(0, 125, 51, 0.6));
       }
       .success-ring .check-mark {
         position: absolute;
@@ -64,8 +64,8 @@
         to { transform: rotate(360deg); }
       }
       @keyframes pulse-glow {
-        0%, 100% { box-shadow: 0 0 20px rgba(79, 91, 213, 0.3), 0 0 40px rgba(214, 41, 118, 0.15); }
-        50% { box-shadow: 0 0 30px rgba(79, 91, 213, 0.5), 0 0 60px rgba(214, 41, 118, 0.3); }
+        0%, 100% { box-shadow: 0 0 20px rgba(0, 125, 51, 0.3), 0 0 40px rgba(0, 167, 67, 0.15); }
+        50% { box-shadow: 0 0 30px rgba(0, 125, 51, 0.5), 0 0 60px rgba(0, 167, 67, 0.3); }
       }
       @keyframes pop-in {
         0% { transform: translate(-50%, -50%) scale(0); }
@@ -84,7 +84,7 @@
         animation: fade-up 0.5s 0.3s both;
       }
       .success-title span {
-        background: linear-gradient(135deg, #d62976, #4f5bd5, #00d4ff);
+        background: linear-gradient(135deg, #00a743, #007d33, #00e676);
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
@@ -130,12 +130,12 @@
         width: 20px;
         height: 20px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #d62976, #4f5bd5);
+        background: linear-gradient(135deg, #00a743, #007d33);
         color: #fff;
         font-size: 11px;
         display: grid;
         place-items: center;
-        box-shadow: 0 0 0 2px #0d0b1a, 0 2px 8px rgba(0,0,0,0.4);
+        box-shadow: 0 0 0 2px #0a0a0a, 0 2px 8px rgba(0,0,0,0.4);
         z-index: 2;
       }
       .badge-preview .name-area {
@@ -152,7 +152,7 @@
         width: 16px;
         height: 16px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #d62976, #4f5bd5);
+        background: linear-gradient(135deg, #00a743, #007d33);
         color: #fff;
         font-size: 9px;
         display: inline-grid;
@@ -178,7 +178,7 @@
         padding: 14px 36px;
         border: none;
         border-radius: 999px;
-        background: linear-gradient(135deg, #d62976, #4f5bd5);
+        background: linear-gradient(135deg, #00a743, #007d33);
         color: #fff;
         font-size: 16px;
         font-weight: 700;
@@ -189,7 +189,7 @@
       }
       .go-home-btn:hover {
         transform: scale(1.04);
-        box-shadow: 0 6px 24px rgba(79, 91, 213, 0.4);
+        box-shadow: 0 6px 24px rgba(0, 125, 51, 0.4);
       }
 
       .confetti {
@@ -243,7 +243,7 @@
       <span>→</span>
     </a>
 
-    <script src="src/main.js?v=41" defer></script>
+    <script src="src/main.js?v=42" defer></script>
     <script>
       // Wait for main.js to set window.GLITCHIT_USER (loaded by other pages)
       function getUser() {
@@ -359,7 +359,7 @@
       }
 
       // Confetti
-      var colors = ['#d62976', '#4f5bd5', '#00d4ff', '#ff2d78', '#a24cff', '#00e676', '#ffd600'];
+      var colors = ['#00a743', '#007d33', '#00e676', '#00a743', '#008737', '#00e676', '#ffd600'];
       for (var i = 0; i < 50; i++) {
         var el = document.createElement('div');
         el.className = 'confetti';

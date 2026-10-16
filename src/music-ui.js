@@ -511,7 +511,7 @@ function notesUpgradeComposer() {
     if (existing) existing.remove();
     const sheet = document.createElement('div');
     sheet.id = 'gif-picker-sheet';
-    sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:55vh;background:#141321;border-radius:20px 20px 0 0;z-index:1000;display:flex;flex-direction:column;';
+    sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:55vh;background:#101010;border-radius:20px 20px 0 0;z-index:1000;display:flex;flex-direction:column;';
     sheet.innerHTML = `<div style="width:36px;height:4px;border-radius:2px;background:#444;margin:12px auto 8px;"></div>
       <div style="padding:0 12px 8px;"><input type="search" id="gif-search-input" placeholder="Search GIFs…" style="width:100%;padding:10px 14px;border:1px solid #333;border-radius:12px;background:#1e1e2e;color:#fff;font-size:14px;outline:none;"></div>
       <div id="gif-grid" style="flex:1;overflow-y:auto;padding:0 8px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;"></div>`;

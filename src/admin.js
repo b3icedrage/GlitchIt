@@ -87,7 +87,7 @@
       </div>
       <div class="stat-card">
         <div class="label">Engagement Rate</div>
-        <div class="value" style="color:#a24cff;">${stats.avgEngagementRate || '0%'}</div>
+        <div class="value" style="color:#008737;">${stats.avgEngagementRate || '0%'}</div>
         <div class="sub">Views → Engagements</div>
       </div>
     `;

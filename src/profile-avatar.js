@@ -4,7 +4,7 @@
 
   function fallbackAvatar(label) {
     var initials = String(label || 'G').trim().split(/[^a-z0-9]+/i).filter(Boolean).slice(0, 2).map(function (part) { return part[0].toUpperCase(); }).join('') || 'G';
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><linearGradient id="avatar-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d62976"/><stop offset="1" stop-color="#4f5bd5"/></linearGradient></defs><rect width="120" height="120" rx="60" fill="url(#avatar-gradient)"/><text x="60" y="67" fill="#fff" font-family="Arial,sans-serif" font-size="38" font-weight="700" text-anchor="middle">' + initials + '</text></svg>';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><linearGradient id="avatar-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00a743"/><stop offset="1" stop-color="#007d33"/></linearGradient></defs><rect width="120" height="120" rx="60" fill="url(#avatar-gradient)"/><text x="60" y="67" fill="#fff" font-family="Arial,sans-serif" font-size="38" font-weight="700" text-anchor="middle">' + initials + '</text></svg>';
     return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
   }
 

@@ -13,7 +13,7 @@
   --dm-hover: #f7f7f7;
   --dm-pill: #efefef;
   --dm-border: rgba(0, 0, 0, 0.07);
-  --dm-blue: #0095f6;
+  --dm-blue: #00c853;
   --dm-red: #ff3040;
   --dm-fab: #171717;
   --dm-fab-ink: #ffffff;
@@ -161,7 +161,7 @@ body[data-page="messages"] .messages-notes-shelf .note-bubble .note-label {
 /* First circle = "Your note" (+ location-off hint), labels live below it. */
 body[data-page="messages"] .messages-notes-shelf .note-add .note-label { display: none; }
 body[data-page="messages"] .messages-notes-shelf .note-add .note-ring {
-  background: conic-gradient(#feda75, #d62976, #4f5bd5, #feda75);
+  background: conic-gradient(#00e676, #00a743, #007d33, #00e676);
   border: 0;
   color: #fff;
   font-size: 22px;
@@ -262,7 +262,7 @@ body[data-page="messages"] .messages-notes-shelf .note-add::before {
 .dm-meta strong { font-weight: 600; font-size: 14.5px; color: var(--dm-ink); }
 .dm-meta em { color: var(--dm-muted); font-size: 13px; }
 .dm-side svg { color: var(--dm-muted); }
-.dm-side .unread { background: var(--dm-blue); box-shadow: 0 0 0 3px rgba(0, 149, 246, 0.16); }
+.dm-side .unread { background: var(--dm-blue); box-shadow: 0 0 0 3px rgba(0, 200, 83, 0.16); }
 .dm-avatar .dot { border-color: var(--dm-bg); }
 .dm-avatar .badge i { background: var(--dm-surface); }
 

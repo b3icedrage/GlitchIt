@@ -122,7 +122,7 @@ const reelIcon = (kind) => kind === 'heart'
 
 function fallbackAvatar(label = 'GlitchIt') {
   const initials = String(label).trim().split(/[^a-z0-9]+/i).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('') || 'G';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d62976"/><stop offset="1" stop-color="#4f5bd5"/></linearGradient></defs><rect width="120" height="120" rx="60" fill="url(#g)"/><text x="60" y="67" fill="white" font-family="Arial,sans-serif" font-size="38" font-weight="700" text-anchor="middle">${initials}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00a743"/><stop offset="1" stop-color="#007d33"/></linearGradient></defs><rect width="120" height="120" rx="60" fill="url(#g)"/><text x="60" y="67" fill="white" font-family="Arial,sans-serif" font-size="38" font-weight="700" text-anchor="middle">${initials}</text></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
@@ -3236,6 +3236,7 @@ function attachAuthPage(auth) {
       showSignupError('Something went wrong. Please try again.');
     }
   });
+}
 
 // Profile page: reflect the signed-in user and wire the Log out button.
 function attachProfileAuth() {
@@ -3526,4 +3527,11 @@ async function boot() {
   }
 }
 
-boot();
+boot().catch((err) => {
+  console.warn('[GlitchIt] boot() failed:', err?.message || err);
+  // Fallback: always run page setup so interactive features work even if auth errors
+  if (page !== 'auth' && !PUBLIC_PAGES.includes(page)) {
+    window.GLITCHIT_USER = window.GLITCHIT_USER || { guest: true };
+    runPage();
+  }
+});

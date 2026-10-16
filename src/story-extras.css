@@ -42,7 +42,7 @@
   padding: 0 4px;
   border-radius: 999px;
   color: #fff;
-  background: #d62976;
+  background: #00a743;
   font-size: 10px;
   font-weight: 800;
   font-style: normal;
@@ -81,7 +81,7 @@
   border: 1px solid rgba(255, 255, 255, .14);
   border-radius: 20px;
   color: #fff;
-  background: #141321;
+  background: #101010;
   box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
   animation: svMenuIn .18s ease;
 }
@@ -99,7 +99,7 @@
   font-size: 13.5px;
   outline: none;
 }
-.sv-name-card input:focus { border-color: #d62976; }
+.sv-name-card input:focus { border-color: #00a743; }
 .sv-name-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
 .sv-name-actions button {
   padding: 10px;
@@ -111,7 +111,7 @@
   cursor: pointer;
 }
 .sv-name-actions button[data-name-cancel] { color: #fff; background: rgba(255, 255, 255, .12); }
-.sv-name-actions button[data-name-add] { color: #fff; background: linear-gradient(135deg, #d62976, #4f5bd5); }
+.sv-name-actions button[data-name-add] { color: #fff; background: linear-gradient(135deg, #00a743, #007d33); }
 
 /* ---------- Close-friends manager sheet (profile settings) ---------- */
 .cf-sheet-backdrop {
@@ -136,8 +136,8 @@
   border: 1px solid rgba(255, 255, 255, .08);
   border-bottom: 0;
   border-radius: 22px 22px 0 0;
-  color: #f3f6fa;
-  background: #101b26;
+  color: #f4f4f4;
+  background: #0f0f0f;
   box-shadow: 0 -18px 60px rgba(0, 0, 0, .42);
   transform: translate(-50%, 100%);
   transition: transform .28s cubic-bezier(.32, .72, .28, 1);
@@ -179,7 +179,7 @@
   height: 46px;
   border-radius: 50%;
   object-fit: cover;
-  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  background: linear-gradient(135deg, #00a743, #007d33);
 }
 .cf-avatar-fallback {
   display: grid;
@@ -189,7 +189,7 @@
   border-radius: 50%;
   color: #fff;
   font-weight: 800;
-  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  background: linear-gradient(135deg, #00a743, #007d33);
 }
 .cf-name { font-size: 14px; font-weight: 700; }
 .cf-toggle {
@@ -211,12 +211,12 @@
   background: #fff;
   transition: transform .2s ease;
 }
-.cf-row.on .cf-toggle { background: linear-gradient(135deg, #d62976, #4f5bd5); }
+.cf-row.on .cf-toggle { background: linear-gradient(135deg, #00a743, #007d33); }
 .cf-row.on .cf-toggle i { transform: translateX(18px); }
 
 /* Highlights: add a subtle plus ring for creating new highlights later. */
 .highlight { position: relative; }
-.highlight:hover span { border-color: #d62976; }
+.highlight:hover span { border-color: #00a743; }
 
 /* ---------- Story "seen" state (watched trays go gray) ---------- */
 .story-ring.seen { background: #a8a8a8; }
