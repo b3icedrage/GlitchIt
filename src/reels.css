@@ -42,63 +42,6 @@
   .reel-disc i { width: 30px; height: 30px; font-size: 12px; }
 }
 
-/* ============ INSTAGRAM RECORD CARD (pinned, most-watched Reel) ============ */
-.ig-record-card {
-  scroll-snap-align: start;
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 18px;
-  min-height: calc(100vh - 100px);
-  padding: 48px 20px;
-  border-radius: 24px;
-  background: radial-gradient(120% 120% at 50% 0%, #0c2416 0%, #050505 58%);
-  box-shadow: 0 24px 70px rgba(0,0,0,.24);
-  text-align: center;
-  color: #fff;
-}
-.ig-record-head { display: grid; justify-items: center; gap: 8px; }
-.ig-record-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #00e676, #00a743 52%, #007d33);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-.ig-record-head h2 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.2px; }
-.ig-record-head p { margin: 0; color: rgba(255,255,255,.72); font-size: 14px; font-weight: 600; }
-.ig-record-head p strong { color: #fff; }
-/* The official Instagram embed replaces the blockquote with a light iframe —
-   give it rounded corners and a soft glow so it reads as a framed feature. */
-.ig-record-embed { width: 100%; max-width: 400px; }
-.ig-record-embed .instagram-media,
-.ig-record-embed iframe {
-  display: block;
-  margin: 0 auto !important;
-  border-radius: 16px !important;
-  box-shadow: 0 18px 48px rgba(0,167,67,.25);
-}
-.ig-record-link {
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-  padding: 9px 18px;
-  border: 1px solid rgba(255,255,255,.35);
-  border-radius: 999px;
-  transition: background .15s ease, border-color .15s ease;
-}
-.ig-record-link:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.7); }
-@media (max-width: 760px) {
-  .ig-record-card { min-height: calc(100vh - 58px - 76px); border-radius: 0; padding: 32px 14px; }
-  .ig-record-head h2 { font-size: 20px; }
-}
-
 /* ============ FULL-SCREEN GLITCH VIEWER ============ */
 /* Tapping a reel anywhere opens this immersive player (see src/reels-viewer.js). */
 /* (Guest-gated actions live in src/main.js's GUEST_GATED_SELECTOR.) */
