@@ -29,7 +29,7 @@ function escapeHtml(value) {
 // Drop-in replacement for Leaflet's default marker (avoids the classic
 // missing-icon bug when Leaflet is served from a CDN) — a themed pin.
 function pinIcon() {
-  const pin = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#d62976" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" fill="#ffffff"/><circle cx="12" cy="10" r="3.2" fill="#d62976" stroke="none"/></svg>';
+  const pin = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#00a743" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" fill="#ffffff"/><circle cx="12" cy="10" r="3.2" fill="#00a743" stroke="none"/></svg>';
   return window.L.divIcon({
     className: 'loc-pin',
     html: pin,

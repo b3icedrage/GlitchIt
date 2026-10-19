@@ -58,18 +58,18 @@
 }
 
 .ig-tab.active {
-  color: #00d4ff;
+  color: #00e676;
 }
 
 .ig-tab.active .ig-tab-icon svg {
-  stroke: #00d4ff;
-  filter: drop-shadow(0 0 6px rgba(0,212,255,0.4));
+  stroke: #00e676;
+  filter: drop-shadow(0 0 6px rgba(0,230,118,0.4));
 }
 
 .ig-tab.active[data-tab="home"] .ig-tab-icon svg {
-  fill: #00d4ff;
-  stroke: #00d4ff;
-  filter: drop-shadow(0 0 8px rgba(0,212,255,0.5));
+  fill: #00e676;
+  stroke: #00e676;
+  filter: drop-shadow(0 0 8px rgba(0,230,118,0.5));
 }
 
 /* Create tab - special highlight */
@@ -80,18 +80,18 @@
 .ig-tab[data-tab="create"] .ig-tab-icon {
   width: 42px;
   height: 42px;
-  border: 2px solid rgba(0,212,255,0.3);
+  border: 2px solid rgba(0,230,118,0.3);
   border-radius: 12px;
   transition: border-color .2s ease, background .2s ease, transform .15s ease;
 }
 
 .ig-tab[data-tab="create"]:active .ig-tab-icon {
-  background: rgba(0,212,255,0.1);
+  background: rgba(0,230,118,0.1);
 }
 
 .ig-tab[data-tab="create"]:hover .ig-tab-icon {
-  border-color: rgba(0,212,255,0.5);
-  background: rgba(0,212,255,0.05);
+  border-color: rgba(0,230,118,0.5);
+  background: rgba(0,230,118,0.05);
 }
 
 /* Profile avatar */
@@ -105,8 +105,8 @@
 }
 
 .ig-tab.active .ig-tab-icon img.profile-nav-avatar {
-  border-color: #00d4ff;
-  box-shadow: 0 0 0 1.5px rgba(0,212,255,0.5);
+  border-color: #00e676;
+  box-shadow: 0 0 0 1.5px rgba(0,230,118,0.5);
 }
 
 .ig-tab[data-tab="profile"] .ig-tab-icon svg { display: none; }

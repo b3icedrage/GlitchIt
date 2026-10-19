@@ -125,14 +125,6 @@
         <button type="submit" id="auth-signup-submit" class="auth-submit">Create account</button>
       </form>
 
-      <!-- Google sign-in -->
-      <div class="auth-social">
-        <button type="button" id="auth-google" class="auth-google-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-          Sign in with Google
-        </button>
-      </div>
-
       <!-- Guest option -->
       <div class="auth-guest">
         <span>— or —</span>
@@ -154,7 +146,7 @@
   <script src="src/premium-gate.js" defer></script>
     <script src="src/analytics.js?v=1" defer></script>
     <script src="src/ai-workers.js?v=1" defer></script>
-    <script src="src/main.js?v=41" defer></script>
+    <script src="src/main.js?v=42" defer></script>
   <script>
     // Inline script for immediate UI feedback
     document.addEventListener('DOMContentLoaded', function() {
@@ -191,62 +183,6 @@
         guestBtn.addEventListener('click', function() {
           try { localStorage.setItem('glitchit.auth.guest.v1', '1'); } catch(e) {}
           window.location.href = 'index.html';
-        });
-      }
-
-      // Google sign-in button — handle directly AND dispatch event for main.js
-      var googleBtn = document.getElementById('auth-google');
-      if (googleBtn) {
-        googleBtn.addEventListener('click', function() {
-          // Dispatch for main.js handler (if loaded)
-          document.dispatchEvent(new CustomEvent('glitchit-google-signin'));
-
-          // Also handle directly in case main.js hasn't loaded the listener yet
-          try {
-            if (typeof firebase !== 'undefined' && firebase.auth) {
-              var provider = new firebase.auth.GoogleAuthProvider();
-              provider.addScope('profile');
-              provider.addScope('email');
-              googleBtn.disabled = true;
-              googleBtn.textContent = 'Connecting to Google...';
-
-              firebase.auth().signInWithPopup(provider).then(function(result) {
-                var fbUser = result.user;
-                // Store session for main.js to pick up
-                var session = {
-                  id: fbUser.uid,
-                  email: fbUser.email || '',
-                  user_metadata: {
-                    username: fbUser.displayName || (fbUser.email || '').split('@')[0],
-                    full_name: fbUser.displayName || '',
-                    avatar_url: fbUser.photoURL || '',
-                  },
-                  ts: Date.now(),
-                };
-                try {
-                  localStorage.setItem('glitchit.auth.session.v1', JSON.stringify(session));
-                  sessionStorage.setItem('glitchit.auth.session.v1', JSON.stringify(session));
-                } catch(e) {}
-                window.location.href = 'index.html';
-              }).catch(function(err) {
-                console.error('[GlitchIt] Google sign-in error:', err);
-                googleBtn.disabled = false;
-                googleBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Sign in with Google';
-                if (err.code === 'auth/popup-closed-by-user') {
-                  // User closed popup - no error needed
-                } else {
-                  var errEl = document.getElementById('auth-error');
-                  if (errEl) { errEl.textContent = err.message || 'Google sign-in failed.'; errEl.hidden = false; }
-                }
-              });
-            } else {
-              console.warn('[GlitchIt] Firebase not loaded yet for Google sign-in');
-              var errEl = document.getElementById('auth-error');
-              if (errEl) { errEl.textContent = 'Google sign-in not ready. Please try again.'; errEl.hidden = false; }
-            }
-          } catch(e) {
-            console.error('[GlitchIt] Google sign-in error:', e);
-          }
         });
       }
 

@@ -28,10 +28,10 @@ button { font: inherit; cursor: pointer; color: inherit; background: transparent
 /* Camera-off / permission state */
 .cam-off { position: absolute; inset: 0; z-index: 5; display: grid; place-content: center; justify-items: center; gap: 12px; padding: 32px; text-align: center; background: #000; }
 .cam-off[hidden] { display: none; }
-.cam-off-ic { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 28px; background: linear-gradient(135deg, #d62976, #4f5bd5); font-size: 40px; box-shadow: 0 18px 42px rgba(214, 41, 118, .35); }
+.cam-off-ic { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 28px; background: linear-gradient(135deg, #00a743, #007d33); font-size: 40px; box-shadow: 0 18px 42px rgba(0, 167, 67, .35); }
 .cam-off h1 { margin: 6px 0 0; font-size: 24px; }
-.cam-off p { margin: 0; max-width: 320px; color: #b9b3ce; font-size: 14px; line-height: 1.5; }
-.cam-off-btn { padding: 11px 20px; border-radius: 999px; background: linear-gradient(135deg, #d62976, #4f5bd5); font-weight: 800; font-size: 14px; transition: transform .15s ease, filter .15s ease; }
+.cam-off p { margin: 0; max-width: 320px; color: #a6a6a6; font-size: 14px; line-height: 1.5; }
+.cam-off-btn { padding: 11px 20px; border-radius: 999px; background: linear-gradient(135deg, #00a743, #007d33); font-weight: 800; font-size: 14px; transition: transform .15s ease, filter .15s ease; }
 .cam-off-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
 .cam-off-btn:active { transform: scale(.97); }
 .cam-off-btn.ghost { background: rgba(255, 255, 255, .12); }
@@ -65,14 +65,14 @@ button { font: inherit; cursor: pointer; color: inherit; background: transparent
 .cam-right { display: flex; align-items: center; }
 
 /* Gallery thumbnail */
-.cam-gallery { width: 44px; height: 56px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, .85); overflow: hidden; background: #1a1a2e; }
-.cam-gallery-thumb { display: block; width: 100%; height: 100%; background: linear-gradient(135deg, #26233a, #0e0d1a); }
+.cam-gallery { width: 44px; height: 56px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, .85); overflow: hidden; background: #151515; }
+.cam-gallery-thumb { display: block; width: 100%; height: 100%; background: linear-gradient(135deg, #232323, #0d0d0d); }
 
 /* Friend avatars next to shutter */
 .cam-friends { display: flex; align-items: center; gap: -4px; }
-.cam-friend-avatar { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #000; background: linear-gradient(135deg, #c13584, #833ab4); flex-shrink: 0; }
-.cam-friend-avatar:nth-child(2) { margin-left: -8px; background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
-.cam-friend-avatar:nth-child(3) { margin-left: -8px; background: linear-gradient(135deg, #405de6, #5851db, #833ab4); }
+.cam-friend-avatar { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #000; background: linear-gradient(135deg, #00a743, #007d33); flex-shrink: 0; }
+.cam-friend-avatar:nth-child(2) { margin-left: -8px; background: linear-gradient(135deg, #00e676, #00c853, #00a743, #008737, #007d33); }
+.cam-friend-avatar:nth-child(3) { margin-left: -8px; background: linear-gradient(135deg, #007d33, #00a743, #007d33); }
 
 /* Trigger button (camera flip in bottom right) */
 .cam-trigger { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 255, 255, .15); transition: transform .15s ease, background .15s ease; }
@@ -84,7 +84,7 @@ button { font: inherit; cursor: pointer; color: inherit; background: transparent
 .cam-trigger { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: rgba(20, 20, 30, .5); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-weight: 900; font-size: 15px; transition: transform .15s ease, background .15s ease; }
 .cam-trigger:hover { background: rgba(20, 20, 30, .8); transform: scale(1.05); }
 .cam-trigger.is-open { background: rgba(255, 255, 255, .95); color: #111; }
-.cam-gallery { display: grid; place-items: center; width: 50px; height: 66px; border-radius: 12px; border: 2px solid rgba(255, 255, 255, .85); background: linear-gradient(135deg, #26233a, #0e0d1a); color: rgba(255, 255, 255, .7); font-size: 22px; transition: transform .15s ease; }
+.cam-gallery { display: grid; place-items: center; width: 50px; height: 66px; border-radius: 12px; border: 2px solid rgba(255, 255, 255, .85); background: linear-gradient(135deg, #232323, #0d0d0d); color: rgba(255, 255, 255, .7); font-size: 22px; transition: transform .15s ease; }
 .cam-gallery:hover { transform: scale(1.04); }
 .cam-shutter { justify-self: center; position: relative; width: 86px; height: 86px; border-radius: 50%; border: 5px solid #fff; background: transparent; transition: transform .15s ease; }
 .cam-shutter::after { content: ''; position: absolute; inset: 6px; border-radius: 50%; background: #fff; transition: transform .15s ease, background .15s ease; }
@@ -96,7 +96,7 @@ button { font: inherit; cursor: pointer; color: inherit; background: transparent
 .cam-filters::-webkit-scrollbar { display: none; }
 .cam-filter { display: grid; justify-items: center; gap: 4px; padding: 0; transition: transform .15s ease; }
 .cam-filter:hover { transform: scale(1.08); }
-.cam-filter-dot { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); background: linear-gradient(135deg, #3a3355, #12101f); color: rgba(255, 255, 255, .8); font-size: 13px; font-weight: 800; transition: border-color .18s ease; }
+.cam-filter-dot { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); background: linear-gradient(135deg, #3a3355, #101010); color: rgba(255, 255, 255, .8); font-size: 13px; font-weight: 800; transition: border-color .18s ease; }
 .cam-filter.active .cam-filter-dot { border-color: #fff; }
 .cam-filter span:last-child { font-size: 10px; font-weight: 700; color: rgba(255, 255, 255, .85); }
 
@@ -160,8 +160,8 @@ button { font: inherit; cursor: pointer; color: inherit; background: transparent
 .cam-color { width: 34px; height: 34px; border-radius: 50%; border: 2px solid transparent; transition: transform .15s ease; }
 .cam-color.active { border-color: #fff; transform: scale(1.12); }
 .cam-composer-row { display: flex; align-items: center; gap: 14px; }
-.cam-composer-size { flex: 1; accent-color: #d62976; }
-.cam-composer-done { padding: 11px 22px; border-radius: 999px; background: linear-gradient(135deg, #d62976, #4f5bd5); font-weight: 800; transition: transform .15s ease, filter .15s ease; }
+.cam-composer-size { flex: 1; accent-color: #00a743; }
+.cam-composer-done { padding: 11px 22px; border-radius: 999px; background: linear-gradient(135deg, #00a743, #007d33); font-weight: 800; transition: transform .15s ease, filter .15s ease; }
 .cam-composer-done:hover { filter: brightness(1.1); }
 .cam-composer-done:active { transform: scale(.96); }
 
@@ -182,11 +182,11 @@ button { font: inherit; cursor: pointer; color: inherit; background: transparent
 .cam-sheet-row button:not(.cam-switch), .cam-sheet-close { padding: 8px 16px; border-radius: 999px; background: rgba(255, 255, 255, .12); font-weight: 800; font-size: 13px; transition: background .15s ease; }
 .cam-sheet-row button:hover { background: rgba(255, 255, 255, .22); }
 .cam-sheet-note { margin: 8px 2px 0; font-size: 12px; line-height: 1.45; color: rgba(255, 255, 255, .6); font-weight: 500; }
-.cam-sheet-close { width: 100%; margin-top: 14px; background: linear-gradient(135deg, #d62976, #4f5bd5); }
+.cam-sheet-close { width: 100%; margin-top: 14px; background: linear-gradient(135deg, #00a743, #007d33); }
 .cam-sheet-close:hover { filter: brightness(1.1); }
 .cam-switch { position: relative; width: 46px; height: 26px; padding: 0; border-radius: 999px; background: rgba(255, 255, 255, .15); transition: background .2s ease; }
 .cam-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .2s ease; }
-.cam-switch.on { background: linear-gradient(135deg, #d62976, #4f5bd5); }
+.cam-switch.on { background: linear-gradient(135deg, #00a743, #007d33); }
 .cam-switch.on::after { transform: translateX(20px); }
 
 /* Toast */
@@ -200,7 +200,7 @@ button { font: inherit; cursor: pointer; color: inherit; background: transparent
 
 /* Preview audio chip */
 .cam-audio-chip { display: block; margin: 0 auto 10px; padding: 7px 14px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, .14); color: #fff; font-size: 11.5px; font-weight: 800; letter-spacing: .02em; cursor: pointer; max-width: calc(100% - 48px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background .2s ease; }
-.cam-audio-chip.has-music { background: linear-gradient(135deg, #d62976, #4f5bd5); }
+.cam-audio-chip.has-music { background: linear-gradient(135deg, #00a743, #007d33); }
 
 /* Music sheet */
 .cam-music { position: fixed; inset: 0; z-index: 60; display: grid; align-items: end; background: rgba(0, 0, 0, .55); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
@@ -210,20 +210,20 @@ button { font: inherit; cursor: pointer; color: inherit; background: transparent
 .cam-music-close { background: rgba(255, 255, 255, .08); color: #fff; border: 0; width: 30px; height: 30px; border-radius: 50%; font-size: 17px; line-height: 1; cursor: pointer; }
 .cam-music-choice { display: flex; gap: 8px; }
 .cam-music-choice-btn { flex: 1; padding: 10px; border-radius: 12px; border: 0; background: rgba(255, 255, 255, .07); color: #c9c4d8; font-weight: 800; font-size: 12.5px; cursor: pointer; transition: background .2s ease, color .2s ease; }
-.cam-music-choice-btn.is-current { background: linear-gradient(135deg, #d62976, #4f5bd5); color: #fff; }
+.cam-music-choice-btn.is-current { background: linear-gradient(135deg, #00a743, #007d33); color: #fff; }
 .cam-music-search { width: 100%; padding: 11px 13px; border-radius: 12px; border: 0; background: rgba(255, 255, 255, .07); color: #fff; font-size: 14px; outline: none; }
 .cam-music-search::placeholder { color: #8f8aa3; }
 .cam-music-tabs { display: flex; gap: 8px; }
-.cam-music-tabs button { padding: 7px 14px; border-radius: 999px; border: 0; background: rgba(255, 255, 255, .07); color: #b9b3ce; font-weight: 800; font-size: 12px; letter-spacing: .04em; cursor: pointer; }
+.cam-music-tabs button { padding: 7px 14px; border-radius: 999px; border: 0; background: rgba(255, 255, 255, .07); color: #a6a6a6; font-weight: 800; font-size: 12px; letter-spacing: .04em; cursor: pointer; }
 .cam-music-tabs button.is-current { background: #fff; color: #101014; }
 .cam-music-list { display: flex; flex-direction: column; gap: 4px; max-height: 42vh; overflow-y: auto; }
 .cam-music-row { display: grid; grid-template-columns: 46px 1fr auto; gap: 11px; align-items: center; text-align: left; padding: 8px; border: 0; border-radius: 12px; background: transparent; color: inherit; cursor: pointer; }
 .cam-music-row:hover { background: rgba(255, 255, 255, .06); }
-.cam-music-art { width: 46px; height: 46px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: linear-gradient(135deg, #d62976, #4f5bd5); font-size: 18px; }
+.cam-music-art { width: 46px; height: 46px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: linear-gradient(135deg, #00a743, #007d33); font-size: 18px; }
 .cam-music-art img { width: 100%; height: 100%; object-fit: cover; }
 .cam-music-meta { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .cam-music-meta strong { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cam-music-meta em { font-style: normal; font-size: 11.5px; color: #8f8aa3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cam-music-play { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .1); font-size: 11px; }
 .cam-music-empty { color: #8f8aa3; font-size: 13px; text-align: center; padding: 26px 10px; }
-.cam-music-done { margin-top: 2px; padding: 12px; border: 0; border-radius: 14px; background: linear-gradient(135deg, #d62976, #4f5bd5); color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; }
+.cam-music-done { margin-top: 2px; padding: 12px; border: 0; border-radius: 14px; background: linear-gradient(135deg, #00a743, #007d33); color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; }

@@ -14,16 +14,16 @@
 
       /* Login Gate */
       .login-gate { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-      .login-card { width: 100%; max-width: 400px; background: #141321; border: 1px solid #29253a; border-radius: 24px; padding: 40px 32px; }
+      .login-card { width: 100%; max-width: 400px; background: #101010; border: 1px solid #242424; border-radius: 24px; padding: 40px 32px; }
       .login-brand { text-align: center; margin-bottom: 32px; }
-      .login-brand .icon { font-size: 48px; background: linear-gradient(135deg, #ff2d78, #a24cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .login-brand .icon { font-size: 48px; background: linear-gradient(135deg, #00a743, #008737); -webkit-background-clip: text; background-clip: text; color: transparent; }
       .login-brand h1 { font-size: 24px; margin-top: 8px; }
       .login-brand p { color: #8e8e8e; font-size: 14px; margin-top: 4px; }
       .login-field { margin-bottom: 16px; }
       .login-field label { display: block; font-size: 12px; font-weight: 700; color: #8e8e8e; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
-      .login-field input { width: 100%; padding: 14px 16px; border: 1px solid #29253a; border-radius: 12px; background: #1a1a2e; color: #fff; font-size: 15px; outline: none; transition: border-color 0.2s; }
-      .login-field input:focus { border-color: #a24cff; }
-      .login-btn { width: 100%; padding: 14px; border: 0; border-radius: 999px; background: linear-gradient(135deg, #ff2d78, #a24cff); color: #fff; font-size: 16px; font-weight: 800; cursor: pointer; transition: transform 0.15s, filter 0.15s; }
+      .login-field input { width: 100%; padding: 14px 16px; border: 1px solid #242424; border-radius: 12px; background: #151515; color: #fff; font-size: 15px; outline: none; transition: border-color 0.2s; }
+      .login-field input:focus { border-color: #008737; }
+      .login-btn { width: 100%; padding: 14px; border: 0; border-radius: 999px; background: linear-gradient(135deg, #00a743, #008737); color: #fff; font-size: 16px; font-weight: 800; cursor: pointer; transition: transform 0.15s, filter 0.15s; }
       .login-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
       .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
       .login-error { color: #ff3b30; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
@@ -35,12 +35,12 @@
       .dash-header .status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #00c853; }
       .dash-header .status .dot { width: 8px; height: 8px; border-radius: 50%; background: #00c853; animation: pulse 2s infinite; }
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-      .dash-logout { padding: 8px 16px; border: 1px solid #29253a; border-radius: 999px; background: transparent; color: #8e8e8e; font-size: 13px; font-weight: 700; cursor: pointer; }
+      .dash-logout { padding: 8px 16px; border: 1px solid #242424; border-radius: 999px; background: transparent; color: #8e8e8e; font-size: 13px; font-weight: 700; cursor: pointer; }
       .dash-logout:hover { border-color: #ff3b30; color: #ff3b30; }
 
       /* Stats Grid */
       .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
-      .stat-card { background: #141321; border: 1px solid #29253a; border-radius: 16px; padding: 20px; }
+      .stat-card { background: #101010; border: 1px solid #242424; border-radius: 16px; padding: 20px; }
       .stat-card .label { font-size: 12px; color: #8e8e8e; text-transform: uppercase; letter-spacing: 0.05em; }
       .stat-card .value { font-size: 28px; font-weight: 900; margin-top: 4px; }
       .stat-card .sub { font-size: 12px; color: #626262; margin-top: 4px; }
@@ -49,10 +49,10 @@
       .section { margin-bottom: 32px; }
       .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
       .section-header h2 { font-size: 20px; }
-      .section-header button { padding: 8px 16px; border: 1px solid #29253a; border-radius: 999px; background: transparent; color: #a24cff; font-size: 12px; font-weight: 700; cursor: pointer; }
-      .section-header button:hover { background: rgba(162, 76, 255, 0.1); }
+      .section-header button { padding: 8px 16px; border: 1px solid #242424; border-radius: 999px; background: transparent; color: #008737; font-size: 12px; font-weight: 700; cursor: pointer; }
+      .section-header button:hover { background: rgba(0, 135, 55, 0.1); }
 
-      .worker-card { background: #141321; border: 1px solid #29253a; border-radius: 16px; padding: 20px; margin-bottom: 12px; }
+      .worker-card { background: #101010; border: 1px solid #242424; border-radius: 16px; padding: 20px; margin-bottom: 12px; }
       .worker-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
       .worker-name { font-weight: 800; font-size: 15px; }
       .worker-status { font-size: 11px; padding: 4px 10px; border-radius: 999px; font-weight: 700; }
@@ -60,7 +60,7 @@
       .worker-status.idle { background: rgba(142, 142, 142, 0.15); color: #8e8e8e; }
       .worker-desc { font-size: 13px; color: #8e8e8e; margin-bottom: 12px; }
       .worker-insights { max-height: 200px; overflow-y: auto; }
-      .insight { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #1a1a2e; font-size: 13px; }
+      .insight { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #151515; font-size: 13px; }
       .insight:last-child { border-bottom: none; }
       .insight-icon { font-size: 16px; flex-shrink: 0; width: 24px; text-align: center; }
       .insight-text { flex: 1; }
@@ -69,22 +69,22 @@
       .severity-success .insight-icon { color: #00c853; }
       .severity-warning .insight-icon { color: #ffab00; }
       .severity-critical .insight-icon { color: #ff3b30; }
-      .severity-info .insight-icon { color: #0095f6; }
-      .severity-opportunity .insight-icon { color: #a24cff; }
+      .severity-info .insight-icon { color: #00c853; }
+      .severity-opportunity .insight-icon { color: #008737; }
 
       /* Charts */
-      .chart-container { background: #141321; border: 1px solid #29253a; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+      .chart-container { background: #101010; border: 1px solid #242424; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
       .chart-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
       .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 120px; }
-      .bar { flex: 1; background: linear-gradient(to top, #a24cff, #ff2d78); border-radius: 4px 4px 0 0; min-height: 4px; position: relative; transition: height 0.3s ease; }
+      .bar { flex: 1; background: linear-gradient(to top, #008737, #00a743); border-radius: 4px 4px 0 0; min-height: 4px; position: relative; transition: height 0.3s ease; }
       .bar-label { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #626262; white-space: nowrap; }
       .bar-value { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #8e8e8e; white-space: nowrap; }
 
       /* Log */
-      .log-container { background: #141321; border: 1px solid #29253a; border-radius: 16px; padding: 20px; max-height: 300px; overflow-y: auto; }
-      .log-entry { font-size: 12px; font-family: 'SF Mono', Monaco, monospace; padding: 4px 0; border-bottom: 1px solid #1a1a2e; color: #8e8e8e; }
+      .log-container { background: #101010; border: 1px solid #242424; border-radius: 16px; padding: 20px; max-height: 300px; overflow-y: auto; }
+      .log-entry { font-size: 12px; font-family: 'SF Mono', Monaco, monospace; padding: 4px 0; border-bottom: 1px solid #151515; color: #8e8e8e; }
       .log-entry .time { color: #626262; margin-right: 8px; }
-      .log-entry .worker { color: #a24cff; margin-right: 8px; }
+      .log-entry .worker { color: #008737; margin-right: 8px; }
 
       @media (max-width: 768px) {
         .stats-grid { grid-template-columns: repeat(2, 1fr); }

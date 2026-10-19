@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(120% 120% at 50% 0%, #1c1733 0%, #0d0b1a 55%, #06050e 100%);
+  background: radial-gradient(120% 120% at 50% 0%, #1a1a1a 0%, #0a0a0a 55%, #060606 100%);
   color: #fff;
   animation: callFade .25s ease;
 }
@@ -15,8 +15,8 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(60% 50% at 50% 112%, rgba(214, 41, 118, .26), transparent 70%),
-    radial-gradient(45% 40% at 10% -10%, rgba(79, 91, 213, .3), transparent 70%);
+    radial-gradient(60% 50% at 50% 112%, rgba(0, 167, 67, .26), transparent 70%),
+    radial-gradient(45% 40% at 10% -10%, rgba(0, 125, 51, .3), transparent 70%);
 }
 @keyframes callFade { from { opacity: 0; } to { opacity: 1; } }
 
@@ -33,17 +33,17 @@
   box-sizing: border-box;
 }
 .call-head { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 32px; }
-.call-status { font-size: 15px; font-weight: 800; letter-spacing: .02em; color: #e9e6ff; }
+.call-status { font-size: 15px; font-weight: 800; letter-spacing: .02em; color: #e6e6e6; }
 .call-status.connecting { color: #ffd76a; }
 .call-status.live { color: #7ef0a8; }
 .call-status.waiting { color: #ffd76a; }
-.call-status.ended { color: #b9b3d6; }
+.call-status.ended { color: #ababab; }
 .call-timer {
   font-variant-numeric: tabular-nums;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: .08em;
-  color: #b9b3d6;
+  color: #ababab;
 }
 
 /* ---------- Tiles ---------- */
@@ -75,10 +75,10 @@
   width: 86px;
   height: 86px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  background: linear-gradient(135deg, #00a743, #007d33);
   font-size: 34px;
   font-weight: 800;
-  box-shadow: 0 12px 30px rgba(214, 41, 118, .35);
+  box-shadow: 0 12px 30px rgba(0, 167, 67, .35);
 }
 .call-tile video {
   position: absolute;
@@ -167,13 +167,13 @@
 .call-ctl:hover { transform: translateY(-2px); }
 .call-ctl:active { transform: scale(.94); }
 .call-ctl svg { width: 22px; height: 22px; }
-.call-ctl.off { background: rgba(255, 255, 255, .08); color: #b9b3d6; filter: grayscale(.7); }
+.call-ctl.off { background: rgba(255, 255, 255, .08); color: #ababab; filter: grayscale(.7); }
 .call-ctl.end {
-  background: linear-gradient(135deg, #ff3040, #d62976);
+  background: linear-gradient(135deg, #ff3040, #00a743);
   box-shadow: 0 8px 26px rgba(255, 48, 64, .45);
 }
 .call-ctl.end:hover { filter: brightness(1.1); }
-.call-note { font-size: 12.5px; font-weight: 600; color: #b9b3d6; text-align: center; }
+.call-note { font-size: 12.5px; font-weight: 600; color: #ababab; text-align: center; }
 
 /* Test-with-another-window affordance (shown when LiveKit is configured) */
 .call-test-btn {
@@ -184,7 +184,7 @@
   border: 1px solid rgba(255, 255, 255, .18);
   border-radius: 999px;
   background: rgba(255, 255, 255, .07);
-  color: #d9d4f2;
+  color: #d4d4d4;
   font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
@@ -202,8 +202,8 @@
   display: grid;
   place-items: center;
   padding: 28px;
-  background: radial-gradient(120% 120% at 50% 0%, #1c1733 0%, #0d0b1a 55%, #06050e 100%);
-  color: #e9e6ff;
+  background: radial-gradient(120% 120% at 50% 0%, #1a1a1a 0%, #0a0a0a 55%, #060606 100%);
+  color: #e6e6e6;
   font: 600 15px/1.6 system-ui, -apple-system, sans-serif;
   text-align: center;
 }

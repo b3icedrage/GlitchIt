@@ -17,7 +17,7 @@
 .reel-action b { font-size: 12px; font-weight: 700; }
 .reel-action.liked svg { fill: #ff3040; stroke: #ff3040; }
 .reel-action.liked b { color: #ff3040; }
-.reel-disc { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: conic-gradient(from 0deg, #f9ce34, #ee2a7b, #6228d7, #f9ce34); animation: discSpin 3s linear infinite; }
+.reel-disc { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: conic-gradient(from 0deg, #00e676, #00a743, #007d33, #00e676); animation: discSpin 3s linear infinite; }
 .reel-disc i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #000; color: #fff; font-size: 14px; font-style: normal; }
 @keyframes discSpin { to { transform: rotate(360deg); } }
 .reel-overlay { gap: 10px; padding: 120px 16px 16px; }
@@ -133,7 +133,7 @@ body.reel-viewer-open main { overflow: hidden; }
   font-weight: 800;
   letter-spacing: .2px;
 }
-.rv-logo { color: #d62976; font-size: 20px; }
+.rv-logo { color: #00a743; font-size: 20px; }
 .rv-count {
   padding: 2px 9px;
   border-radius: 999px;
@@ -302,7 +302,7 @@ body.reel-viewer-open main { overflow: hidden; }
   display: grid;
   place-items: center;
   gap: 0;
-  background: linear-gradient(160deg, #0b0b12, #1c0d22 55%, #0b0b12);
+  background: linear-gradient(160deg, #0b0b12, #191919 55%, #0b0b12);
 }
 .ad-card .ad-head { position: absolute; top: 20px; left: 20px; z-index: 1; }
 .ad-label {
@@ -337,11 +337,11 @@ body.reel-viewer-open main { overflow: hidden; }
 .ad-placeholder-mark {
   font-size: 64px;
   line-height: 1;
-  background: linear-gradient(135deg, #ff2d78, #a24cff, #00d4ff);
+  background: linear-gradient(135deg, #00a743, #008737, #00e676);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 8px 26px rgba(162, 76, 255, .45));
+  filter: drop-shadow(0 8px 26px rgba(0, 135, 55, .45));
 }
 .ad-placeholder strong { font-size: 24px; font-weight: 900; letter-spacing: .02em; }
 .ad-placeholder p { max-width: 340px; margin: 0; color: rgba(255, 255, 255, .74); font-weight: 600; line-height: 1.45; }

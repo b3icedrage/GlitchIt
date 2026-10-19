@@ -55,49 +55,4 @@ export function trackEvent(eventName, params) {
   } catch (_) { /* ignore */ }
 }
 
-// ─── Google Sign-In (Firebase Auth) ───────────────────────────────
 
-/**
- * Sign in with Google using Firebase Auth's popup flow.
- * Returns { ok: true, user } or { ok: false, error: string }.
- */
-export async function signInWithGoogle() {
-  if (!firebaseReady()) return { ok: false, error: 'Firebase not loaded.' };
-
-  // Wait for firebase.auth to be fully available (async CDN load)
-  for (let i = 0; i < 30; i++) {
-    if (typeof firebase !== 'undefined' && firebase.auth) break;
-    await new Promise(r => setTimeout(r, 100));
-  }
-
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.addScope('profile');
-    provider.addScope('email');
-    const result = await firebase.auth().signInWithPopup(provider);
-    const fbUser = result.user;
-
-    // Set GA4 user ID
-    if (typeof gtag === 'function') gtag('set', { user_id: fbUser.uid });
-    trackEvent('login', { method: 'google', user_id: fbUser.uid });
-
-    return {
-      ok: true,
-      user: {
-        id: fbUser.uid,
-        email: fbUser.email || '',
-        user_metadata: {
-          username: fbUser.displayName || (fbUser.email || '').split('@')[0],
-          full_name: fbUser.displayName || '',
-          avatar_url: fbUser.photoURL || '',
-        },
-      },
-    };
-  } catch (err) {
-    console.error('[GlitchIt] Firebase Google sign-in error:', err);
-    if (err.code === 'auth/popup-closed-by-user') {
-      return { ok: false, error: 'Sign-in cancelled.' };
-    }
-    return { ok: false, error: err.message || 'Google sign-in failed.' };
-  }
-}

@@ -28,7 +28,7 @@
       <main>
         <!-- Top bar -->
         <div class="wallet-topbar">
-          <a href="profile.html" style="color:#0095f6;font-weight:700;text-decoration:none;">‹ Back</a>
+          <a href="profile.html" style="color:#00c853;font-weight:700;text-decoration:none;">‹ Back</a>
           <h1>GlitchIt Wallet</h1>
           <span></span>
         </div>
@@ -167,7 +167,7 @@
         btn.addEventListener('click', () => {
           selectedAmount = Number(btn.dataset.amt);
           document.querySelectorAll('.wallet-quick-btn').forEach(b => b.style.borderColor = '');
-          btn.style.borderColor = '#0095f6';
+          btn.style.borderColor = '#00c853';
           const input = document.getElementById('custom-amount');
           if (input) input.value = '';
         });

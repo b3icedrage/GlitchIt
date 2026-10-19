@@ -130,7 +130,7 @@
     <script src="src/premium-gate.js" defer></script>
     <script src="src/analytics.js?v=1" defer></script>
     <script src="src/ai-workers.js?v=1" defer></script>
-    <script src="src/main.js?v=41" defer></script>
+    <script src="src/main.js?v=42" defer></script>
     <script src="src/social-wire.js?v=9" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js" defer></script>
     <script src="src/calls.js?v=2" defer></script>
@@ -255,7 +255,7 @@
           var emojiPicker = document.createElement('div');
           emojiPicker.className = 'chat-emoji-picker';
           emojiPicker.hidden = true;
-          emojiPicker.style.cssText = 'position:absolute;bottom:70px;right:16px;background:#1a1a2e;border-radius:16px;padding:12px;display:grid;grid-template-columns:repeat(6,1fr);gap:4px;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,.4);';
+          emojiPicker.style.cssText = 'position:absolute;bottom:70px;right:16px;background:#151515;border-radius:16px;padding:12px;display:grid;grid-template-columns:repeat(6,1fr);gap:4px;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,.4);';
           var emojis = ['😀','😂','❤️','🔥','👍','😍','😢','😮','🤔','😎','🥺','💪','🎉','🙏','✨','💯','👀','🫡','💀','😭','🥳','🤩','😘','🤗','😏','🤷','🎵','📸','🌍','⚡'];
           emojis.forEach(function (e) {
             var btn = document.createElement('button');
@@ -287,13 +287,13 @@
             if (existing) existing.remove();
             var sheet = document.createElement('div');
             sheet.id = 'chat-action-sheet';
-            sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#141321;border-radius:20px 20px 0 0;z-index:1000;padding:12px 0 20px;box-shadow:0 -8px 30px rgba(0,0,0,.5);';
+            sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#101010;border-radius:20px 20px 0 0;z-index:1000;padding:12px 0 20px;box-shadow:0 -8px 30px rgba(0,0,0,.5);';
             sheet.innerHTML = '<div style="width:36px;height:4px;border-radius:2px;background:#444;margin:0 auto 12px;"></div>' +
               ['<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;font-size:15px;color:#fff;" data-action="share">📱 Share contact</div>',
                '<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;font-size:15px;color:#fff;" data-action="mute">🔇 Mute notifications</div>',
                '<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;font-size:15px;color:#ff3b30;" data-action="block">🚫 Block user</div>',
                '<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;font-size:15px;color:#ff3b30;" data-action="report">⚠️ Report</div>'].join('') +
-              '<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;font-size:15px;color:#8e8e8e;border-top:1px solid #29253a;margin-top:4px;" data-action="cancel">Cancel</div>';
+              '<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;font-size:15px;color:#8e8e8e;border-top:1px solid #242424;margin-top:4px;" data-action="cancel">Cancel</div>';
             document.body.appendChild(sheet);
             // Tap backdrop to close
             var backdrop = document.createElement('div');

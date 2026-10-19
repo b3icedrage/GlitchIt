@@ -46,7 +46,7 @@
     { name: 'Aden', css: 'sepia(.2) brightness(1.15) saturate(.85) contrast(.9)' },
     { name: 'Perpetua', css: 'contrast(1.1) brightness(1.05) saturate(.9) sepia(.1)' },
   ];
-  const TEXT_COLORS = ['#ffffff', '#000000', '#ff3040', '#0095f6', '#ffd60a', '#37e237', '#ff5ce1', 'rainbow'];
+  const TEXT_COLORS = ['#ffffff', '#000000', '#ff3040', '#00c853', '#ffd60a', '#37e237', '#ff5ce1', 'rainbow'];
   const STORY_RATIO = { w: 1280, h: 1920 }; // 1280×1920 story canvas
   const TIMERS = [3, 5, 10];
 

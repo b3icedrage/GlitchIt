@@ -21,7 +21,7 @@
 }
 @keyframes pgSlideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-:root[data-theme="dark"] .pg-sheet { background: #1a1a2e; }
+:root[data-theme="dark"] .pg-sheet { background: #151515; }
 
 /* ── Header ──────────────────────────────────────────────────── */
 .pg-header {
@@ -32,20 +32,20 @@
 .pg-header h2 { margin: 0; font-size: 18px; font-weight: 800; }
 .pg-close {
   width: 32px; height: 32px; border: 0; border-radius: 50%;
-  background: #f0f0f0; color: #1a1a2e; font-size: 18px;
+  background: #f0f0f0; color: #151515; font-size: 18px;
   cursor: pointer; display: grid; place-items: center;
   transition: background .15s;
 }
 .pg-close:hover { background: #e0e0e0; }
-:root[data-theme="dark"] .pg-close { background: #2a2a3e; color: #e0e0e0; }
+:root[data-theme="dark"] .pg-close { background: #272727; color: #e0e0e0; }
 
 /* ── Merchant info ────────────────────────────────────────────── */
 .pg-merchant {
   padding: 16px 24px; margin: 16px 24px 0;
   border-radius: 14px; background: #f8f8f8; text-align: center;
 }
-:root[data-theme="dark"] .pg-merchant { background: #0a0a16; }
-.pg-merchant .pg-merchant-name { font-size: 14px; font-weight: 800; color: #1a1a2e; }
+:root[data-theme="dark"] .pg-merchant { background: #0a0a0a; }
+.pg-merchant .pg-merchant-name { font-size: 14px; font-weight: 800; color: #151515; }
 :root[data-theme="dark"] .pg-merchant-name { color: #f5f5f5; }
 .pg-merchant .pg-merchant-desc { font-size: 12px; color: #8e8e8e; margin-top: 2px; }
 
@@ -54,7 +54,7 @@
   text-align: center; padding: 20px 24px;
 }
 .pg-amount-display .pg-currency { font-size: 14px; font-weight: 700; color: #8e8e8e; }
-.pg-amount-display .pg-total { font-size: 42px; font-weight: 900; letter-spacing: -.02em; color: #1a1a2e; }
+.pg-amount-display .pg-total { font-size: 42px; font-weight: 900; letter-spacing: -.02em; color: #151515; }
 :root[data-theme="dark"] .pg-total { color: #f5f5f5; }
 
 /* ── Buyer details form ──────────────────────────────────────── */
@@ -82,10 +82,10 @@
   background: #fff; font-size: 11px; font-weight: 700; color: #626262;
   cursor: pointer; text-align: center; transition: all .15s;
 }
-.pg-method-tab:hover { border-color: #0095f6; }
-.pg-method-tab.active { border-color: #0095f6; background: rgba(0,149,246,.06); color: #0095f6; }
-:root[data-theme="dark"] .pg-method-tab { background: #0a0a16; border-color: #2a2a3e; color: #a0a0b0; }
-:root[data-theme="dark"] .pg-method-tab.active { border-color: #4fd8ff; color: #4fd8ff; background: rgba(79,216,255,.08); }
+.pg-method-tab:hover { border-color: #00c853; }
+.pg-method-tab.active { border-color: #00c853; background: rgba(0,200,83,.06); color: #00c853; }
+:root[data-theme="dark"] .pg-method-tab { background: #0a0a0a; border-color: #272727; color: #a0a0b0; }
+:root[data-theme="dark"] .pg-method-tab.active { border-color: #69f0ae; color: #69f0ae; background: rgba(105,240,174,.08); }
 .pg-method-tab .pg-mt-icon { font-size: 20px; display: block; margin-bottom: 2px; }
 
 /* ── Card form ────────────────────────────────────────────────── */
@@ -100,13 +100,13 @@
 :root[data-theme="dark"] .pg-field label { color: #a0a0b0; }
 .pg-field input {
   width: 100%; padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 12px;
-  background: #fff; font-size: 15px; font-weight: 600; color: #1a1a2e;
+  background: #fff; font-size: 15px; font-weight: 600; color: #151515;
   outline: none; box-sizing: border-box; font-family: inherit;
   transition: border-color .15s;
 }
-.pg-field input:focus { border-color: #0095f6; }
+.pg-field input:focus { border-color: #00c853; }
 .pg-field input::placeholder { color: #bbb; font-weight: 500; }
-:root[data-theme="dark"] .pg-field input { background: #0a0a16; border-color: #2a2a3e; color: #f5f5f5; }
+:root[data-theme="dark"] .pg-field input { background: #0a0a0a; border-color: #272727; color: #f5f5f5; }
 
 .pg-row { display: flex; gap: 12px; }
 .pg-row .pg-field { flex: 1; }
@@ -123,8 +123,8 @@
   padding: 16px; border-radius: 12px; background: #f0f8ff;
   font-size: 13px; line-height: 1.6; color: #333; margin: 0 24px 16px;
 }
-:root[data-theme="dark"] .pg-info-box { background: #0a1628; color: #cfc9de; }
-.pg-info-box strong { color: #0095f6; }
+:root[data-theme="dark"] .pg-info-box { background: #0e0e0e; color: #c6c6c6; }
+.pg-info-box strong { color: #00c853; }
 
 /* ── Pay button ───────────────────────────────────────────────── */
 .pg-pay-btn {
@@ -167,9 +167,9 @@
 #pg-step-success .pg-ref { font-size: 12px; color: #aaa; font-family: monospace; }
 .pg-done-btn {
   margin-top: 20px; padding: 12px 32px; border: 0; border-radius: 999px;
-  background: #1a1a2e; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer;
+  background: #151515; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer;
 }
-:root[data-theme="dark"] .pg-done-btn { background: #f5f5f5; color: #1a1a2e; }
+:root[data-theme="dark"] .pg-done-btn { background: #f5f5f5; color: #151515; }
 
 /* ── Error state ──────────────────────────────────────────────── */
 .pg-error-icon {
@@ -181,7 +181,7 @@
 #pg-step-error p { margin: 0; font-size: 13px; color: #8e8e8e; }
 .pg-retry-btn {
   margin-top: 16px; padding: 12px 32px; border: 0; border-radius: 999px;
-  background: #0095f6; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer;
+  background: #00a743; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer;
 }
 
 /* ── Mobile responsiveness ────────────────────────────────────── */

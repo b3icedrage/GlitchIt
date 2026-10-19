@@ -154,8 +154,8 @@
   color: #fff;
   background:
     radial-gradient(120% 90% at 50% 30%, rgba(255, 45, 124, .14), transparent 55%),
-    radial-gradient(120% 90% at 50% 100%, rgba(79, 91, 213, .12), transparent 55%),
-    #05050a;
+    radial-gradient(120% 90% at 50% 100%, rgba(0, 125, 51, .12), transparent 55%),
+    #050505;
   transition: opacity .25s ease;
 }
 .live-standby[hidden] { display: none; }

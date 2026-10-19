@@ -6,19 +6,19 @@
 
 /* ---- Design Tokens ---- */
 :root {
-  --gi-bg: #0a0b12;
-  --gi-surface: #12131e;
-  --gi-surface-hover: #1a1b28;
-  --gi-surface-card: #151622;
-  --gi-border: #1e2035;
-  --gi-border-light: #181a2a;
-  --gi-text: #e8eaf6;
-  --gi-text-secondary: #8a8faa;
-  --gi-text-muted: #5a5f7a;
-  --gi-accent: #00d4ff;
-  --gi-accent-secondary: #7c4dff;
-  --gi-accent-gradient: linear-gradient(135deg, #00d4ff, #7c4dff);
-  --gi-accent-glow: rgba(0, 212, 255, 0.3);
+  --gi-bg: #000000;
+  --gi-surface: #101010;
+  --gi-surface-hover: #1a1a1a;
+  --gi-surface-card: #121212;
+  --gi-border: #222222;
+  --gi-border-light: #1a1a1a;
+  --gi-text: #f2f2f2;
+  --gi-text-secondary: #9a9a9a;
+  --gi-text-muted: #5f5f5f;
+  --gi-accent: #00e676;
+  --gi-accent-secondary: #008737;
+  --gi-accent-gradient: linear-gradient(135deg, #00a743, #007d33);
+  --gi-accent-glow: rgba(0, 230, 118, 0.3);
   --gi-success: #00e676;
   --gi-error: #ff3040;
   --gi-shadow-sm: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
@@ -30,7 +30,7 @@
   --gi-radius-lg: 22px;
   --gi-radius-xl: 28px;
   --gi-radius-full: 9999px;
-  --gi-glass: rgba(12,13,22,0.88);
+  --gi-glass: rgba(6,6,6,0.88);
   --gi-glass-border: rgba(255,255,255,0.06);
   --gi-glass-blur: blur(24px) saturate(1.8);
   --gi-spacing-xs: 4px;
@@ -58,9 +58,9 @@ body {
 /* ---- Global Ambient Glow ---- */
 body::before {
   background:
-    radial-gradient(40% 32% at 10% 5%, rgba(0, 212, 255, 0.06), transparent 55%),
-    radial-gradient(36% 30% at 90% 8%, rgba(124, 77, 255, 0.05), transparent 55%),
-    radial-gradient(30% 28% at 50% 98%, rgba(224, 64, 251, 0.04), transparent 55%) !important;
+    radial-gradient(40% 32% at 10% 5%, rgba(0, 230, 118, 0.07), transparent 55%),
+    radial-gradient(36% 30% at 90% 8%, rgba(0, 200, 83, 0.05), transparent 55%),
+    radial-gradient(30% 28% at 50% 98%, rgba(0, 167, 67, 0.05), transparent 55%) !important;
 }
 
 /* ---- Brand ---- */
@@ -72,7 +72,7 @@ body::before {
 }
 
 .brand .icon {
-  filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.5)) !important;
+  filter: drop-shadow(0 0 8px rgba(0, 230, 118, 0.5)) !important;
   color: var(--gi-accent) !important;
 }
 
@@ -124,17 +124,17 @@ body::before {
 
 .story-ring {
   border: 2.5px solid var(--gi-accent) !important;
-  box-shadow: 0 2px 12px rgba(0, 212, 255, 0.2) !important;
+  box-shadow: 0 2px 12px rgba(0, 230, 118, 0.2) !important;
 }
 
 .story-ring.live {
   border-color: transparent !important;
-  box-shadow: 0 2px 16px rgba(0, 212, 255, 0.3) !important;
+  box-shadow: 0 2px 16px rgba(0, 230, 118, 0.3) !important;
 }
 
 .story:hover .story-ring {
   transform: translateY(-2px) scale(1.04) !important;
-  box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4) !important;
+  box-shadow: 0 6px 20px rgba(0, 230, 118, 0.4) !important;
 }
 
 /* ---- Post Header ---- */
@@ -166,13 +166,13 @@ body::before {
 /* ---- Primary Action Button ---- */
 .primary-action {
   background: var(--gi-accent-gradient) !important;
-  box-shadow: 0 4px 16px rgba(0, 212, 255, 0.3) !important;
+  box-shadow: 0 4px 16px rgba(0, 230, 118, 0.3) !important;
   font-weight: 800;
   letter-spacing: .02em;
 }
 
 .primary-action:hover {
-  box-shadow: 0 8px 24px rgba(0, 212, 255, 0.45) !important;
+  box-shadow: 0 8px 24px rgba(0, 230, 118, 0.45) !important;
   transform: translateY(-1px);
 }
 
@@ -190,7 +190,7 @@ body::before {
 
 .search-box input:focus {
   border-color: var(--gi-accent) !important;
-  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.12) !important;
+  box-shadow: 0 0 0 3px rgba(0, 230, 118, 0.12) !important;
 }
 
 .search-box input::placeholder {
@@ -219,7 +219,7 @@ body::before {
 
 .empty-state .icon {
   background: var(--gi-accent-gradient) !important;
-  box-shadow: 0 12px 32px rgba(0, 212, 255, 0.2) !important;
+  box-shadow: 0 12px 32px rgba(0, 230, 118, 0.2) !important;
 }
 
 .empty-state h2 {
@@ -284,7 +284,7 @@ body::before {
 
 .product button {
   background: var(--gi-accent-gradient) !important;
-  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.25) !important;
+  box-shadow: 0 4px 12px rgba(0, 230, 118, 0.25) !important;
 }
 
 /* ---- Profile Panel ---- */
@@ -325,7 +325,7 @@ body::before {
 
 .settings-button {
   background: var(--gi-accent-gradient) !important;
-  box-shadow: 0 4px 16px rgba(0, 212, 255, 0.25) !important;
+  box-shadow: 0 4px 16px rgba(0, 230, 118, 0.25) !important;
   color: #000 !important;
 }
 
@@ -393,7 +393,7 @@ body::before {
 
 .bottom-bar a.active svg {
   stroke: var(--gi-accent) !important;
-  filter: drop-shadow(0 0 6px rgba(0, 212, 255, 0.4));
+  filter: drop-shadow(0 0 6px rgba(0, 230, 118, 0.4));
 }
 
 .bottom-bar a:hover {
@@ -450,7 +450,7 @@ body::before {
 .sidebar nav a.active {
   background: var(--gi-accent-gradient) !important;
   color: #000 !important;
-  box-shadow: 0 4px 16px rgba(0, 212, 255, 0.25) !important;
+  box-shadow: 0 4px 16px rgba(0, 230, 118, 0.25) !important;
 }
 
 /* ---- Comment Box ---- */
@@ -486,7 +486,7 @@ body::before {
 
 /* ---- Story Viewer ---- */
 .sv-backdrop {
-  background: #05050a !important;
+  background: #050505 !important;
 }
 
 .sv-polaroid {
@@ -521,7 +521,7 @@ body::before {
 }
 
 .listing-form {
-  border-color: rgba(0, 212, 255, 0.3) !important;
+  border-color: rgba(0, 230, 118, 0.3) !important;
   background: rgba(18, 19, 30, 0.8) !important;
 }
 
@@ -542,7 +542,7 @@ body::before {
 
 .prem-plan.popular {
   border-color: var(--gi-accent) !important;
-  box-shadow: 0 16px 48px rgba(0, 212, 255, 0.12) !important;
+  box-shadow: 0 16px 48px rgba(0, 230, 118, 0.12) !important;
 }
 
 .prem-cta {
@@ -586,7 +586,7 @@ body::before {
 /* ---- Wallet ---- */
 .wallet-balance {
   background: var(--gi-accent-gradient) !important;
-  box-shadow: 0 12px 36px rgba(0, 212, 255, 0.25) !important;
+  box-shadow: 0 12px 36px rgba(0, 230, 118, 0.25) !important;
 }
 
 /* ---- Auth Card ---- */
@@ -623,13 +623,13 @@ main {
 
 /* ---- Focus States ---- */
 :focus-visible {
-  outline: 3px solid rgba(0, 212, 255, 0.45) !important;
+  outline: 3px solid rgba(0, 230, 118, 0.45) !important;
   outline-offset: 3px;
 }
 
 /* ---- Selection ---- */
 ::selection {
-  background: rgba(0, 212, 255, 0.25) !important;
+  background: rgba(0, 230, 118, 0.25) !important;
 }
 
 /* ---- Responsive ---- */
@@ -644,7 +644,7 @@ main {
   }
 
   .bottom-bar a.active svg {
-    filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.5));
+    filter: drop-shadow(0 0 8px rgba(0, 230, 118, 0.5));
   }
 
   .end-toast {
@@ -716,10 +716,10 @@ main {
 
 /* ---- Glitch Text Animation (for brand) ---- */
 @keyframes glitchText {
-  0%, 100% { text-shadow: 2px 0 #00d4ff, -2px 0 #e040fb; }
-  25% { text-shadow: -2px 0 #00d4ff, 2px 0 #e040fb; }
-  50% { text-shadow: 2px -2px #00d4ff, -2px 2px #e040fb; }
-  75% { text-shadow: -2px 2px #00d4ff, 2px -2px #e040fb; }
+  0%, 100% { text-shadow: 2px 0 #00e676, -2px 0 #008737; }
+  25% { text-shadow: -2px 0 #00e676, 2px 0 #008737; }
+  50% { text-shadow: 2px -2px #00e676, -2px 2px #008737; }
+  75% { text-shadow: -2px 2px #00e676, 2px -2px #008737; }
 }
 
 .brand-glitch {
@@ -788,8 +788,8 @@ body {
 
 /* Featured */
 .featured {
-  background: rgba(0, 212, 255, 0.05) !important;
-  border-color: rgba(0, 212, 255, 0.15) !important;
+  background: rgba(0, 230, 118, 0.05) !important;
+  border-color: rgba(0, 230, 118, 0.15) !important;
 }
 
 .featured span {
@@ -813,18 +813,18 @@ body {
 
 /* Upload card */
 .upload-card {
-  border-color: rgba(0, 212, 255, 0.15) !important;
-  box-shadow: 0 18px 48px rgba(0, 212, 255, 0.08) !important;
+  border-color: rgba(0, 230, 118, 0.15) !important;
+  box-shadow: 0 18px 48px rgba(0, 230, 118, 0.08) !important;
 }
 
 /* Glitch nav button */
 .glitch-nav-btn .glitch-play-icon {
-  filter: drop-shadow(0 0 6px rgba(0, 212, 255, 0.5)) !important;
+  filter: drop-shadow(0 0 6px rgba(0, 230, 118, 0.5)) !important;
 }
 
 /* Profile cover */
 .profile-cover {
-  background: linear-gradient(135deg, rgba(0,212,255,0.3), rgba(124,77,255,0.3)), var(--profile-cover) center/cover !important;
+  background: linear-gradient(135deg, rgba(0,230,118,0.3), rgba(0,125,51,0.3)), var(--profile-cover) center/cover !important;
 }
 
 /* Story viewer */

@@ -133,7 +133,7 @@
   }
 
   // ─── Blue Badge Injection ──────────────────────────────────────────
-  var BADGE_STYLE = 'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#0095f6;color:#fff;font-size:11px;margin-left:6px;vertical-align:middle;flex-shrink:0;';
+  var BADGE_STYLE = 'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#00a743;color:#fff;font-size:11px;margin-left:6px;vertical-align:middle;flex-shrink:0;';
 
   function injectBlueBadge(el) {
     if (!el || el.querySelector('.blue-badge-premium')) return;
@@ -168,7 +168,7 @@
     // Disable "Get Premium" buttons
     document.querySelectorAll('.prem-cta:not(.pay-wallet-btn)').forEach(function (btn) {
       btn.disabled = true;
-      btn.style.background = 'linear-gradient(135deg, #00c853, #00e676)';
+      btn.style.background = 'linear-gradient(135deg, #00a743, #007d33)';
       btn.style.cursor = 'default';
       btn.textContent = '\u2713 You\u2019re Premium';
     });
@@ -224,7 +224,7 @@
     if (depositSection && !depositSection.querySelector('.premium-info-banner')) {
       var banner = document.createElement('div');
       banner.className = 'premium-info-banner';
-      banner.style.cssText = 'background:rgba(0,150,246,.1);border:1px solid rgba(0,150,246,.25);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#0096f6;';
+      banner.style.cssText = 'background:rgba(0,200,83,.1);border:1px solid rgba(0,200,83,.25);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#00c853;';
       banner.innerHTML = '\u2714 <strong>Premium Active</strong> \u2014 Wallet deposit is disabled for 30 days. You can still tip and reward other users.';
       depositSection.insertBefore(banner, depositSection.firstChild);
     }
@@ -236,7 +236,7 @@
       if (wrap.querySelector('.blue-badge-premium')) return;
       var badge = document.createElement('span');
       badge.className = 'blue-badge-premium';
-      badge.style.cssText = 'position:absolute;bottom:2px;right:2px;width:22px;height:22px;border-radius:50%;background:#0095f6;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;z-index:2;';
+      badge.style.cssText = 'position:absolute;bottom:2px;right:2px;width:22px;height:22px;border-radius:50%;background:#00a743;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;z-index:2;';
       badge.innerHTML = '\u2713';
       badge.title = 'Verified Premium';
       wrap.style.position = 'relative';
@@ -249,7 +249,7 @@
     if (document.querySelector('.premium-welcome-toast')) return;
     var toast = document.createElement('div');
     toast.className = 'premium-welcome-toast';
-    toast.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);z-index:9999;padding:14px 22px;border-radius:999px;background:linear-gradient(135deg,#0095f6,#00d4ff);color:#fff;font-size:14px;font-weight:800;box-shadow:0 8px 30px rgba(0,149,246,.4);opacity:0;transition:opacity .3s ease,transform .3s ease;white-space:nowrap;pointer-events:none;';
+    toast.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);z-index:9999;padding:14px 22px;border-radius:999px;background:linear-gradient(135deg,#00a743,#007d33);color:#fff;font-size:14px;font-weight:800;box-shadow:0 8px 30px rgba(0,200,83,.4);opacity:0;transition:opacity .3s ease,transform .3s ease;white-space:nowrap;pointer-events:none;';
     toast.innerHTML = '\u2728 You are now Premium! Blue badge active for 30 days.';
     document.body.appendChild(toast);
     requestAnimationFrame(function () {

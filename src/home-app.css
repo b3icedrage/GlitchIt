@@ -177,11 +177,11 @@
 
 .home-shell .story:hover .story-ring {
   transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 6px 16px rgba(214,41,118,.3);
+  box-shadow: 0 6px 16px rgba(0,167,67,.3);
 }
 
 .home-shell .story-ring.live {
-  background: conic-gradient(from 0deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5, #feda75);
+  background: conic-gradient(from 0deg, #00e676, #00c853, #00a743, #008737, #007d33, #00e676);
   border-color: transparent;
 }
 

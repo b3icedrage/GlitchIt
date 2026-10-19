@@ -22,21 +22,21 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #322d45;
+  border: 1px solid #2e2e2e;
   border-radius: 999px;
   padding: 0 12px;
-  background: #1b1929;
+  background: #171717;
   transition: border-color .2s ease, box-shadow .2s ease;
 }
 
 .note-music-card .music-search-wrap:focus-within {
-  border-color: #d62976;
-  box-shadow: 0 0 0 3px rgba(214, 41, 118, .18);
+  border-color: #00a743;
+  box-shadow: 0 0 0 3px rgba(0, 167, 67, .18);
 }
 
 .note-music-card .music-search-icon {
   flex: 0 0 auto;
-  color: #8f88a8;
+  color: #858585;
 }
 
 .note-music-card .music-search {
@@ -45,12 +45,12 @@
   border: 0;
   padding: 11px 0;
   background: transparent;
-  color: #f6f3ff;
+  color: #f2f2f2;
   font-size: 14px;
   outline: none;
 }
 
-.note-music-card .music-search::placeholder { color: #8f88a8; }
+.note-music-card .music-search::placeholder { color: #858585; }
 
 .note-music-card .music-search-clear {
   flex: 0 0 auto;
@@ -61,7 +61,7 @@
   border: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, .1);
-  color: #b9b3ce;
+  color: #a6a6a6;
   font-size: 12px;
   cursor: pointer;
   line-height: 1;
@@ -132,14 +132,14 @@
   display: grid;
   gap: 2px;
 }
-.note-music-card .music-spotify-copy strong { font-size: 14px; color: #f6f3ff; }
+.note-music-card .music-spotify-copy strong { font-size: 14px; color: #f2f2f2; }
 .note-music-card .music-spotify-copy em {
   font-size: 12px;
   font-style: normal;
   line-height: 1.35;
-  color: #b9b3ce;
+  color: #a6a6a6;
 }
-.note-music-card .music-spotify-copy em b { color: #6aa9ff; font-weight: 600; }
+.note-music-card .music-spotify-copy em b { color: #00c853; font-weight: 600; }
 
 .note-music-card .music-spotify-close {
   flex: 0 0 auto;
@@ -150,12 +150,12 @@
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: #8f88a8;
+  color: #858585;
   font-size: 16px;
   cursor: pointer;
   transition: background .2s ease, color .2s ease;
 }
-.note-music-card .music-spotify-close:hover { background: rgba(255, 255, 255, .1); color: #f6f3ff; }
+.note-music-card .music-spotify-close:hover { background: rgba(255, 255, 255, .1); color: #f2f2f2; }
 
 /* ---------- Song list ---------- */
 .note-music-card .music-list {
@@ -179,7 +179,7 @@
   border-radius: 14px;
   padding: 8px 8px;
   background: transparent;
-  color: #f6f3ff;
+  color: #f2f2f2;
   text-align: left;
   cursor: pointer;
   transition: background .18s ease, transform .12s ease;
@@ -205,7 +205,7 @@
 .note-music-card .music-thumb.fallback {
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  background: linear-gradient(135deg, #00a743, #007d33);
   color: #fff;
   font-size: 20px;
 }
@@ -222,12 +222,12 @@
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  background: linear-gradient(135deg, #00a743, #007d33);
   color: #fff;
   font-size: 11px;
   line-height: 1;
   padding: 0 0 0 1px;
-  box-shadow: 0 4px 10px rgba(214, 41, 118, .5);
+  box-shadow: 0 4px 10px rgba(0, 167, 67, .5);
   cursor: pointer;
   transition: transform .18s ease;
 }
@@ -245,7 +245,7 @@
   gap: 6px;
   font-size: 14px;
   font-weight: 600;
-  color: #f6f3ff;
+  color: #f2f2f2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -254,7 +254,7 @@
   display: block;
   font-size: 12px;
   font-style: normal;
-  color: #8f88a8;
+  color: #858585;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -269,8 +269,8 @@
   height: 15px;
   padding: 0 3px;
   border-radius: 4px;
-  border: 1px solid rgba(214, 41, 118, .7);
-  color: #e05a92;
+  border: 1px solid rgba(0, 167, 67, .7);
+  color: #00e676;
   font-size: 9px;
   font-weight: 800;
   line-height: 1;
@@ -286,19 +286,19 @@
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: #8f88a8;
+  color: #858585;
   cursor: pointer;
   transition: background .18s ease, color .18s ease, transform .15s ease;
 }
-.note-music-card .music-save:hover { background: rgba(255, 255, 255, .07); color: #f6f3ff; }
+.note-music-card .music-save:hover { background: rgba(255, 255, 255, .07); color: #f2f2f2; }
 .note-music-card .music-save:active { transform: scale(.88); }
-.note-music-card .music-save.saved { color: #d62976; }
-.note-music-card .music-row.saved .music-save { color: #d62976; }
+.note-music-card .music-save.saved { color: #00a743; }
+.note-music-card .music-row.saved .music-save { color: #00a743; }
 
 .note-music-card .music-empty {
   margin: 0;
   padding: 24px 16px;
-  color: #8f88a8;
+  color: #858585;
   font-size: 13px;
   text-align: center;
 }
@@ -315,7 +315,7 @@
   border-radius: 999px;
   background: rgba(18, 16, 31, .92);
   border: 1px solid rgba(255, 255, 255, .12);
-  color: #f6f3ff;
+  color: #f2f2f2;
   font-size: 13px;
   font-weight: 600;
   text-align: center;
@@ -344,7 +344,7 @@
   border: 0;
   border-radius: 26px 26px 0 0;
   padding: 14px 18px calc(18px + env(safe-area-inset-bottom));
-  background: radial-gradient(circle at top right, #241c3f, #12101f 60%);
+  background: radial-gradient(circle at top right, #212121, #101010 60%);
   box-shadow: 0 -20px 60px rgba(0, 0, 0, .55);
   animation: ncSlideUp .3s cubic-bezier(.2, .9, .3, 1);
 }
@@ -359,7 +359,7 @@
   right: auto;
   left: 14px;
   background: transparent;
-  color: #f6f3ff;
+  color: #f2f2f2;
   font-size: 20px;
 }
 .note-composer-card .nc-topbar {
@@ -373,7 +373,7 @@
 .note-composer-card .nc-share {
   border: 0;
   background: transparent;
-  color: #6a9dff;
+  color: #00c853;
   font-size: 16px;
   font-weight: 800;
   cursor: pointer;
@@ -388,9 +388,9 @@
   margin: 4px auto 0;
   width: min(340px, 88%);
   padding: 4px 16px 6px;
-  border: 1px solid #322d45;
+  border: 1px solid #2e2e2e;
   border-radius: 20px;
-  background: #1b1929;
+  background: #171717;
 }
 .note-composer-card .nc-bubble-tail {
   position: absolute;
@@ -399,9 +399,9 @@
   width: 13px;
   height: 13px;
   transform: translateX(-50%) rotate(45deg);
-  border-right: 1px solid #322d45;
-  border-bottom: 1px solid #322d45;
-  background: #1b1929;
+  border-right: 1px solid #2e2e2e;
+  border-bottom: 1px solid #2e2e2e;
+  background: #171717;
 }
 .note-composer-card .nc-text {
   display: block;
@@ -409,13 +409,13 @@
   border: 0;
   padding: 8px 0 2px;
   background: transparent;
-  color: #f6f3ff;
+  color: #f2f2f2;
   font-size: 15px;
   line-height: 1.4;
   resize: none;
   outline: none;
 }
-.note-composer-card .nc-text::placeholder { color: #8f88a8; }
+.note-composer-card .nc-text::placeholder { color: #858585; }
 
 /* Avatar with gradient ring + music palette button */
 .note-composer-card .nc-avatar-wrap {
@@ -427,7 +427,7 @@
   display: block;
   padding: 3px;
   border-radius: 50%;
-  background: conic-gradient(from 210deg, #f6f3ff, #b9b3ce, #8f88a8, #f6f3ff, #b9b3ce, #f6f3ff);
+  background: conic-gradient(from 210deg, #f2f2f2, #a6a6a6, #858585, #f2f2f2, #a6a6a6, #f2f2f2);
 }
 .note-composer-card .nc-avatar {
   display: block;
@@ -435,7 +435,7 @@
   height: 72px;
   border-radius: 50%;
   object-fit: cover;
-  background: #241c3f;
+  background: #212121;
 }
 .note-composer-card .nc-palette {
   position: absolute;
@@ -445,9 +445,9 @@
   height: 26px;
   display: grid;
   place-items: center;
-  border: 2px solid #12101f;
+  border: 2px solid #101010;
   border-radius: 50%;
-  background: linear-gradient(135deg, #d62976, #b0246a);
+  background: linear-gradient(135deg, #00a743, #008737);
   color: #fff;
   cursor: pointer;
   transition: transform .18s ease;
@@ -465,15 +465,15 @@
   height: 46px;
   display: grid;
   place-items: center;
-  border: 1px solid #322d45;
+  border: 1px solid #2e2e2e;
   border-radius: 14px;
-  background: #1b1929;
-  color: #d62976;
+  background: #171717;
+  color: #00a743;
   cursor: pointer;
   transition: transform .15s ease, border-color .2s ease, color .2s ease;
 }
 .note-composer-card .nc-action:active { transform: scale(.9); }
-.note-composer-card .nc-action:hover { border-color: #d62976; }
+.note-composer-card .nc-action:hover { border-color: #00a743; }
 .note-composer-card .nc-action-gif { color: #1db954; font-weight: 800; font-size: 13px; }
 .note-composer-card .nc-action-gif:hover { border-color: #1db954; }
 
@@ -508,8 +508,8 @@
   cursor: pointer;
   padding: 4px 2px;
 }
-.note-composer-card .nc-sheet-new { color: #f6f3ff; }
-.note-composer-card .nc-sheet-done { color: #6a9dff; }
+.note-composer-card .nc-sheet-new { color: #f2f2f2; }
+.note-composer-card .nc-sheet-done { color: #00c853; }
 .note-composer-card .nc-sheet-new:active,
 .note-composer-card .nc-sheet-done:active { opacity: .6; }
 
@@ -528,7 +528,7 @@
   border-radius: 10px;
   overflow: hidden;
   background: linear-gradient(135deg, #2a2440, #191627);
-  color: #d62976;
+  color: #00a743;
   font-size: 20px;
 }
 .note-composer-card .nc-sheet-art img {
@@ -545,7 +545,7 @@
 .note-composer-card .nc-sheet-meta b {
   font-size: 16px;
   font-weight: 700;
-  color: #f6f3ff;
+  color: #f2f2f2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -553,7 +553,7 @@
 .note-composer-card .nc-sheet-meta em {
   font-size: 13px;
   font-style: normal;
-  color: #8f88a8;
+  color: #858585;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -575,15 +575,15 @@
   border: 1px solid rgba(255, 255, 255, .25);
   border-radius: 50%;
   background: transparent;
-  color: #f6f3ff;
+  color: #f2f2f2;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
   transition: border-color .2s ease, background .2s ease;
 }
 .note-composer-card .nc-clip-chip.on {
-  border-color: #d62976;
-  background: rgba(214, 41, 118, .18);
+  border-color: #00a743;
+  background: rgba(0, 167, 67, .18);
 }
 .note-composer-card .nc-progress {
   position: relative;
@@ -600,7 +600,7 @@
   bottom: 0;
   width: 0%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #d62976, #7b5cff);
+  background: linear-gradient(90deg, #00a743, #007d33);
   transition: width .2s linear;
 }
 .note-composer-card .nc-progress i::after {
@@ -662,7 +662,7 @@
   top: 0;
   bottom: 0;
   border-radius: 10px;
-  background: linear-gradient(90deg, rgba(247, 183, 51, .55), rgba(214, 41, 118, .5) 55%, rgba(123, 92, 255, .55));
+  background: linear-gradient(90deg, rgba(0, 230, 118, .55), rgba(0, 167, 67, .5) 55%, rgba(0, 125, 51, .55));
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
   transition: left .25s ease, width .25s ease;
 }
@@ -688,7 +688,7 @@
   border-radius: 8px;
   overflow: hidden;
   background: linear-gradient(135deg, #2a2440, #191627);
-  color: #d62976;
+  color: #00a743;
   font-size: 16px;
 }
 .note-composer-card .nc-attached-art img {
@@ -706,7 +706,7 @@
 .note-composer-card .nc-attached-meta b {
   font-size: 13px;
   font-weight: 700;
-  color: #f6f3ff;
+  color: #f2f2f2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -714,7 +714,7 @@
 .note-composer-card .nc-attached-meta em {
   font-size: 11px;
   font-style: normal;
-  color: #8f88a8;
+  color: #858585;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -728,7 +728,7 @@
   border: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, .1);
-  color: #f6f3ff;
+  color: #f2f2f2;
   font-size: 12px;
   cursor: pointer;
   transition: background .18s ease;

@@ -156,7 +156,7 @@ function ensureOverlay() {
         <div style="font-size:40px;margin-bottom:8px;">📱</div>
         <h3 style="margin:0 0 4px;">Pay via M-Pesa</h3>
         <p style="font-size:13px;color:#8e8e8e;margin:0 0 16px;">Follow these steps on your phone:</p>
-        <div id="pg-inst-box" style="background:#1a1a2e;border-radius:12px;padding:16px;margin-bottom:16px;"></div>
+        <div id="pg-inst-box" style="background:#151515;border-radius:12px;padding:16px;margin-bottom:16px;"></div>
         <div class="pg-field" style="text-align:left;margin-bottom:12px;">
           <label for="pg-mpesa-code" style="font-weight:700;">Enter M-Pesa confirmation code</label>
           <input type="text" id="pg-mpesa-code" placeholder="e.g. QHK71G4YS0" maxlength="14"

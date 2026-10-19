@@ -17,13 +17,13 @@
   border-radius: 18px;
   color: #fff;
   text-decoration: none;
-  background: linear-gradient(135deg, #d62976, #4f5bd5);
-  box-shadow: 0 12px 30px rgba(79, 91, 213, 0.38);
+  background: linear-gradient(135deg, #00a743, #007d33);
+  box-shadow: 0 12px 30px rgba(0, 125, 51, 0.38);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .activity-discover-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 14px 34px rgba(79, 91, 213, 0.5);
+  box-shadow: 0 14px 34px rgba(0, 125, 51, 0.5);
 }
 .activity-discover-btn:active { transform: scale(0.98); }
 .activity-discover-icon {
@@ -91,7 +91,7 @@
   position: relative;
   border-radius: 18px;
   overflow: hidden;
-  background: linear-gradient(150deg, #6d28d9 0%, #d62976 60%, #f59e0b 130%);
+  background: linear-gradient(150deg, #007d33 0%, #00a743 60%, #00c853 130%);
 }
 .ch-feature-art {
   position: relative;
@@ -149,7 +149,7 @@
 .ch-seeall {
   border: 0;
   background: transparent;
-  color: #4fa8ff;
+  color: #00c853;
   font-size: 13px;
   font-weight: 700;
   padding: 2px 4px;
@@ -174,7 +174,7 @@
 .ch-topic:hover { background: rgba(255, 255, 255, 0.12); }
 .ch-topic:active { transform: scale(0.96); }
 .ch-topic.active {
-  background: linear-gradient(135deg, #d62976, #4f5bd5);
+  background: linear-gradient(135deg, #00a743, #007d33);
   border-color: transparent;
 }
 
@@ -201,7 +201,7 @@
 .ch-avatar i { font-style: normal; filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35)); }
 .ch-avatar.ring-white { border: 2px solid #fff; }
 .ch-avatar.ring-gold { border: 2px solid #f5c542; }
-.ch-avatar.ring-blue { border: 2px solid #4fa8ff; }
+.ch-avatar.ring-blue { border: 2px solid #00c853; }
 .ch-meta { display: grid; gap: 2px; min-width: 0; }
 .ch-meta strong {
   display: flex;
@@ -228,7 +228,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #2ea6ff;
+  background: #00a743;
   flex: none;
 }
 .ch-verified svg { display: block; }
@@ -241,8 +241,8 @@
   color: #fff;
   font-size: 13px;
   font-weight: 700;
-  background: linear-gradient(135deg, #2ea6ff, #1877f2);
-  box-shadow: 0 6px 16px rgba(46, 166, 255, 0.3);
+  background: linear-gradient(135deg, #00a743, #007d33);
+  box-shadow: 0 6px 16px rgba(0, 167, 67, 0.3);
   transition: transform 0.1s ease, filter 0.15s ease;
 }
 .ch-join:hover { filter: brightness(1.1); }
