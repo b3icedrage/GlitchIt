@@ -52,7 +52,7 @@
   min-height: calc(100vh - 100px);
   padding: 48px 20px;
   border-radius: 24px;
-  background: radial-gradient(120% 120% at 50% 0%, #1d1430 0%, #050505 58%);
+  background: radial-gradient(120% 120% at 50% 0%, #0c2416 0%, #050505 58%);
   box-shadow: 0 24px 70px rgba(0,0,0,.24);
   text-align: center;
   color: #fff;
@@ -64,7 +64,7 @@
   gap: 6px;
   padding: 6px 14px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #f9ce34, #ee2a7b 52%, #6228d7);
+  background: linear-gradient(90deg, #00e676, #00a743 52%, #007d33);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .12em;
@@ -81,7 +81,7 @@
   display: block;
   margin: 0 auto !important;
   border-radius: 16px !important;
-  box-shadow: 0 18px 48px rgba(214,41,118,.22);
+  box-shadow: 0 18px 48px rgba(0,167,67,.25);
 }
 .ig-record-link {
   color: #fff;

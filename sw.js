@@ -8,7 +8,7 @@
 //    (immutable URLs) with a FIFO budget so maps open instantly on repeat visits.
 'use strict';
 
-const CACHE_NAME = 'glitchit-cache-v5';
+const CACHE_NAME = 'glitchit-cache-v6';
 const MEDIA_CACHE_NAME = 'glitchit-media-v2';
 const MEDIA_BUDGET = 40;
 const MAP_CACHE_NAME = 'glitchit-map-v1';
