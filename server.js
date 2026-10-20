@@ -27,6 +27,8 @@ const paymentHandler = require('./api/payment.js');
 const pesapalHandler = require('./api/pesapal.js');
 const gatewayHandler = require('./api/gateway.js');
 const settlementHandler = require('./api/settlement.js');
+const notifyHandler = require('./api/notify.js');
+const moderateHandler = require('./api/moderate.js');
 const { creditVault } = require('./api/settlement.js');
 
 const ROOT = resolve(__dirname);
@@ -544,6 +546,15 @@ res.writeHead = function (status, headers) {
   }
   if (req.method === 'GET' && new URL(req.url, 'http://glitchit.local').pathname === '/api/livekit-token') {
     await livekitTokenHandler(req, res);
+    return;
+  }
+  // Web push delivery + the admin trust & safety queue.
+  if (req.method === 'POST' && new URL(req.url, 'http://glitchit.local').pathname === '/api/notify') {
+    await notifyHandler(req, res);
+    return;
+  }
+  if (new URL(req.url, 'http://glitchit.local').pathname === '/api/moderate') {
+    await moderateHandler(req, res);
     return;
   }
   // Payment gateway: all /api/payment/* routes

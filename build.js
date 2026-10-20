@@ -20,6 +20,7 @@ const ENTRIES = [
   'sitemap.xml',
   'search.html',
   'glitches.html',
+  'post.html',
   'messages.html',
   'chat.html',
   'live.html',

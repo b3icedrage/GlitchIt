@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="google-adsense-account" content="ca-pub-6010592277770538" />
+    <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin />
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6010592277770538" crossorigin="anonymous"></script>
+    <!-- Firebase Analytics + Auth (alongside Supabase) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-75V7YGZ9C5"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag("js", new Date());
+      gtag("config", "G-75V7YGZ9C5", { app_name: "GlitchIt", send_page_view: false });
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/11.8.1/firebase-app-compat.js" async></script>
+    <script src="https://www.gstatic.com/firebasejs/11.8.1/firebase-auth-compat.js" async></script>
+    <script>
+      // Shared links land here signed-out more often than not; the guest flag
+      // lets the page render the post while signed-out visitors browse. Bots
+      // (Googlebot / AdSense review) get the same read-only treatment.
+      try { if (/Googlebot|Mediapartners-Google|AdsBot-Google/i.test(navigator.userAgent || '')) localStorage.setItem('glitchit.auth.guest.v1', '1'); } catch (err) {}
+    </script>
+    <!-- Static fallback tags — src/main.js swaps in the real title/caption
+         once the post loads. Per-post OG images need a server-rendered
+         endpoint, so crawlers get the generic card until then. -->
+    <meta name="description" content="A post on GlitchIt — short videos, stories and drops from creators around the world." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://glitchit.app/post.html" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="GlitchIt" />
+    <meta property="og:title" content="Post · GlitchIt" />
+    <meta property="og:description" content="Watch this post on GlitchIt — like, comment, save and share." />
+    <meta property="og:url" content="https://glitchit.app/post.html" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Post · GlitchIt" />
+    <meta name="twitter:description" content="Watch this post on GlitchIt — like, comment, save and share." />
+    <title>Post · GlitchIt</title>
+    <link rel="stylesheet" href="src/styles.css?v=10" />
+    <link rel="stylesheet" href="src/design-system.css?v=1" />
+    <link rel="stylesheet" href="src/story-extras.css?v=2" />
+    <link rel="stylesheet" href="src/bottombar.css?v=3" />
+    <link rel="stylesheet" href="src/reels.css?v=4" />
+    <link rel="stylesheet" href="src/db.css" />
+    <link rel="stylesheet" href="src/social.css?v=2" />
+  </head>
+  <body data-page="post">
+    <div id="app">
+      <aside class="sidebar">
+        <a class="brand" href="index.html"><span class="icon" aria-hidden="true">ϟ</span>GlitchIt</a>
+        <nav>
+          <a href="index.html"><span class="icon" aria-hidden="true">⌂</span><span>Home</span></a>
+          <a href="search.html"><span class="icon" aria-hidden="true">⌕</span><span>Search</span></a>
+          <a href="glitches.html"><span class="icon" aria-hidden="true">▣</span><span>Glitches</span></a>
+          <a href="messages.html"><span class="icon" aria-hidden="true">✉</span><span>Messages</span></a>
+          <a href="live.html"><span class="icon" aria-hidden="true">◉</span><span>Live</span></a>
+          <a href="activity.html"><span class="icon" aria-hidden="true">♡</span><span>Activity</span></a>
+          <a href="shop.html"><span class="icon" aria-hidden="true">◒</span><span>Shop</span></a>
+          <a href="profile.html"><span class="icon" aria-hidden="true">◎</span><span>Profile</span></a>
+        </nav>
+      </aside>
+
+      <main>
+        <section class="page" data-page="post" aria-label="Post">
+          <!-- src/main.js hydratePostPage() fills #post-view with the same
+               card builders the feeds use, so like/comment/save state is
+               shared between the feed and this permalink. -->
+          <div id="post-view" aria-live="polite"></div>
+          <div id="post-missing" class="feed-empty" hidden>
+            <span class="feed-empty-mark">ϟ</span>
+            <h3>Post not found</h3>
+            <p>This post may have been removed, or the link is broken.</p>
+            <a href="index.html">Back to your feed</a>
+          </div>
+        </section>
+      </main>
+
+      <aside class="right-rail">
+        <div class="me"><img src="" alt="Your profile" loading="lazy" /><div><strong>you</strong><span>GlitchIt creator</span></div></div>
+        <div class="stats"><span><b data-stat="followers">0</b> followers</span><span><b data-stat="drops">0</b> drops</span></div>
+        <div class="rail-head"><h3>Suggested for you</h3><a href="activity.html">See all</a></div>
+        <div class="rail-suggestions"></div>
+      </aside>
+
+      <nav class="ig-bottom-bar" aria-label="Primary navigation">
+        <a href="index.html" class="ig-tab" data-tab="home" aria-label="Home"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M9.005 16.545a2.997 2.997 0 0 1 2.997-2.997h0A2.997 2.997 0 0 1 15 16.545V22h7V11.543L12 2 2 11.543V22h7.005z"/></svg></span></a>
+        <a href="camera.html" class="ig-tab" data-tab="create" aria-label="Create"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg></span></a>
+        <a href="glitches.html" class="ig-tab" data-tab="reels" aria-label="Reels"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/></svg></span></a>
+        <a href="messages.html" class="ig-tab" data-tab="messages" aria-label="Messages"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M22 3L9.218 10.083M11.698 20.334L22 3.001H2l9.218 7.083m.48 10.25l1.525-5.833L22 3"/></svg></span></a>
+        <a href="search.html" class="ig-tab" data-tab="search" aria-label="Search"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span></a>
+        <a href="profile.html" class="ig-tab" data-tab="profile" aria-label="Profile"><span class="ig-tab-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span></a>
+      </nav>
+    </div>
+    <script src="src/premium-gate.js" defer></script>
+    <script src="src/analytics.js?v=1" defer></script>
+    <script src="src/main.js?v=43"></script>
+    <script src="src/social-wire.js?v=10"></script>
+    <script src="src/ads.js?v=3"></script>
+  </body>
+</html>

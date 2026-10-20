@@ -1,0 +1,110 @@
+rules_version = '2';
+
+// GlitchIt — Firestore security rules (the RLS equivalent for the live
+// backend). Media moved from the Supabase `media` table into three Firestore
+// collections (see src/db.js), so this is where write access gets locked to
+// owners. Everything follows the same principle: public read for the public
+// feed, owner-only write, and moderation/push plumbing that clients can
+// create but not read back.
+//
+// Deploy with:  firebase deploy --only firestore:rules
+// (Admin tooling — admin.html's reports queue — talks to /api/moderate with
+// firebase-admin instead, which bypasses these rules by design.)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // ---- Media (posts / reels / stories) ----
+    // Rows keep the legacy shape: { user: <owner uid>, url, caption, ... }.
+    // Public read (feeds are public); create requires claiming yourself as
+    // the owner; only the owner can change or delete their row afterwards.
+    match /media_posts/{id} {
+      allow read: if true;
+      allow create: if isOwner(request.resource.data.user)
+        && request.resource.data.url is string
+        && request.resource.data.url.size() < 2048;
+      allow update, delete: if isOwner(resource.data.user);
+    }
+    match /media_reels/{id} {
+      allow read: if true;
+      allow create: if isOwner(request.resource.data.user)
+        && request.resource.data.url is string
+        && request.resource.data.url.size() < 2048;
+      allow update, delete: if isOwner(resource.data.user);
+    }
+    match /media_stories/{id} {
+      allow read: if true;
+      allow create: if isOwner(request.resource.data.user)
+        && request.resource.data.url is string
+        && request.resource.data.url.size() < 2048;
+      // Stories expire; owners may also flip expiry/close_friends flags.
+      allow update, delete: if isOwner(resource.data.user);
+    }
+
+    // ---- Profiles ----
+    // Public read (avatars/handles render everywhere); owner-only write.
+    match /users/{uid} {
+      allow read: if true;
+      allow write: if isOwner(uid);
+    }
+
+    // ---- Verified users ----
+    match /verified_users/{uid} {
+      allow read: if true;
+      allow write: if false; // flipped by admin tooling only
+    }
+
+    // ---- Reports (trust & safety) ----
+    // Signed-in users may file a report about anything; nobody reads them
+    // client-side — the admin queue goes through /api/moderate (Admin SDK).
+    match /reports/{id} {
+      allow read: if false;
+      allow create: if signedIn()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.reason.size() < 120;
+      allow update, delete: if false;
+    }
+
+    // ---- Blocks ----
+    // One doc per account (id = uid) holding that account's block list.
+    match /blocks/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ---- Notifications (in-app activity rows) ----
+    // Anyone signed in may address a notification to someone else, but only
+    // the recipient can read their inbox or mark rows read.
+    match /notifications/{id} {
+      allow create: if signedIn()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.to is string
+        && request.resource.data.to.size() > 0;
+      allow read, update, delete: if signedIn() && resource.data.to == request.auth.uid;
+    }
+
+    // ---- Push tokens (FCM registration ids) ----
+    // Doc id is `${uid}_${hash}`; the uid field is authoritative. Own tokens
+    // only — leaking someone else's token would let you push to their device.
+    match /push_tokens/{id} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow create, update: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.token is string
+        && request.resource.data.token.size() < 4096;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // Anything not matched above stays locked.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

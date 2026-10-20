@@ -11,6 +11,10 @@
 
 let admin = null;
 try { admin = require('firebase-admin'); } catch (e) { /* firebase-admin optional */ }
+// Shared bootstrap: env-first credential resolution + firebase-admin v14
+// (modular) / legacy namespace compatibility. FIREBASE_SA stays exported
+// below as the project's single source of truth for the fallback key.
+const shared = require('./_admin.js');
 
 let adminApp = null;
 
@@ -30,26 +34,8 @@ const FIREBASE_SA = {
 
 function getAdminApp() {
   if (adminApp) return adminApp;
-  if (!admin) return null;
-
-  try {
-    // Try env var first, fall back to hardcoded service account
-    const saJson = process.env.FIREBASE_SERVICE_ACCOUNT;
-    let serviceAccount;
-    if (saJson) {
-      serviceAccount = JSON.parse(saJson);
-    } else {
-      serviceAccount = FIREBASE_SA;
-    }
-
-    adminApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    return adminApp;
-  } catch (e) {
-    console.warn('[Accounts] Firebase Admin init failed:', e.message);
-    return null;
-  }
+  adminApp = shared.getAdminApp();
+  return adminApp;
 }
 
 function sanitize(fbUser, profile) {
@@ -94,12 +80,14 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    // List users from Firebase Auth (max 1000)
-    const listResult = await admin.auth(app).listUsers({ maxResults: 200 });
+    // List users from Firebase Auth (first page). firebase-admin v14 takes
+    // positional args — listUsers(maxResults, pageToken) — not an options
+    // object like older versions did.
+    const listResult = await shared.getAuthService(app).listUsers(200);
     const fbUsers = listResult.users || [];
 
     // Load profiles from Firestore
-    const db = admin.firestore(app);
+    const db = shared.getDb(app);
     const accounts = [];
 
     for (const fbUser of fbUsers) {
@@ -121,3 +109,8 @@ module.exports = async function handler(req, res) {
     json(res, 502, { ok: false, error: 'Could not reach the accounts service.' });
   }
 };
+
+// The fallback service account, shared with /api/notify and /api/moderate
+// through api/_admin.js (which requires this module lazily — the key is
+// never duplicated across files).
+module.exports.FIREBASE_SA = FIREBASE_SA;

@@ -51,6 +51,96 @@
     renderCharts();
     renderWorkers();
     renderLogs();
+    renderReports();
+  }
+
+  // ─── Trust & Safety: reports queue (/api/moderate) ────────────────
+  // The same Basic credentials that gate this page gate the API, which reads
+  // the Firestore `reports` collection admin-side (clients can't read it).
+  function adminAuthHeader() {
+    return 'Basic ' + btoa(`${ADMIN_USER}:${ADMIN_PASS}`);
+  }
+
+  async function renderReports() {
+    const container = document.getElementById('reports-container');
+    const meta = document.getElementById('reports-meta');
+    if (!container) return;
+    container.innerHTML = '<div style="color:#626262;font-size:13px;padding:12px;">Loading reports…</div>';
+    if (meta) meta.textContent = '';
+    let reports = [];
+    try {
+      const res = await fetch('/api/moderate', { headers: { Authorization: adminAuthHeader() } });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'not configured');
+      reports = Array.isArray(data.reports) ? data.reports : [];
+    } catch (err) {
+      container.innerHTML = `<div style="color:#626262;font-size:13px;padding:12px;">Reports queue unavailable — ${err && err.message === 'not configured' ? 'set FIREBASE_SERVICE_ACCOUNT to enable it' : 'check the server logs'}.</div>`;
+      return;
+    }
+    const open = reports.filter((r) => r.status === 'open').length;
+    if (meta) meta.innerHTML = `<b>${open}</b> open · ${reports.length} total`;
+    if (!reports.length) {
+      container.innerHTML = '<div style="color:#626262;font-size:13px;padding:12px;">No reports — the community is behaving. 🎉</div>';
+      return;
+    }
+    container.innerHTML = reports.map((r) => `
+      <div class="report-card" data-report-id="${escapeAttr(r.id)}">
+        <div class="report-head">
+          <span class="report-type">${escapeHtml(r.type || 'post')}</span>
+          <span class="report-status ${escapeAttr(r.status)}">${escapeHtml(r.status)}</span>
+        </div>
+        <div class="report-reason">${escapeHtml(r.reason || 'No reason given')}</div>
+        ${r.note ? `<div class="report-note">“${escapeHtml(r.note)}”</div>` : ''}
+        <div class="report-foot">
+          <span class="report-who">by @${escapeHtml(r.fromName || 'anonymous')} · ${escapeHtml(formatReportTime(r.at))}</span>
+          <span class="report-actions">
+            <button type="button" data-act="acknowledge">Acknowledge</button>
+            <button type="button" data-act="dismiss">Dismiss</button>
+            <button type="button" class="danger" data-act="remove">Remove content</button>
+          </span>
+        </div>
+      </div>`).join('');
+    container.querySelectorAll('.report-card').forEach((card) => {
+      card.querySelectorAll('button[data-act]').forEach((btn) => {
+        btn.addEventListener('click', () => moderateReport(card.dataset.reportId, btn.dataset.act));
+      });
+    });
+  }
+
+  async function moderateReport(id, act) {
+    if (!id) return;
+    const payload = act === 'remove'
+      ? { id, action: 'remove' }
+      : { id, status: act === 'dismiss' ? 'dismissed' : 'acknowledged' };
+    try {
+      const res = await fetch('/api/moderate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: adminAuthHeader() },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'failed');
+      renderReports();
+    } catch (err) {
+      alert(`Couldn’t update the report: ${err && err.message}`);
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+  const escapeAttr = escapeHtml;
+
+  function formatReportTime(iso) {
+    const t = Date.parse(iso || '');
+    if (!t) return 'just now';
+    const diff = Date.now() - t;
+    if (diff < 60000) return 'just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    return `${Math.floor(diff / 86400000)}d ago`;
   }
 
   // ─── Stats ────────────────────────────────────────────────────────
@@ -186,7 +276,10 @@
     renderCharts();
     renderWorkers();
     renderLogs();
+    renderReports();
   });
+
+  document.getElementById('reports-refresh-btn')?.addEventListener('click', renderReports);
 
   document.getElementById('run-workers-btn')?.addEventListener('click', () => {
     window.GlitchItAIWorkers?.runAll();

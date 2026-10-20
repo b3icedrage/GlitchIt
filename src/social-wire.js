@@ -14,6 +14,7 @@
 
 (function () {
   let SOC = null;
+  let SAFETY = null;
   let wired = false;
   let identitySet = false;
   const startedAt = Date.now();
@@ -75,6 +76,12 @@
         handleShare(shareBtn, event);
         return;
       }
+      const moreBtn = target.closest('button.more, button.reel-more, .user-more-btn');
+      if (moreBtn) {
+        if (isGuest()) return;
+        handleMore(moreBtn, event);
+        return;
+      }
       const saveBtn = target.closest('.post-save');
       if (saveBtn) {
         if (isGuest()) return;
@@ -126,6 +133,7 @@
       if (commentSheet) closeCommentSheet();
       if (dmPicker) closeDmPicker();
       if (groupPicker) closeGroupPicker();
+      if (moreSheet) closeMoreSheet();
     });
 
     // Re-render state after main.js finishes filling the feed asynchronously.
@@ -136,7 +144,15 @@
     if (page === 'notifications') hydrateActivity();
     if (page === 'messages') hydrateDmInbox();
     if (page === 'chat') hydrateChat();
-    if (page === 'user') attachUserMessageBtn();
+    if (page === 'user') { attachUserMessageBtn(); attachUserSafetyBtn(); }
+    // Trust & safety (reports/blocks) + push registration load lazily so the
+    // feed never waits on them; blocked-content filtering re-runs when ready.
+    import('./safety.js?v=1').then((mod) => {
+      SAFETY = mod;
+      window.GLITCHIT_SAFETY = mod;
+      return mod.loadBlocks();
+    }).then(() => { if (SAFETY) SAFETY.refreshBlockSet(); scheduleSync(); }).catch(() => { /* offline: keep localStorage mirror */ });
+    import('./notify.js?v=1').then((mod) => mod.ensurePushRegistered()).catch(() => { /* enhancement only */ });
     // Creator replies (from src/social.js) land at any moment — keep the nav
     // badges and any open inbox/chat in sync wherever they arrive.
     window.addEventListener('glitchit:dm', refreshUnreadBadges);
@@ -154,7 +170,29 @@
     btn.setAttribute('aria-label', on ? 'Unlike' : 'Like');
     const count = btn.querySelector('b');
     if (count) count.textContent = String(SOC.totalLikes(key, Number(btn.dataset.baseCount) || 0));
-    if (on) pushActivity('like', btn.classList.contains('reel-like') ? 'reel' : 'post');
+    if (on) {
+      const mediaType = btn.classList.contains('reel-like') ? 'reel' : 'post';
+      pushActivity('like', mediaType);
+      notifyCardOwner(btn, mediaType, 'like');
+    }
+  }
+
+  // Fire-and-forget notification to the card's owner (firestore row + push
+  // via /api/notify). Never blocks or throws the interaction that triggered it.
+  function notifyCardOwner(sourceEl, type, text) {
+    try {
+      const card = sourceEl.closest('[data-owner], [data-reel-user]');
+      const to = card && (card.dataset.owner || card.dataset.reelUser);
+      if (!to) return;
+      const me = window.GLITCHIT_USER;
+      if (me && !me.guest && String(to) === String(me.id)) return; // no self-pings
+      const pid = card.dataset.postId || card.dataset.reelId || '';
+      const send = window.GLITCHIT_NOTIFY
+        || null;
+      const payload = { to: String(to), type, text, url: pid ? `post.html?id=${encodeURIComponent(pid)}` : '' };
+      if (send) { send(payload); return; }
+      import('./notify.js?v=1').then((m) => m.sendNotification(payload)).catch(() => {});
+    } catch (err) { /* best-effort */ }
   }
 
   // ---------------- Comments (bottom sheet) ----------------
@@ -206,6 +244,7 @@
       renderCommentList();
       bumpCommentCounts(commentSheet.key);
       pushActivity('comment', 'post');
+      notifyCardOwner(document.querySelector(`button.post-comment[data-media-key="${CSS.escape(commentSheet.key)}"], button.reel-comment[data-media-key="${CSS.escape(commentSheet.key)}"]`) || document.body, 'comment', text);
     });
   }
 
@@ -254,6 +293,8 @@
   }
 
   // ---------------- Shares ----------------
+  // Shares carry a real permalink (post.html?id=…) whenever the card maps to
+  // a stored post/reel, so links land on the post itself instead of the feed.
   function handleShare(btn, event) {
     event.preventDefault();
     event.stopPropagation();
@@ -262,17 +303,119 @@
       || card?.querySelector('.post-image')?.getAttribute('alt')
       || 'a GlitchIt post';
     const text = `Check out ${title} on GlitchIt`;
+    const pid = card?.dataset?.postId || card?.dataset?.reelId || '';
+    const url = pid ? `${location.origin}/post.html?id=${encodeURIComponent(pid)}` : '';
     const doShare = async () => {
       if (navigator.share) {
-        try { await navigator.share({ title: 'GlitchIt', text }); } catch (err) { /* user cancelled */ }
+        try { await navigator.share({ title: 'GlitchIt', text, url: url || undefined }); } catch (err) { /* user cancelled */ }
       } else if (navigator.clipboard) {
-        try { await navigator.clipboard.writeText(text); glitchToast('Share text copied'); } catch (err) { /* ignore */ }
+        try { await navigator.clipboard.writeText(url || text); glitchToast(url ? 'Link copied' : 'Share text copied'); } catch (err) { /* ignore */ }
       } else {
         glitchToast('Sharing isn’t supported on this browser');
       }
     };
     doShare();
-    pushActivity('share', btn.classList.contains('reel-share') ? 'reel' : 'post');
+    const mediaType = btn.classList.contains('reel-share') ? 'reel' : 'post';
+    pushActivity('share', mediaType);
+    notifyCardOwner(btn, 'mention', 'shared your post');
+  }
+
+  // ---------------- More menu (report / block / copy link) ----------------
+  // The ••• button on posts and reels opens a small sheet with trust & safety
+  // actions. Everything degrades: without safety.js the sheet still offers
+  // "copy link", and guests never see it (main.js gates them first).
+  let moreSheet = null;
+
+  function closeMoreSheet() {
+    if (!moreSheet) return;
+    moreSheet.wrap.remove();
+    moreSheet = null;
+  }
+
+  function handleMore(btn, event) {
+    event.preventDefault();
+    event.stopPropagation();
+    closeMoreSheet();
+    const card = btn.closest('.post, .video-card, article') || btn.closest('.user-actions')?.parentElement;
+    const isUserBtn = btn.classList.contains('user-more-btn');
+    const ownerId = isUserBtn
+      ? String(new URLSearchParams(location.search).get('id') || '')
+      : String(card?.dataset?.owner || card?.dataset?.reelUser || '');
+    const handle = isUserBtn
+      ? String(new URLSearchParams(location.search).get('name') || '')
+      : String(card?.dataset?.reelHandle || card?.querySelector('.card-creator, .profile strong, .reel-creator strong')?.textContent || '').replace(/^@/, '').trim();
+    const pid = String(card?.dataset?.postId || card?.dataset?.reelId || '');
+    const type = (!isUserBtn && (card?.classList.contains('video-card') || btn.classList.contains('reel-more'))) ? 'reel' : 'post';
+    const wrap = document.createElement('div');
+    wrap.className = 'dm-picker-wrap more-sheet-wrap';
+    wrap.setAttribute('role', 'dialog');
+    wrap.setAttribute('aria-modal', 'true');
+    wrap.setAttribute('aria-label', 'Post options');
+    wrap.innerHTML = `
+      <div class="dm-picker more-sheet">
+        <div class="dm-picker-head"><b>${isUserBtn ? 'Account options' : 'Post options'}</b><button type="button" class="dm-picker-close" aria-label="Close">×</button></div>
+        <div class="dm-picker-list">
+          <button type="button" class="dm-pick more-act" data-act="copy"><span><b>Copy link</b><em>Share it anywhere</em></span></button>
+          <button type="button" class="dm-pick more-act" data-act="report"><span><b>Report</b><em>Tell us what’s wrong</em></span></button>
+          <button type="button" class="dm-pick more-act" data-act="block"><span><b>Block ${handle ? `@${escapeHtml(handle)}` : 'this account'}</b><em>Their posts and messages stop reaching you</em></span></button>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+    moreSheet = { wrap, ownerId, handle, pid, type, isUserBtn };
+    wrap.querySelector('.dm-picker-close').addEventListener('click', closeMoreSheet);
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) closeMoreSheet(); });
+    wrap.querySelectorAll('.more-act').forEach((b) => b.addEventListener('click', () => moreAction(b.dataset.act)));
+  }
+
+  const REPORT_REASONS = ['Spam or scam', 'Harassment or bullying', 'Nudity or sexual content', 'Violence or dangerous acts', 'Something else'];
+
+  async function moreAction(act) {
+    if (!moreSheet) return;
+    const { ownerId, handle, pid, type, isUserBtn } = moreSheet;
+    if (act === 'copy') {
+      const url = pid ? `${location.origin}/post.html?id=${encodeURIComponent(pid)}` : `${location.origin}${location.pathname}`;
+      try { await navigator.clipboard.writeText(url); glitchToast('Link copied'); } catch (err) { glitchToast('Couldn’t copy the link'); }
+      closeMoreSheet();
+      return;
+    }
+    if (!SAFETY) {
+      try { SAFETY = await import('./safety.js?v=1'); window.GLITCHIT_SAFETY = SAFETY; } catch (err) { SAFETY = null; }
+    }
+    if (!SAFETY) { glitchToast('Safety actions aren’t available right now'); closeMoreSheet(); return; }
+    if (act === 'report') { renderReasonPicker(); return; }
+    if (act === 'block') {
+      if (!ownerId) { glitchToast('Couldn’t identify this account'); closeMoreSheet(); return; }
+      const res = await SAFETY.blockUser(ownerId, handle);
+      closeMoreSheet();
+      if (res.ok || res.reason === 'auth') {
+        glitchToast(handle ? `@${handle} blocked` : 'Account blocked');
+        SAFETY.refreshBlockSet();
+        scheduleSync();
+        if (isUserBtn) applyBlockedFilter();
+      } else {
+        glitchToast('Couldn’t block — try again');
+      }
+    }
+  }
+
+  function renderReasonPicker() {
+    if (!moreSheet) return;
+    const list = moreSheet.wrap.querySelector('.dm-picker-list');
+    const head = moreSheet.wrap.querySelector('.dm-picker-head b');
+    if (head) head.textContent = 'Report — why?';
+    list.innerHTML = REPORT_REASONS.map((r) => `<button type="button" class="dm-pick more-reason" data-reason="${escapeHtml(r)}"><span><b>${escapeHtml(r)}</b></span></button>`).join('');
+    list.querySelectorAll('.more-reason').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const res = await SAFETY.reportContent({
+          type: moreSheet.isUserBtn ? 'user' : moreSheet.type,
+          targetId: moreSheet.pid || moreSheet.ownerId,
+          targetOwner: moreSheet.ownerId,
+          reason: b.dataset.reason,
+        });
+        closeMoreSheet();
+        glitchToast(res.ok ? 'Report sent — thanks for helping keep GlitchIt safe' : (res.reason === 'auth' ? 'Sign in to report content' : 'Couldn’t send the report — try again'));
+      });
+    });
   }
 
   // ---------------- Save (posts — reels keep main.js's handler) ----------------
@@ -297,25 +440,95 @@
   }
 
   // ---------------- Activity feed (activity.html) ----------------
+  // Local events (your own likes/shares) merge with Firestore notifications
+  // addressed to you (others' likes/comments/follows/DMs), newest first.
   function hydrateActivity() {
     const list = document.querySelector('.activity-list');
     if (!list) return;
     SOC.markActivityRead();
     refreshUnreadBadges();
-    const events = SOC.myActivity();
-    if (!events.length) {
-      list.innerHTML = '<div class="activity-empty"><span class="activity-empty-mark">♡</span><h3>No activity yet</h3><p>Likes, comments, follows, and shares will show up here.</p></div>';
-      return;
-    }
-    list.innerHTML = events.map((ev) => {
-      const mark = { like: '♥', comment: '◌', share: '↗', follow: '＋', post: 'ϟ' }[ev.type] || '♡';
-      return `
-        <div class="activity-row">
+    attachPushPrompt(list);
+    const render = (remote) => {
+      const local = SOC.myActivity().map((ev) => ({
+        remote: false,
+        actor: ev.actor,
+        type: ev.type,
+        text: activityText(ev),
+        at: ev.at,
+      }));
+      const rows = [...remote, ...local].sort((a, b) => (b.atMs || 0) - (a.atMs || 0)).slice(0, 60);
+      if (!rows.length) {
+        list.innerHTML = '<div class="activity-empty"><span class="activity-empty-mark">♡</span><h3>No activity yet</h3><p>Likes, comments, follows, and shares will show up here.</p></div>';
+        return;
+      }
+      list.innerHTML = rows.map((ev) => {
+        const mark = { like: '♥', comment: '◌', share: '↗', follow: '＋', post: 'ϟ', dm: '✉', mention: '＠' }[ev.type] || '♡';
+        const time = ev.remote
+          ? `${SOC.timeAgo(ev.atMs)} ago`
+          : `${SOC.timeAgo(ev.at)} ago`;
+        const body = ev.remote
+          ? escapeHtml(ev.text || 'interacted with your content')
+          : ev.text;
+        const inner = `
           <span class="activity-username" title="@${escapeHtml(ev.actor || 'you')}">@${escapeHtml(ev.actor || 'you')}</span>
           <span class="activity-mark" aria-hidden="true">${mark}</span>
-          <div class="activity-body"><p>${activityText(ev)}</p><time>${SOC.timeAgo(ev.at)} ago</time></div>
-        </div>`;
-    }).join('');
+          <div class="activity-body"><p>${body}</p><time>${time}</time></div>`;
+        return ev.url
+          ? `<a class="activity-row" href="${escapeHtml(ev.url)}">${inner}</a>`
+          : `<div class="activity-row">${inner}</div>`;
+      }).join('');
+    };
+    // Local rows render instantly; remote notifications fill in when ready.
+    render([]);
+    import('./notify.js?v=1').then(async (mod) => {
+      const remote = (await mod.myNotifications(40)).map((n) => ({
+        remote: true,
+        actor: n.fromName || 'someone',
+        type: n.type,
+        text: `${n.fromName || 'Someone'} ${EVENT_VERB[n.type] || 'interacted with your content'}${n.text ? `: “${String(n.text).slice(0, 80)}”` : ''}`,
+        url: n.url || '',
+        at: n.at,
+        atMs: Date.parse(n.at || '') || 0,
+      }));
+      render(remote);
+      mod.markNotificationsRead(remote.map((r) => r.id).filter(Boolean));
+      refreshUnreadBadges();
+    }).catch(() => { /* offline: local activity only */ });
+  }
+
+  const EVENT_VERB = {
+    like: 'liked your post',
+    comment: 'commented on your post',
+    follow: 'started following you',
+    dm: 'sent you a message',
+    reel: 'liked your reel',
+    mention: 'shared your post',
+  };
+
+  // One-time opt-in card at the top of Activity: explains push, then gets out
+  // of the way (granted / denied / unsupported all resolve silently).
+  function attachPushPrompt(list) {
+    try {
+      if (!('Notification' in window)) return;
+      if (Notification.permission !== 'default') return;
+      const prompt = document.createElement('div');
+      prompt.className = 'activity-row push-prompt';
+      prompt.innerHTML = `
+        <span class="activity-mark" aria-hidden="true">◉</span>
+        <div class="activity-body"><p><b>Never miss a like</b></p><time>Turn on notifications for likes, comments and messages.</time>
+        <button type="button" class="push-allow">Turn on notifications</button></div>`;
+      list.before(prompt);
+      prompt.querySelector('.push-allow').addEventListener('click', async () => {
+        let mod = window.GLITCHIT_PUSH;
+        if (!mod) {
+          try { mod = (await import('./notify.js?v=1')).GLITCHIT_PUSH || null; } catch (err) { mod = null; }
+        }
+        if (!mod) { prompt.remove(); return; }
+        const res = await mod.enable();
+        glitchToast(res.ok ? 'Notifications on' : (res.reason === 'denied' ? 'Notifications are blocked in your browser settings' : 'Couldn’t turn on notifications'));
+        if (res.ok || res.reason === 'denied') prompt.remove();
+      }, { once: true });
+    } catch (err) { /* enhancement only */ }
   }
 
   function activityText(ev) {
@@ -622,6 +835,8 @@
       if (!to) { glitchToast('Pick someone to message first'); return; }
       SOC.dmSend(to, { name, avatar: '' }, text);
       input.value = '';
+      // Push + in-app ping so the recipient hears about the DM off-app too.
+      notifyCardOwner({ closest: () => ({ dataset: { owner: to } }) }, 'dm', text);
       SOC.scheduleCreatorReply(to, { name, avatar: '' }, { story: /story|glitch|reel/i.test(text) });
       typing = true;
       render();
@@ -855,6 +1070,46 @@
     groupPicker = null;
   }
 
+  // ---------------- Account options (user.html) ----------------
+  // A ••• button next to Follow/Message opens the same report/block sheet the
+  // feed cards use, so every surface has a way to walk away from an account.
+  function attachUserSafetyBtn() {
+    const row = document.querySelector('.user-actions');
+    if (!row || document.querySelector('.user-more-btn')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'user-more-btn';
+    btn.textContent = '•••';
+    btn.setAttribute('aria-label', 'Account options');
+    row.appendChild(btn);
+  }
+
+  // Hides cards from blocked accounts across every feed/grid on the page.
+  // Runs on each count-sync (cheap set lookups) so late-rendered DB rows get
+  // filtered too.
+  function applyBlockedFilter() {
+    if (!SAFETY) return;
+    document.querySelectorAll('.post[data-owner], .video-card[data-owner], [data-reel-user]').forEach((card) => {
+      const owner = card.dataset.owner || card.dataset.reelUser || '';
+      if (owner && SAFETY.isBlocked(owner)) card.style.display = 'none';
+    });
+    // On a blocked account's own page, swap Follow for Unblock.
+    if (document.body.dataset.page === 'user') {
+      const uid = String(new URLSearchParams(location.search).get('id') || '');
+      const followBtn = document.getElementById('user-follow-btn');
+      if (uid && followBtn && SAFETY.isBlocked(uid) && followBtn.textContent !== 'Unblock') {
+        followBtn.textContent = 'Unblock';
+        followBtn.addEventListener('click', async () => {
+          await SAFETY.unblockUser(uid);
+          SAFETY.refreshBlockSet();
+          followBtn.textContent = 'Follow';
+          glitchToast('Account unblocked');
+          document.querySelectorAll('[style*="display: none"]').forEach((el) => { el.style.display = ''; });
+        }, { once: true });
+      }
+    }
+  }
+
   // ---------------- Message button (user.html) ----------------
   // The button ships in the page markup (hidden until a target is known); this
   // fills it with the creator id + name from the URL and reveals it. It also
@@ -988,6 +1243,7 @@
   }
   function syncCounts() {
     if (!SOC) return;
+    applyBlockedFilter();
     document.querySelectorAll('.reel-like[data-media-key], .post-like[data-media-key]').forEach((btn) => {
       const key = btn.dataset.mediaKey;
       const base = Number(btn.dataset.baseCount) || 0;

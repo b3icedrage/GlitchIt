@@ -80,6 +80,25 @@
       .bar-label { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #626262; white-space: nowrap; }
       .bar-value { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #8e8e8e; white-space: nowrap; }
 
+      /* Reports queue */
+      .reports-meta { font-size: 12px; color: #8e8e8e; margin-bottom: 12px; }
+      .reports-meta b { color: #ffab00; }
+      .report-card { background: #101010; border: 1px solid #242424; border-radius: 16px; padding: 16px 20px; margin-bottom: 10px; }
+      .report-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+      .report-type { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: rgba(255, 59, 48, 0.15); color: #ff3b30; text-transform: uppercase; }
+      .report-status { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+      .report-status.open { background: rgba(255, 171, 0, 0.15); color: #ffab00; }
+      .report-status.acknowledged { background: rgba(0, 200, 83, 0.15); color: #00c853; }
+      .report-status.dismissed { background: rgba(142, 142, 142, 0.15); color: #8e8e8e; }
+      .report-reason { font-weight: 800; font-size: 14px; }
+      .report-note { font-size: 13px; color: #8e8e8e; margin: 6px 0; }
+      .report-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+      .report-who { font-size: 12px; color: #626262; }
+      .report-actions { display: flex; gap: 8px; }
+      .report-actions button { padding: 6px 14px; border: 1px solid #242424; border-radius: 999px; background: transparent; color: #8e8e8e; font-size: 12px; font-weight: 700; cursor: pointer; }
+      .report-actions button:hover { border-color: #008737; color: #008737; }
+      .report-actions button.danger:hover { border-color: #ff3b30; color: #ff3b30; }
+
       /* Log */
       .log-container { background: #101010; border: 1px solid #242424; border-radius: 16px; padding: 20px; max-height: 300px; overflow-y: auto; }
       .log-entry { font-size: 12px; font-family: 'SF Mono', Monaco, monospace; padding: 4px 0; border-bottom: 1px solid #151515; color: #8e8e8e; }
@@ -162,10 +181,20 @@
         </div>
         <div class="log-container" id="log-container"></div>
       </div>
+
+      <!-- Trust & Safety: user reports queue -->
+      <div class="section">
+        <div class="section-header">
+          <h2>🛡️ Reports Queue</h2>
+          <button type="button" id="reports-refresh-btn">↻ Refresh</button>
+        </div>
+        <div class="reports-meta" id="reports-meta"></div>
+        <div id="reports-container"></div>
+      </div>
     </div>
 
     <script src="src/analytics.js?v=1"></script>
     <script src="src/ai-workers.js?v=1"></script>
-    <script src="src/admin.js?v=1"></script>
+    <script src="src/admin.js?v=2"></script>
   </body>
 </html>

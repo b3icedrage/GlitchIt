@@ -8,7 +8,7 @@
 //    (immutable URLs) with a FIFO budget so maps open instantly on repeat visits.
 'use strict';
 
-const CACHE_NAME = 'glitchit-cache-v7';
+const CACHE_NAME = 'glitchit-cache-v8';
 const MEDIA_CACHE_NAME = 'glitchit-media-v2';
 const MEDIA_BUDGET = 40;
 const MAP_CACHE_NAME = 'glitchit-map-v1';
@@ -31,6 +31,7 @@ const SHELL_URLS = [
   './chat.html',
   './live.html',
   './activity.html',
+  './post.html',
   './channels.html',
   './shop.html',
   './profile.html',
@@ -52,14 +53,16 @@ const SHELL_URLS = [
   './src/ai-chat.css',
   './src/dm-inbox.css?v=2',
   './src/social.css?v=2',
-  './src/main.js?v=42',
+  './src/main.js?v=43',
   './src/firebase.js?v=1',
   './src/calls.css?v=2',
   './src/calls.js?v=2',
   './src/channels.css?v=1',
   './src/channels.js?v=1',
   'https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js',
-  './src/social-wire.js?v=8',
+  './src/social-wire.js?v=10',
+  './src/safety.js?v=1',
+  './src/notify.js?v=1',
   './src/reels-viewer.js?v=3',
   './src/edit-profile.js?v=3',
   './src/edit-profile.css?v=3',
@@ -158,6 +161,35 @@ async function trimCache(cache, budget) {
   if (keys.length <= budget) return;
   await Promise.all(keys.slice(0, keys.length - budget).map((key) => cache.delete(key)));
 }
+
+// ---------- Web push (FCM via /api/notify) ----------
+// Tokens are registered by src/notify.js against this same worker; incoming
+// pushes render a notification, and taps focus the app (or open the target
+// post) instead of spawning duplicate tabs.
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch (err) { payload = { body: event.data ? event.data.text() : '' }; }
+  const title = payload.title || 'GlitchIt';
+  const options = {
+    body: payload.body || 'You have a new notification',
+    icon: './icon.svg',
+    badge: './icon.svg',
+    data: { url: (payload.data && payload.data.url) || payload.url || './activity.html' },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || './activity.html';
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of all) {
+      if ('focus' in client) { await client.focus(); await client.navigate(target); return; }
+    }
+    await self.clients.openWindow(target);
+  })());
+});
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;

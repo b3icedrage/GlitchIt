@@ -2,7 +2,7 @@
 // Loaded from main.js via dynamic import. When the config is empty or the
 // network fails, every function degrades gracefully (no-op / localStorage)
 // so the app keeps working exactly as it did before.
-import { SUPABASE_URL, SUPABASE_ANON_KEY, CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from './config.js?v=6';
+import { FIREBASE_CONFIG, SUPABASE_URL, SUPABASE_ANON_KEY, CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from './config.js?v=6';
 
 const SAVED_KEY = 'glitchit.saved.v1';
 let client = null;
@@ -173,12 +173,95 @@ export async function saveAvatar(blob) {
   }
 }
 
+// ---------- Firestore media store (current backend) ----------
+// Media lives in three per-kind Firestore collections — Firebase is the app's
+// backend since the auth migration and the legacy Supabase config is empty.
+// One collection per kind means every feed query is a single-field orderBy
+// (automatic index) with an exact limit: no composite indexes to deploy, and
+// reads stay proportional to the page. Rows keep the old media-table shape
+// (id = document id, created_at = ISO string) so every consumer — feed,
+// reels, stories shelf, grids, search, permalinks — works unchanged.
+const MEDIA_KIND_COLLECTIONS = ['media_posts', 'media_reels', 'media_stories'];
+const MEDIA_COLLECTIONS = { image: 'media_posts', video: 'media_reels', story: 'media_stories' };
+const CREATED_FIELD = 'created_at';
+
+function mediaCollectionName(kind) {
+  return MEDIA_COLLECTIONS[kind] || 'media_posts';
+}
+function byCreatedDesc(a, b) {
+  return String(b[CREATED_FIELD] || '').localeCompare(String(a[CREATED_FIELD] || ''));
+}
+function mediaDocRow(doc) {
+  return { id: doc.id, ...(doc.data() || {}) };
+}
+function firestoreReason(err) {
+  const msg = String(err?.message || err);
+  return /permission|insufficient permissions/i.test(msg)
+    ? 'permission'
+    : /unavailable|network|timeout|deadline/i.test(msg)
+      ? 'network'
+      : 'error';
+}
+
+// The Firebase compat SDK loads async in the page head — wait (bounded) for
+// it before touching Firestore, and allow a retry on the next call when the
+// page never provides it (then everything degrades exactly as before).
+let mediaStorePromise = null;
+function mediaStoreFn() {
+  if (!mediaStorePromise) {
+    mediaStorePromise = new Promise((resolve) => {
+      const started = Date.now();
+      const tick = () => {
+        if (typeof firebase !== 'undefined' && firebase.firestore) return resolve(true);
+        if (Date.now() - started > 4000) return resolve(false);
+        setTimeout(tick, 100);
+      };
+      tick();
+    }).then((ready) => {
+      if (!ready || typeof firebase === 'undefined' || !firebase.firestore) return null;
+      try {
+        if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+        return firebase.firestore();
+      } catch (err) {
+        return null;
+      }
+    }).then((store) => {
+      if (!store) mediaStorePromise = null; // retry on the next call
+      return store;
+    });
+  }
+  return mediaStorePromise;
+}
+
+// Creator list (rails, search, suggestions) with a short TTL cache so home
+// loads don't re-read hundreds of documents on every visit.
+async function firestoreCreators(store, limit) {
+  const CACHE_KEY = 'glitchit.creators.v1';
+  try {
+    const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+    if (cached && Date.now() - Number(cached.at || 0) < 10 * 60 * 1000 && Array.isArray(cached.list)) {
+      return cached.list.slice(0, limit);
+    }
+  } catch (err) { /* ignore */ }
+  const snaps = await Promise.all(MEDIA_KIND_COLLECTIONS.map((c) => store.collection(c).orderBy(CREATED_FIELD, 'desc').limit(100).get()));
+  const seen = new Map();
+  snaps.forEach((snap) => snap.docs.forEach((doc) => {
+    const row = doc.data() || {};
+    if (!row.user || !/^[0-9a-f-]{8,}$/i.test(String(row.user))) return;
+    if (!seen.has(row.user)) seen.set(row.user, { id: row.user, handle: '', avatar: row.avatar || '', verified: Boolean(row.verified) });
+  }));
+  const list = [...seen.values()];
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), list })); } catch (err) { /* ignore */ }
+  return list.slice(0, limit);
+}
+
 // ---------- media table (videos + images) ----------
 export async function saveMedia(item) {
-  if (!dbAvailable()) return { ok: false, reason: 'config' };
+  const mediaStore = await mediaStoreFn();
+  if (!mediaStore && !dbAvailable()) return { ok: false, reason: 'config' };
   try {
-    const sb = await getClient();
-    if (!sb) return { ok: false, reason: 'network' };
+    const sb = mediaStore ? null : await getClient();
+    if (!mediaStore && !sb) return { ok: false, reason: 'network' };
     // Stories are always stored with kind='story' (whether the media is an
     // image or a video) so they surface on the story shelf — and never leak
     // into the reels/video feeds — regardless of the underlying file type.
@@ -199,6 +282,7 @@ export async function saveMedia(item) {
         url = up.url;
       } else {
         // Fallback: Supabase Storage (previous behavior) until Cloudinary is set up.
+        if (!sb) return { ok: false, reason: 'config' };
         const ext = (blob.type.split('/')[1] || (kind === 'video' ? 'webm' : 'jpg')).replace(/[^a-z0-9]/gi, '');
         const path = `${kind}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
         const { error: upErr } = await sb.storage.from('glitchit-media').upload(path, blob, { upsert: false });
@@ -241,6 +325,16 @@ export async function saveMedia(item) {
         close_friends: item.closeFriends ? true : false,
       } : {}),
     };
+    if (mediaStore) {
+      try {
+        const ref = await mediaStore.collection(mediaCollectionName(kind)).add({ ...row, [CREATED_FIELD]: new Date().toISOString() });
+        return { ok: true, id: ref.id, url, poster };
+      } catch (err) {
+        const msg = String(err?.message || err);
+        console.warn('GlitchIt: media save (Firestore) failed', err);
+        return { ok: false, reason: firestoreReason(err), detail: msg };
+      }
+    }
     const { data, error } = await insertMediaRow(sb, row);
     if (error) {
       const msg = String(error.message || error);
@@ -282,6 +376,12 @@ export async function checkSetup() {
 
 export async function loadMedia(kind, limit = 50) {
   try {
+    const store = await mediaStoreFn();
+    if (store) {
+      const cols = kind ? [mediaCollectionName(kind)] : MEDIA_KIND_COLLECTIONS;
+      const snaps = await Promise.all(cols.map((c) => store.collection(c).orderBy(CREATED_FIELD, 'desc').limit(limit).get()));
+      return snaps.flatMap((s) => s.docs.map(mediaDocRow)).sort(byCreatedDesc).slice(0, limit);
+    }
     const sb = await getClient();
     if (!sb) return [];
     let q = sb.from('media').select('*').order('created_at', { ascending: false }).limit(limit);
@@ -299,6 +399,11 @@ export async function loadMedia(kind, limit = 50) {
 // Posts/Reels grid on the profile page.
 export async function loadOwnMedia(owner, limit = 100) {
   try {
+    const store = await mediaStoreFn();
+    if (store && owner) {
+      const snaps = await Promise.all(MEDIA_KIND_COLLECTIONS.map((c) => store.collection(c).where('user', '==', owner).limit(limit).get()));
+      return snaps.flatMap((s) => s.docs.map(mediaDocRow)).sort(byCreatedDesc).slice(0, limit);
+    }
     const sb = await getClient();
     if (!sb || !owner) return [];
     const { data, error } = await sb.from('media').select('*').eq('user', owner).order('created_at', { ascending: false }).limit(limit);
@@ -315,6 +420,21 @@ export async function loadOwnMedia(owner, limit = 100) {
 export async function deleteMedia(id) {
   if (!id) return { ok: false, reason: 'bad-id' };
   try {
+    const store = await mediaStoreFn();
+    if (store) {
+      const refs = MEDIA_KIND_COLLECTIONS.map((c) => store.collection(c).doc(id));
+      const snaps = await Promise.all(refs.map((r) => r.get().catch(() => null)));
+      for (let i = 0; i < refs.length; i += 1) {
+        const snap = snaps[i];
+        if (!snap || !snap.exists) continue;
+        const row = snap.data() || {};
+        if (currentOwner && row.user && String(row.user) !== String(currentOwner)) {
+          return { ok: false, reason: 'permission' }; // not your row (rules also enforce this server-side)
+        }
+        await refs[i].delete();
+      }
+      return { ok: true };
+    }
     const sb = await getClient();
     if (!sb) return { ok: false, reason: 'network' };
     const { error } = await sb.from('media').delete().eq('id', id);
@@ -330,11 +450,34 @@ export async function deleteMedia(id) {
   }
 }
 
+// One document per post, addressed by id — powers post.html permalinks.
+export async function loadMediaById(id) {
+  if (!id) return null;
+  try {
+    const store = await mediaStoreFn();
+    if (store) {
+      const snaps = await Promise.all(MEDIA_KIND_COLLECTIONS.map((c) => store.collection(c).doc(id).get().catch(() => null)));
+      const hit = snaps.find((s) => s && s.exists);
+      return hit ? mediaDocRow(hit) : null;
+    }
+    const sb = await getClient();
+    if (!sb) return null;
+    const { data, error } = await sb.from('media').select('*').eq('id', id).maybeSingle();
+    if (error) throw error;
+    return data || null;
+  } catch (err) {
+    console.warn('GlitchIt: media by-id load failed', err);
+    return null;
+  }
+}
+
 // ---------- real creators (distinct users who have posted) ----------
-// Derives the list of real accounts from the media table (owner uuid, latest
+// Derives the list of real accounts from the media store (owner uuid, latest
 // handle + avatar) so suggestions and account search never use fake users.
 export async function loadCreators(limit = 30) {
   try {
+    const store = await mediaStoreFn();
+    if (store) return await firestoreCreators(store, limit);
     const sb = await getClient();
     if (!sb) return [];
     // The real `media` table has no `handle` column; consumers fall back to the
@@ -362,6 +505,16 @@ export async function loadCreators(limit = 30) {
 export async function countMedia(owner) {
   if (!owner) return 0;
   try {
+    const store = await mediaStoreFn();
+    if (store) {
+      try {
+        const counts = await Promise.all(MEDIA_KIND_COLLECTIONS.map((c) => store.collection(c).where('user', '==', owner).count().get()));
+        return counts.reduce((n, s) => n + ((s.data() && s.data().count) || 0), 0);
+      } catch (err) {
+        const snaps = await Promise.all(MEDIA_KIND_COLLECTIONS.map((c) => store.collection(c).where('user', '==', owner).limit(1000).get()));
+        return snaps.reduce((n, s) => n + s.size, 0);
+      }
+    }
     const sb = await getClient();
     if (!sb) return 0;
     const { count, error } = await sb.from('media').select('id', { count: 'exact', head: true }).eq('user', owner);

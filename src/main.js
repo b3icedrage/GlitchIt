@@ -478,6 +478,7 @@ async function hydrateRail() {
       if (!ownerId) return;
       setFollowing(ownerId, !isFollowing(ownerId));
       syncBtn();
+      if (isFollowing(ownerId)) notifyFollow(ownerId);
     });
   });
 }
@@ -835,6 +836,7 @@ async function hydrateUserPage() {
     btn.addEventListener('click', () => {
       setFollowing(targetId, !isFollowing(targetId));
       renderBtn();
+      if (isFollowing(targetId)) notifyFollow(targetId);
       if (followersEl) followersEl.textContent = fmtCount(readProfileStats(targetId).followers);
       showEndToast(isFollowing(targetId) ? `You're now following @${handle}` : `You unfollowed @${handle}`);
     });
@@ -1169,7 +1171,7 @@ function uploadCard(item, type) {
   const likes = SOC ? SOC.totalLikes(key, 0) : 0;
   const comments = SOC ? SOC.totalComments(key, 0) : 0;
   const ownerName = escapeHtml(String(item.user || profile.username).replace(/⚡/g, ''));
-  return `<article class="post upload-card" data-media-key="${escapeHtml(key)}"><header><div class="profile"><span class="verified-avatar-wrap"><img src="${profile.avatar}" alt="${profile.username} avatar">${isBolt ? verifiedBolt() : ''}</span><div><strong>${profile.username}${bolt}</strong><span>Fresh post</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${item.preview}" alt="${item.title}" loading="lazy" decoding="async"><span class="shop-badge">${icon('＋')} ${item.type}</span></div><div class="actions post-actions"><div class="post-actions-left"><button type="button" class="post-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Like this post">${icon('♡')}<b>${likes}</b></button><button type="button" class="post-comment" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Comment on this post">${icon('◌')}<b>${comments}</b></button><button type="button" class="post-share" aria-label="Share this post">${icon('↗')}</button></div><button type="button" class="post-save" aria-label="Save this post">${icon('▱')}</button></div><strong>New upload</strong><p><b>${ownerName}${bolt}</b> ${item.caption || item.title}</p></article>`;
+  return `<article class="post upload-card" data-media-key="${escapeHtml(key)}" data-owner="${escapeHtml(item.owner || '')}" data-post-id="${escapeHtml(item.pid || '')}"><header><div class="profile"><span class="verified-avatar-wrap"><img src="${profile.avatar}" alt="${profile.username} avatar">${isBolt ? verifiedBolt() : ''}</span><div><strong>${profile.username}${bolt}</strong><span>Fresh post</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${item.preview}" alt="${item.title}" loading="lazy" decoding="async"><span class="shop-badge">${icon('＋')} ${item.type}</span></div><div class="actions post-actions"><div class="post-actions-left"><button type="button" class="post-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Like this post">${icon('♡')}<b>${likes}</b></button><button type="button" class="post-comment" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Comment on this post">${icon('◌')}<b>${comments}</b></button><button type="button" class="post-share" aria-label="Share this post">${icon('↗')}</button></div><button type="button" class="post-save" aria-label="Save this post">${icon('▱')}</button></div><strong>New upload</strong><p><b>${ownerName}${bolt}</b> ${item.caption || item.title}</p></article>`;
 }
 
 function glitchVideoCard(video, uploaded = false) {
@@ -1186,7 +1188,7 @@ function glitchVideoCard(video, uploaded = false) {
   const avatarSrc = video.avatar || fallbackAvatar(video.user || profile.username);
   const key = mediaKeyOf(video);
   const liked = SOC ? SOC.isLiked(key) : false;
-  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}" data-owner="${video.owner || ''}" data-media-key="${escapeHtml(key)}"><video class="glitch-video" playsinline loop preload="none" poster="${video.poster || ''}" data-src="${video.src}" aria-label="${video.title}"></video><div class="video-buffering" aria-hidden="true"><span class="video-spinner"></span></div><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="${likes}" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action reel-comment" data-media-key="${escapeHtml(key)}" data-base-count="${comments}" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action reel-share" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><span class="verified-avatar-wrap"><img src="${avatarSrc}" alt="${video.user} avatar">${avatarBolt}</span><div class="reel-meta"><strong>${video.user}${nameBolt}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
+  return `<article class="video-card reel-card ${uploaded ? 'upload-card' : ''}" data-owner="${video.owner || ''}" data-reel-id="${escapeHtml(video.id || '')}" data-media-key="${escapeHtml(key)}"><video class="glitch-video" playsinline loop preload="none" poster="${video.poster || ''}" data-src="${video.src}" aria-label="${video.title}"></video><div class="video-buffering" aria-hidden="true"><span class="video-spinner"></span></div><button type="button" class="video-toggle" aria-label="Pause ${video.title}">${icon('Ⅱ')}</button><button type="button" class="sound-toggle" aria-label="Mute ${video.title}">${icon('🔊')}</button><div class="reel-rail"><button type="button" class="reel-action reel-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="${likes}" aria-label="Like, ${likes} likes">${reelIcon('heart')}<b>${likes}</b></button><button type="button" class="reel-action reel-comment" data-media-key="${escapeHtml(key)}" data-base-count="${comments}" aria-label="Comment, ${comments} comments">${reelIcon('comment')}<b>${comments}</b></button><button type="button" class="reel-action reel-share" aria-label="Share, ${shares} shares">${reelIcon('send')}<b>${shares}</b></button><span class="reel-disc" aria-hidden="true"><i>♪</i></span><button type="button" class="reel-action reel-save${savedClass}" data-video-id="${video.id || ''}" aria-label="${video.saved ? 'Unsave' : 'Save'} ${video.title}">${reelIcon('bookmark')}</button><button type="button" class="reel-action reel-more" aria-label="More options">⋯</button></div><div class="video-overlay reel-overlay"><div class="reel-creator"><span class="verified-avatar-wrap"><img src="${avatarSrc}" alt="${video.user} avatar">${avatarBolt}</span><div class="reel-meta"><strong>${video.user}${nameBolt}</strong><p>${video.caption}</p></div><button type="button" class="reel-follow">Follow</button></div><div class="reel-comment"><span>Reply to ${replyTo}'s Like…</span><span class="reel-emojis" aria-hidden="true"><i>😂</i><i>🔥</i><i>😍</i><b>♥</b></span></div></div></article>`;
 }
 
 function renderUploads(type) {
@@ -1380,7 +1382,7 @@ function uploadCard(item, type) {
   const nameWrap = self
     ? `<strong>${creatorSafe}${bolt}</strong>`
     : `<strong><a class="card-creator" href="${href}">${creatorSafe}</a>${bolt}</strong>`;
-  return `<article class="post upload-card" data-media-key="${escapeHtml(key)}"><header><div class="profile">${avatarWrap}<div>${nameWrap}<span>Fresh post</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${item.preview}" alt="${item.title}" loading="lazy" decoding="async"><span class="shop-badge">${icon('＋')} ${item.type}</span></div><div class="actions post-actions"><div class="post-actions-left"><button type="button" class="post-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Like this post">${icon('♡')}<b>${likes}</b></button><button type="button" class="post-comment" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Comment on this post">${icon('◌')}<b>${comments}</b></button><button type="button" class="post-share" aria-label="Share this post">${icon('↗')}</button></div><button type="button" class="post-save" aria-label="Save this post">${icon('▱')}</button></div><strong>New upload</strong><p><b>${creatorSafe}${bolt}</b> ${item.caption || item.title}</p></article>`;
+  return `<article class="post upload-card" data-media-key="${escapeHtml(key)}" data-owner="${escapeHtml(item.owner || '')}" data-post-id="${escapeHtml(item.pid || '')}"><header><div class="profile">${avatarWrap}<div>${nameWrap}<span>Fresh post</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${item.preview}" alt="${item.title}" loading="lazy" decoding="async"><span class="shop-badge">${icon('＋')} ${item.type}</span></div><div class="actions post-actions"><div class="post-actions-left"><button type="button" class="post-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Like this post">${icon('♡')}<b>${likes}</b></button><button type="button" class="post-comment" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Comment on this post">${icon('◌')}<b>${comments}</b></button><button type="button" class="post-share" aria-label="Share this post">${icon('↗')}</button></div><button type="button" class="post-save" aria-label="Save this post">${icon('▱')}</button></div><strong>New upload</strong><p><b>${creatorSafe}${bolt}</b> ${item.caption || item.title}</p></article>`;
 }
 
 // Reel cards link their creator avatar + name to the creator's profile page.
@@ -2440,6 +2442,7 @@ function attachReelsActions() {
       if (!ownerId) return;
       setFollowing(ownerId, !isFollowing(ownerId));
       syncBtn();
+      if (isFollowing(ownerId)) notifyFollow(ownerId);
     });
   });
   document.querySelectorAll('.reel-save').forEach((btn) => {
@@ -2925,6 +2928,63 @@ function attachLive() {
 
 }
 
+// Fire-and-forget follow notification — prefers the shared module already
+// loaded by src/social-wire.js, lazily imports it otherwise. Never blocks or
+// throws: notifications are an enhancement.
+function notifyFollow(to) {
+  try {
+    if (window.GLITCHIT_NOTIFY) { window.GLITCHIT_NOTIFY({ to, type: 'follow' }); return; }
+    import('./notify.js?v=1').then((m) => m.sendNotification({ to, type: 'follow' })).catch(() => {});
+  } catch (err) { /* best-effort */ }
+}
+
+// ---------- Post permalink page (post.html?id=<post id>) ----------
+// Share links from the feed land here. Renders exactly one card with the same
+// builders as the feeds, so like/comment/save keys stay identical across both
+// pages, plus a proper "gone" state when the id doesn't exist (or was removed).
+async function hydratePostPage() {
+  const view = document.getElementById('post-view');
+  const missing = document.getElementById('post-missing');
+  if (!view) return;
+  let tries = 0;
+  while (!DB && tries < 50) { await new Promise((r) => setTimeout(r, 100)); tries += 1; }
+  const id = String(new URLSearchParams(location.search).get('id') || '').trim();
+  const row = id && DB ? await DB.loadMediaById(id) : null;
+  if (!row) {
+    view.hidden = true;
+    if (missing) missing.hidden = false;
+    document.title = 'Post not found · GlitchIt';
+    return;
+  }
+  const isVideo = row.kind === 'video' || row.type === 'video';
+  const base = {
+    pid: row.id,
+    preview: row.url,
+    title: row.title,
+    caption: row.caption,
+    type: row.type || (isVideo ? 'video' : 'image'),
+    user: displayUser(row.user),
+    avatar: row.avatar,
+    verified: row.verified || isUserIdVerified(row.user),
+    owner: row.user,
+    likes: String(row.likes || 0),
+    comments: String(row.comments || 0),
+    shares: String(row.shares || 0),
+  };
+  if (isVideo) {
+    view.innerHTML = glitchVideoCard({ ...base, id: row.id, src: row.url, poster: row.poster || row.url });
+    attachReelsActions();
+    attachGlitchAutoplay();
+    if (typeof markSavedReels === 'function') markSavedReels();
+  } else {
+    // Deliberately no `id` in the image item: mediaKeyOf then hashes the
+    // image URL exactly like the home-feed card → shared like/comment state.
+    view.innerHTML = uploadCard(base, 'feed');
+  }
+  window.attachReelCreatorLinks?.();
+  document.title = `${String(row.title || 'Post').slice(0, 60)} · GlitchIt`;
+}
+
 // Exposed globally so the pull-to-refresh gesture can re-render the
 // home feed + stories without a full page reload.
 function hydrateHomeFeed() {
@@ -2939,7 +2999,7 @@ function hydrateHomeFeed() {
   if (DB) {
     DB.loadMedia('image').then((rows) => {
       if (!rows.length) { feedEmpty(); return; }
-      const cards = rows.map((r) => uploadCard({ preview: r.url, title: r.title, caption: r.caption, type: 'image', user: displayUser(r.user), avatar: r.avatar, verified: r.verified || isUserIdVerified(r.owner || r.user), owner: r.user }, 'feed')).join('');
+      const cards = rows.map((r) => uploadCard({ pid: r.id, preview: r.url, title: r.title, caption: r.caption, type: 'image', user: displayUser(r.user), avatar: r.avatar, verified: r.verified || isUserIdVerified(r.owner || r.user), owner: r.user }, 'feed')).join('');
       feedTarget.innerHTML = renderUploads('feed');
       feedTarget.insertAdjacentHTML('afterbegin', cards);
     });
@@ -3005,6 +3065,7 @@ function runPage() {
   if (page === 'shop') { attachShopTabs(); attachShopFilters(); attachStoryLinks(); attachGlitchAutoplay(); }
 
   if (page === 'search') hydrateSearchAccounts();
+  if (page === 'post') hydratePostPage();
   if (page === 'user') hydrateUserPage();
   if (page === 'profile') hydrateProfileGrid();
   hydrateRail();
