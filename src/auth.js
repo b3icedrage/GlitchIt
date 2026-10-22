@@ -5,17 +5,38 @@
 
 /* global firebase */
 
+import { FIREBASE_CONFIG } from './config.js?v=6';
+
 let handle = '';
 let profileCache = {}; // Firestore profile data cache per uid
 
 // ─── Firebase helpers ──────────────────────────────────────────────
 
+// Initialize the default Firebase app if no page module already did.
+// Pages like camera.html load auth.js without src/firebase.js, so auth can't
+// rely on someone else having called initializeApp() — without an app,
+// firebase.auth() throws and getAuth() returns null, which made signed-in
+// users look signed-out ("Sign in to share your story"). Same self-init
+// pattern db.js and safety.js already use.
+function ensureFirebase() {
+  if (typeof firebase === 'undefined' || !firebase || !firebase.initializeApp) return false;
+  try {
+    if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    return true;
+  } catch (_) {
+    // A concurrent initializeApp race lands here; an existing app is still usable.
+    return !!(firebase.apps && firebase.apps.length);
+  }
+}
+
 function getAuth() {
+  if (!ensureFirebase()) return null;
   try { return firebase && firebase.auth ? firebase.auth() : null; }
   catch (_) { return null; }
 }
 
 function getFirestore() {
+  if (!ensureFirebase()) return null;
   try { return firebase && firebase.firestore ? firebase.firestore() : null; }
   catch (_) { return null; }
 }

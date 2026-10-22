@@ -3448,7 +3448,7 @@ async function boot() {
   
   // Load auth module
   let auth = null;
-  try { auth = await import('./auth.js?v=7'); } catch (err) { auth = null; }
+  try { auth = await import('./auth.js?v=8'); } catch (err) { auth = null; }
   window.GLITCHIT_AUTH = auth;
 
 

@@ -102,8 +102,27 @@
   }
 
   // ---------- auth + data layer ----------
+  // The Firebase compat SDK is loaded with `async` on camera.html, so it may
+  // not be present the instant this deferred module runs. Wait briefly for the
+  // global before reading the current user — otherwise auth.currentUser() can
+  // race the SDK and a signed-in user looks signed-out ("Sign in to share…").
+  function waitForFirebase(timeoutMs = 4000) {
+    return new Promise((resolve) => {
+      if (typeof firebase !== 'undefined' && firebase && firebase.initializeApp) return resolve(true);
+      const start = Date.now();
+      const tick = setInterval(() => {
+        if (typeof firebase !== 'undefined' && firebase && firebase.initializeApp) {
+          clearInterval(tick); resolve(true);
+        } else if (Date.now() - start > timeoutMs) {
+          clearInterval(tick); resolve(false);
+        }
+      }, 50);
+    });
+  }
+
   async function boot() {
-    try { auth = await import('./auth.js?v=4'); } catch (e) { auth = null; }
+    await waitForFirebase();
+    try { auth = await import('./auth.js?v=6'); } catch (e) { auth = null; }
     if (auth && auth.authAvailable()) {
       try { user = await auth.currentUser(); } catch (e) { user = null; }
       if (user) {
