@@ -17,6 +17,28 @@ function cfg(k, fb) { return process.env[k] || fb; }
 function getBusinessName() { return cfg('PAYMENT_BUSINESS_NAME', 'GlitchIt'); }
 function getDatabaseUrl() { return cfg('DATABASE_URL', ''); }
 
+// ─── Admin routes (approve / reject / pending) ─────────────────────
+// These change transaction state or list every transaction, so they need the
+// same X-Admin-Secret as /v1/admin/* (see api/settlement.js). SECURITY: no
+// fallback secret — with ADMIN_SECRET unset they answer 503 instead of
+// accepting a guessable default. Constant-time compare guards the timing
+// channel.
+function adminSecret() { return cfg('ADMIN_SECRET', ''); }
+
+function requireAdminSecret(req) {
+  const expected = adminSecret();
+  if (!expected) {
+    return { status: 503, body: { ok: false, error: 'Admin payment routes are not configured. Set ADMIN_SECRET in the environment.' } };
+  }
+  const provided = String(req.headers['x-admin-secret'] || '');
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length === 0 || b.length !== a.length || !crypto.timingSafeEqual(a, b)) {
+    return { status: 403, body: { ok: false, error: 'Unauthorized' } };
+  }
+  return null;
+}
+
 // ─── Database (optional, graceful) ──────────────────────────────────
 let dbPool = null;
 let tablesEnsured = false;
@@ -390,8 +412,10 @@ function handleConfig(req, res) {
   });
 }
 
-// POST /api/payment/approve — Owner approves
+// POST /api/payment/approve — Owner approves (admin-only)
 async function handleApprove(req, res) {
+  const denied = requireAdminSecret(req);
+  if (denied) return json(res, denied.status, denied.body);
   const body = await readBody(req);
   if (!body || !body.tx_ref) return json(res, 400, { ok: false, error: 'tx_ref required' });
   const db = getDb();
@@ -404,8 +428,10 @@ async function handleApprove(req, res) {
   json(res, 200, { ok: true, tx_ref: body.tx_ref, status: 'verified' });
 }
 
-// POST /api/payment/reject
+// POST /api/payment/reject (admin-only)
 async function handleReject(req, res) {
+  const denied = requireAdminSecret(req);
+  if (denied) return json(res, denied.status, denied.body);
   const body = await readBody(req);
   if (!body || !body.tx_ref) return json(res, 400, { ok: false, error: 'tx_ref required' });
   const db = getDb();
@@ -417,8 +443,10 @@ async function handleReject(req, res) {
   json(res, 200, { ok: true, tx_ref: body.tx_ref, status: 'rejected' });
 }
 
-// GET /api/payment/pending
+// GET /api/payment/pending (admin-only)
 async function handlePending(req, res) {
+  const denied = requireAdminSecret(req);
+  if (denied) return json(res, denied.status, denied.body);
   const db = getDb();
   if (!db) return json(res, 200, { ok: true, count: 0, transactions: [] });
   try {
@@ -444,7 +472,7 @@ module.exports = async function handler(req, res) {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Secret',
       'Access-Control-Max-Age': '86400',
     });
     return res.end();

@@ -1,0 +1,33 @@
+name: CI
+
+# Runs the same checks the project already defines locally: syntax checks on
+# the core modules, then the node:test suite (settlement ledger math + API
+# auth guards), then the static build. No extra toolchain — the hosting
+# build is Node-only anyway.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Dev dependencies only (pg, firebase-admin are optional at runtime and
+      # the tests run without them, but installing keeps require() paths real).
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Syntax checks + tests
+        run: npm test
+
+      - name: Build static output
+        run: npm run build

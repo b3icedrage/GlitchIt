@@ -23,12 +23,46 @@ try { Pool = require('pg').Pool; } catch (e) { /* pg optional — DB features di
 function cfg(k, fb) { return process.env[k] || fb; }
 function getDarajaKey()       { return cfg('DARAJA_CONSUMER_KEY', ''); }
 function getDarajaSecret()    { return cfg('DARAJA_CONSUMER_SECRET', ''); }
-function getDarajaShortcode() { return cfg('DARAJA_SHORTCODE', '174379'); }
+function getDarajaShortcode() { return cfg('DARAJA_SHORTCODE', ''); }
 function getDarajaPasskey()   { return cfg('DARAJA_PASSKEY', ''); }
 function getDarajaInitiator() { return cfg('DARAJA_INITIATOR_NAME', 'glitchitapi'); }
 function getDarajaEnv()       { return cfg('DARAJA_ENV', 'sandbox'); }
-function getWithdrawPhone()   { return cfg('WITHDRAW_PHONE', '254143476934'); }
-function getAdminSecret()     { return cfg('ADMIN_SECRET', 'glitchit-admin-2026'); }
+function getWithdrawPhone()   { return cfg('WITHDRAW_PHONE', ''); }
+// SECURITY: no fallback secret. With ADMIN_SECRET unset every admin route
+// answers 503 (see requireAdminSecret) instead of accepting a guessable
+// default that once shipped in this file. Rotate the old value if it was ever
+// deployed — it lives in git history.
+function getAdminSecret()     { return cfg('ADMIN_SECRET', ''); }
+
+// Constant-time comparison so an attacker can't brute-force ADMIN_SECRET
+// byte-by-byte via response timing.
+function secretMatches(provided, expected) {
+  const a = Buffer.from(String(provided || ''));
+  const b = Buffer.from(String(expected || ''));
+  if (a.length === 0 || b.length === 0 || a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+// Shared guard for every /v1/admin/* route. Returns an error response object
+// ({ status, body }) when the caller isn't allowed, or null when authorized.
+function requireAdminSecret(req) {
+  const expected = getAdminSecret();
+  if (!expected) {
+    return {
+      status: 503,
+      body: {
+        success: false,
+        message: 'Admin routes are not configured. Set ADMIN_SECRET in the environment.',
+        timestamp: now(),
+      },
+    };
+  }
+  const provided = req.headers['x-admin-secret'] || '';
+  if (!secretMatches(provided, expected)) {
+    return { status: 403, body: { success: false, message: 'Unauthorized', timestamp: now() } };
+  }
+  return null;
+}
 function getDatabaseUrl()     { return cfg('DATABASE_URL', ''); }
 function getDarajaBase() {
   return getDarajaEnv() === 'production'
@@ -293,11 +327,9 @@ async function initiateB2CPayout({ amount, recipientPhone, idempotencyKey, comma
  * Protected by ADMIN_SECRET header.
  */
 async function handleWithdraw(req, res) {
-  // Admin auth check
-  const adminKey = req.headers['x-admin-secret'] || '';
-  if (!adminKey || adminKey !== getAdminSecret()) {
-    return json(res, 403, { success: false, message: 'Unauthorized', timestamp: now() });
-  }
+  // Admin auth check (fails closed when ADMIN_SECRET is unset)
+  const denied = requireAdminSecret(req);
+  if (denied) return json(res, denied.status, denied.body);
 
   const body = await readBody(req);
   if (!body) return json(res, 400, { success: false, message: 'Invalid JSON', timestamp: now() });
@@ -308,6 +340,20 @@ async function handleWithdraw(req, res) {
   }
   if (body.amount > 150000) {
     return json(res, 400, { success: false, message: 'Max single withdrawal: KES 150,000 (Safaricom B2C limit)', timestamp: now() });
+  }
+
+  // B2C needs a configured shortcode — an unset DARAJA_SHORTCODE must not
+  // silently send from an empty party A.
+  if (!getDarajaShortcode()) {
+    return json(res, 503, { success: false, message: 'Payouts are not configured. Set DARAJA_SHORTCODE in the environment.', timestamp: now() });
+  }
+
+  // Recipient: explicit phone wins; the owner's WITHDRAW_PHONE is the default.
+  // Neither configured → refuse rather than formatting an empty string into a
+  // bogus MSISDN.
+  const recipientRaw = String(body.phone || getWithdrawPhone() || '').trim();
+  if (!recipientRaw) {
+    return json(res, 400, { success: false, message: 'A recipient phone is required (set WITHDRAW_PHONE or pass "phone").', timestamp: now() });
   }
 
   // Generate idempotency key (unique per withdrawal request)
@@ -357,7 +403,7 @@ async function handleWithdraw(req, res) {
 
   // ── Create payout record (PROCESSING state) ──
   const payoutId = crypto.randomUUID();
-  const recipient = formatPhone(body.phone || getWithdrawPhone());
+  const recipient = formatPhone(recipientRaw);
 
   await pool.query(
     `INSERT INTO payout_requests (id, idempotency_key, amount, recipient_phone, status, command_id, initiator_name, requested_by, created_at, updated_at)
@@ -548,10 +594,8 @@ async function handlePayoutCallback(req, res) {
  * GET /v1/admin/balance — Current vault balance
  */
 async function handleBalance(req, res) {
-  const adminKey = req.headers['x-admin-secret'] || '';
-  if (!adminKey || adminKey !== getAdminSecret()) {
-    return json(res, 403, { success: false, message: 'Unauthorized', timestamp: now() });
-  }
+  const denied = requireAdminSecret(req);
+  if (denied) return json(res, denied.status, denied.body);
 
   const pool = getDb();
   if (!pool) return json(res, 500, { success: false, message: 'Database not configured', timestamp: now() });
@@ -579,10 +623,8 @@ async function handleBalance(req, res) {
  * GET /v1/admin/ledger — Ledger history (credits + debits)
  */
 async function handleLedger(req, res) {
-  const adminKey = req.headers['x-admin-secret'] || '';
-  if (!adminKey || adminKey !== getAdminSecret()) {
-    return json(res, 403, { success: false, message: 'Unauthorized', timestamp: now() });
-  }
+  const denied = requireAdminSecret(req);
+  if (denied) return json(res, denied.status, denied.body);
 
   const pool = getDb();
   if (!pool) return json(res, 500, { success: false, message: 'Database not configured', timestamp: now() });
@@ -617,10 +659,8 @@ async function handleLedger(req, res) {
  * GET /v1/admin/payouts — Payout request history
  */
 async function handlePayouts(req, res) {
-  const adminKey = req.headers['x-admin-secret'] || '';
-  if (!adminKey || adminKey !== getAdminSecret()) {
-    return json(res, 403, { success: false, message: 'Unauthorized', timestamp: now() });
-  }
+  const denied = requireAdminSecret(req);
+  if (denied) return json(res, denied.status, denied.body);
 
   const pool = getDb();
   if (!pool) return json(res, 500, { success: false, message: 'Database not configured', timestamp: now() });

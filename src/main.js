@@ -1160,20 +1160,9 @@ function saveUploads() {
 }
 
 // ---------- Upload cards ----------
-function uploadCard(item, type) {
-  const isVideo = type === 'videos' || item.type === 'video';
-  if (isVideo) return glitchVideoCard({ ...item, user: profile.username, avatar: profile.avatar, verified: item.verified || isUserIdVerified(item.owner), owner: item.owner, src: item.src || item.preview, poster: item.preview, caption: item.caption || item.title }, true);
-  const isBolt = Boolean(item.verified);
-  const bolt = isBolt ? verifiedBolt('verified-bolt-inline') : '';
-  // Real social actions (like / comment / share / save) backed by src/social.js.
-  const key = mediaKeyOf(item);
-  const liked = SOC ? SOC.isLiked(key) : false;
-  const likes = SOC ? SOC.totalLikes(key, 0) : 0;
-  const comments = SOC ? SOC.totalComments(key, 0) : 0;
-  const ownerName = escapeHtml(String(item.user || profile.username).replace(/⚡/g, ''));
-  return `<article class="post upload-card" data-media-key="${escapeHtml(key)}" data-owner="${escapeHtml(item.owner || '')}" data-post-id="${escapeHtml(item.pid || '')}"><header><div class="profile"><span class="verified-avatar-wrap"><img src="${profile.avatar}" alt="${profile.username} avatar">${isBolt ? verifiedBolt() : ''}</span><div><strong>${profile.username}${bolt}</strong><span>Fresh post</span></div></div><button class="more">•••</button></header><div class="media-wrap"><img class="post-image" src="${item.preview}" alt="${item.title}" loading="lazy" decoding="async"><span class="shop-badge">${icon('＋')} ${item.type}</span></div><div class="actions post-actions"><div class="post-actions-left"><button type="button" class="post-like${liked ? ' liked' : ''}" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Like this post">${icon('♡')}<b>${likes}</b></button><button type="button" class="post-comment" data-media-key="${escapeHtml(key)}" data-base-count="0" aria-label="Comment on this post">${icon('◌')}<b>${comments}</b></button><button type="button" class="post-share" aria-label="Share this post">${icon('↗')}</button></div><button type="button" class="post-save" aria-label="Save this post">${icon('▱')}</button></div><strong>New upload</strong><p><b>${ownerName}${bolt}</b> ${item.caption || item.title}</p></article>`;
-}
-
+// NOTE: uploadCard is defined once below (creator-aware version, ~L1300).
+// An earlier viewer-identity version used to live here and was dead code —
+// the later definition always won in JS.
 function glitchVideoCard(video, uploaded = false) {
   const likes = video.likes || '0';
   const comments = video.comments || '0';

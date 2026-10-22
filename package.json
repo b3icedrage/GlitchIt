@@ -10,7 +10,7 @@
         "start": "node server.js",
         "preview": "node server.js",
         "build": "node build.js",
-        "test": "node --check src/main.js && node --check src/config.js",
+        "test": "node --check src/main.js && node --check src/config.js && node --check api/settlement.js && node --check api/payment.js && node --check api/livekit-token.js && node --test \"test/*.test.js\"",
         "apk:sync": "node build.js && npx cap sync android",
         "apk:build": "node build.js && npx cap sync android && cd android && ./gradlew assembleDebug",
         "apk:release": "node build.js && npx cap sync android && cd android && ./gradlew assembleRelease",

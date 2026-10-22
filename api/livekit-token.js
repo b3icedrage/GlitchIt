@@ -13,9 +13,32 @@
 //
 // When the keys are missing the endpoint reports { ok:false } and the call
 // overlay falls back to its built-in demo mode, so calling never breaks.
+//
+// Auth: a Firebase ID token (Authorization: Bearer …) is REQUIRED — minting a
+// token for an arbitrary room/identity with no check let anyone join or
+// impersonate any call. The verified uid becomes the token identity, so a
+// caller can't claim someone else's seat. Signed-out users get 401 and the
+// overlay degrades to demo mode like it already does when unconfigured.
 'use strict';
 
 const crypto = require('node:crypto');
+const shared = require('./_admin.js');
+
+// Verify a Firebase ID token; returns the decoded token or null.
+// Mirrors the sender check in api/notify.js (same admin bootstrap).
+async function verifyBearerToken(req) {
+  const header = String(req.headers.authorization || '');
+  if (!header.startsWith('Bearer ')) return null;
+  const raw = header.slice(7).trim();
+  if (!raw) return null;
+  const app = shared.getAdminApp();
+  if (!app) return null; // no admin credential → cannot verify → deny
+  try {
+    return await shared.getAuthService(app).verifyIdToken(raw);
+  } catch (e) {
+    return null;
+  }
+}
 
 function b64url(input) {
   return Buffer.from(input).toString('base64url');
@@ -64,6 +87,12 @@ module.exports = async function handler(req, res) {
     json(res, 405, { ok: false, error: 'Method not allowed' });
     return;
   }
+  // Auth first: never mint a room token for an unverified caller.
+  const caller = await verifyBearerToken(req);
+  if (!caller || !caller.uid) {
+    json(res, 401, { ok: false, error: 'Sign in to start or join a call.' });
+    return;
+  }
   const apiKey = process.env.LIVEKIT_API_KEY || '';
   const apiSecret = process.env.LIVEKIT_API_SECRET || '';
   const livekitUrl = process.env.LIVEKIT_URL || '';
@@ -77,7 +106,9 @@ module.exports = async function handler(req, res) {
     json(res, 400, { ok: false, error: 'A room parameter is required.' });
     return;
   }
-  const identity = sanitize(url.searchParams.get('identity'), 64, `guest-${Math.random().toString(36).slice(2, 8)}`);
+  // Identity is derived from the verified token, not the query string — a
+  // signed-in user can't mint a token posing as another account.
+  const identity = sanitize(caller.uid, 64, `user-${Math.random().toString(36).slice(2, 8)}`);
   const token = mintLiveKitToken({ apiKey, apiSecret, room, identity });
   json(res, 200, { ok: true, url: livekitUrl, token, room, identity });
 };

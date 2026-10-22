@@ -63,7 +63,17 @@
 
   async function fetchToken(room, identity) {
     try {
-      const res = await fetch(`${window.GLITCHIT_API_BASE || ''}/api/livekit-token?room=${encodeURIComponent(room)}&identity=${encodeURIComponent(identity)}`, { cache: 'no-store' });
+      // /api/livekit-token requires a Firebase ID token (the server derives
+      // the room identity from it), so attach one the same way src/notify.js
+      // does. Signed out → no token → the endpoint 401s and the call overlay
+      // keeps its built-in demo mode.
+      const headers = { 'Cache-Control': 'no-store' };
+      try {
+        const u = typeof firebase !== 'undefined' && firebase.auth ? firebase.auth().currentUser : null;
+        const tok = u ? await u.getIdToken() : '';
+        if (tok) headers.Authorization = `Bearer ${tok}`;
+      } catch (authErr) { /* no token — endpoint will answer 401 */ }
+      const res = await fetch(`${window.GLITCHIT_API_BASE || ''}/api/livekit-token?room=${encodeURIComponent(room)}&identity=${encodeURIComponent(identity)}`, { cache: 'no-store', headers });
       if (!res.ok) return null;
       const data = await res.json();
       if (!data || data.ok !== true || !data.token || !data.url) return null;
